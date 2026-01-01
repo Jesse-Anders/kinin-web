@@ -1,1 +1,1 @@
-# just make a change to generic push and redeploy appy
+# just make a change to generic push and redeploy app
