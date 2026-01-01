@@ -35,6 +35,10 @@ export default function App() {
       try {
         // Ensure Hosted UI redirect is processed and tokens are available
         const session = await fetchAuthSession();
+        console.log("AUTH SESSION TOKENS?", {
+          hasId: !!session?.tokens?.idToken,
+          hasAccess: !!session?.tokens?.accessToken,
+        });
 
         // If tokens exist, we are authenticated
         if (session?.tokens?.idToken) {
