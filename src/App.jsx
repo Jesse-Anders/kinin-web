@@ -8,6 +8,16 @@ import {
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
+// Temporary debug to confirm envs are present in deployed build
+console.log("ENV", {
+  domain: import.meta.env.VITE_COGNITO_DOMAIN,
+  signin: import.meta.env.VITE_REDIRECT_SIGNIN,
+  signout: import.meta.env.VITE_REDIRECT_SIGNOUT,
+  region: import.meta.env.VITE_AWS_REGION,
+  pool: import.meta.env.VITE_COGNITO_USER_POOL_ID,
+  client: import.meta.env.VITE_COGNITO_USER_POOL_CLIENT_ID,
+});
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [sessionId, setSessionId] = useState(
