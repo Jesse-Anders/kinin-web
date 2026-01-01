@@ -23,8 +23,26 @@ export default function App() {
   useEffect(() => {
     (async () => {
       try {
-        const u = await getCurrentUser();
-        setUser(u);
+        // Ensure Hosted UI redirect is processed and tokens are available
+        const session = await fetchAuthSession();
+
+        // If tokens exist, we are authenticated
+        if (session?.tokens?.idToken) {
+          const u = await getCurrentUser();
+          setUser(u);
+
+          // Clean up ?code=... in URL after login
+          if (window.location.search.includes("code=")) {
+            window.history.replaceState(
+              {},
+              document.title,
+              window.location.pathname
+            );
+          }
+          return;
+        }
+
+        setUser(null);
       } catch {
         setUser(null);
       }
@@ -105,6 +123,9 @@ export default function App() {
       }}
     >
       <h2>Kinin — Interviewer</h2>
+      <div style={{ marginBottom: 8, opacity: 0.8 }}>
+        Auth status: <b>{user ? "SIGNED IN" : "SIGNED OUT"}</b>
+      </div>
 
       <div
         style={{
