@@ -51,7 +51,12 @@ export default function App() {
 
   async function onLogin() {
     setError("");
-    await signInWithRedirect(); // Hosted UI
+    try {
+      await signInWithRedirect(); // Hosted UI
+    } catch (e) {
+      console.error("Login redirect failed:", e);
+      setError(e?.message || JSON.stringify(e));
+    }
   }
 
   async function onLogout() {
