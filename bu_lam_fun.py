@@ -91,8 +91,8 @@ def bedrock_chat(message: str, context_pack_json: str) -> str:
     prompt = (
         f"{system_prompt}\n\n"
         f"CONTEXT_PACK_JSON:\n{context_pack_json}\n\n"
-        f"User: {message}\n"
-        f"Bot:"
+        #f"User: {message}\n"
+        #f"Bot:"
     )
 
     body = {
@@ -101,7 +101,7 @@ def bedrock_chat(message: str, context_pack_json: str) -> str:
             "maxTokenCount": 350,
             "temperature": 0.7,
             "topP": 0.9,
-            "stopSequences": []
+            "stopSequences": ["User:", "\nUser:"]
         }
     }
 
@@ -223,20 +223,29 @@ def write_turn_to_s3(user_id: str, session_id: str, line: dict) -> None:
 
 def lambda_handler(event, context):
     """
-    Event:
-      { "user_id": "...", "session_id": "...", "message": "..." }
+    Supports direct test invokes and HTTP API (Cognito JWT) invokes.
     """
     start = time.time()
 
-    user_id = (event or {}).get("user_id")
-    session_id = (event or {}).get("session_id") or f"sess_{uuid.uuid4().hex[:10]}"
-    message = (event or {}).get("message")
+    # --- Support both direct test invokes AND HTTP API invokes ---
+    claims = get_jwt_claims(event)
+    body = parse_json_body(event)
 
-    if not user_id or not message:
-        return {
-            "statusCode": 400,
-            "body": json.dumps({"error": "user_id and message required"})
-        }
+    # If called through Cognito+API, user_id comes from JWT 'sub'
+    user_id = claims.get("sub") or event.get("user_id")
+
+    # session_id/message can be in body (HTTP API) or top-level (direct invoke)
+    session_id = body.get("session_id") or event.get("session_id") or f"sess_{uuid.uuid4().hex[:10]}"
+    message = body.get("message") or event.get("message")
+
+    if not user_id:
+        return {"statusCode": 401, "body": json.dumps({"error": "Unauthorized: missing user identity"})}
+
+    if not message:
+        return {"statusCode": 400, "body": json.dumps({"error": "message required"})}
+
+    # Optional: capture email for later profile use
+    email = claims.get("email")
 
     try:
         # 1) Load UserState (or default)
@@ -249,6 +258,13 @@ def lambda_handler(event, context):
             "interview_mode": "guided",
             "updated_at": utc_iso()
         }
+
+        # Debug/seed profile email when available
+        if email:
+            profile = user_state.get("profile_snapshot", {}) or {}
+            if "email" not in profile:
+                profile["email"] = email
+            user_state["profile_snapshot"] = profile
 
         # 2) Pull recent turns
         recent_turns = query_recent_turns(user_id, limit=12)

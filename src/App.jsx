@@ -14,6 +14,7 @@ export default function App() {
   const [sessionId, setSessionId] = useState(
     () => localStorage.getItem("session_id") || ""
   );
+  const [mode, setMode] = useState(() => localStorage.getItem("mode") || "guided");
   const [message, setMessage] = useState("");
   const [chat, setChat] = useState([]);
   const [busy, setBusy] = useState(false);
@@ -80,6 +81,7 @@ export default function App() {
       const body = {
         session_id: sessionId || undefined,
         message: message.trim(),
+        mode: mode || undefined,
       };
 
       const res = await fetch(`${API_BASE}/turn`, {
@@ -93,7 +95,26 @@ export default function App() {
 
       if (!res.ok) {
         const t = await res.text();
-        throw new Error(`API error ${res.status}: ${t}`);
+        // Try to parse structured error bodies (Lambda proxy / API Gateway)
+        let detail = t;
+        try {
+          const j = JSON.parse(t);
+          if (j && typeof j === "object") {
+            if (typeof j.body === "string") {
+              try {
+                const inner = JSON.parse(j.body);
+                detail = JSON.stringify(inner);
+              } catch {
+                detail = j.body;
+              }
+            } else {
+              detail = JSON.stringify(j);
+            }
+          }
+        } catch {
+          // keep raw text
+        }
+        throw new Error(`API error ${res.status}: ${detail}`);
       }
 
       const data = await res.json();
@@ -177,6 +198,19 @@ export default function App() {
           style={{ flex: 1, padding: 10 }}
           disabled={busy}
         />
+        <select
+          value={mode}
+          onChange={(e) => {
+            setMode(e.target.value);
+            localStorage.setItem("mode", e.target.value);
+          }}
+          disabled={busy}
+          style={{ padding: 10 }}
+          title="Mode"
+        >
+          <option value="guided">guided</option>
+          <option value="freeform">freeform</option>
+        </select>
         <button
           onClick={() => {
             setSessionId("");
