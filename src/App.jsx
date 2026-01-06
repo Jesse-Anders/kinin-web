@@ -140,6 +140,48 @@ export default function App() {
     }
   }
 
+  async function endSession() {
+    setError("");
+    setBusy(true);
+    try {
+      const session = await fetchAuthSession();
+      const idToken = session.tokens?.idToken?.toString();
+      if (!idToken) throw new Error("Missing idToken. Are you logged in?");
+
+      const body = {
+        session_id: sessionId || undefined,
+        end_session: true,
+      };
+
+      const res = await fetch(`${API_BASE}/turn`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(`API error ${res.status}: ${t}`);
+      }
+
+      const data = await res.json();
+      const parsed =
+        typeof data.body === "string" ? JSON.parse(data.body) : data;
+
+      const newSessionId = parsed.session_id || "";
+      setSessionId(newSessionId);
+      localStorage.setItem("session_id", newSessionId);
+      setChat([]);
+    } catch (e) {
+      setError(e.message || String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div
       style={{
@@ -220,6 +262,9 @@ export default function App() {
           disabled={busy}
         >
           New Session
+        </button>
+        <button onClick={endSession} disabled={!isAuthed || busy}>
+          End Session (server)
         </button>
       </div>
 
