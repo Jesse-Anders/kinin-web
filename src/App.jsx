@@ -14,6 +14,9 @@ export default function App() {
   const [sessionId, setSessionId] = useState(
     () => localStorage.getItem("session_id") || ""
   );
+  const [journeyVersion, setJourneyVersion] = useState(
+    () => localStorage.getItem("journey_version") || ""
+  );
   const [mode, setMode] = useState(() => localStorage.getItem("mode") || "guided");
   const [message, setMessage] = useState("");
   const [chat, setChat] = useState([]);
@@ -115,6 +118,11 @@ export default function App() {
         setSessionId(newSessionId);
         localStorage.setItem("session_id", newSessionId);
       }
+      if (parsed.journey_version !== undefined && parsed.journey_version !== null) {
+        const v = String(parsed.journey_version);
+        setJourneyVersion(v);
+        localStorage.setItem("journey_version", v);
+      }
 
       if (parsed.assistant) {
         setChat([{ role: "assistant", content: parsed.assistant }]);
@@ -184,6 +192,11 @@ export default function App() {
         setSessionId(newSessionId);
         localStorage.setItem("session_id", newSessionId);
       }
+      if (parsed.journey_version !== undefined && parsed.journey_version !== null) {
+        const v = String(parsed.journey_version);
+        setJourneyVersion(v);
+        localStorage.setItem("journey_version", v);
+      }
 
       setChat((prev) => [
         ...prev,
@@ -232,6 +245,11 @@ export default function App() {
       const newSessionId = parsed.session_id || "";
       setSessionId(newSessionId);
       localStorage.setItem("session_id", newSessionId);
+      if (parsed.journey_version !== undefined && parsed.journey_version !== null) {
+        const v = String(parsed.journey_version);
+        setJourneyVersion(v);
+        localStorage.setItem("journey_version", v);
+      }
       setChat([]);
     } catch (e) {
       setError(e.message || String(e));
@@ -252,6 +270,9 @@ export default function App() {
       <h2>Kinin — Interviewer</h2>
       <div style={{ marginBottom: 8, opacity: 0.8 }}>
         Auth status: <b>{user ? "SIGNED IN" : "SIGNED OUT"}</b>
+      </div>
+      <div style={{ marginBottom: 8, opacity: 0.8 }}>
+        Journey version: <b>{journeyVersion || "—"}</b>
       </div>
 
       <div
