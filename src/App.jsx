@@ -19,6 +19,7 @@ export default function App() {
   const [chat, setChat] = useState([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [didStart, setDidStart] = useState(false);
 
   const isAuthed = useMemo(() => !!user, [user]);
 
@@ -51,6 +52,16 @@ export default function App() {
     })();
   }, []);
 
+  useEffect(() => {
+    if (!isAuthed) return;
+    if (busy) return;
+    if (didStart) return;
+    // Auto-start session on login to get intro + session_id without requiring a user message.
+    startSession();
+    setDidStart(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthed]);
+
   async function onLogin() {
     setError("");
     try {
@@ -66,6 +77,53 @@ export default function App() {
     await signOut({ global: true });
     setUser(null);
     setChat([]);
+  }
+
+  async function startSession() {
+    setError("");
+    setBusy(true);
+    try {
+      const session = await fetchAuthSession();
+      const idToken = session.tokens?.idToken?.toString();
+      if (!idToken) throw new Error("Missing idToken. Are you logged in?");
+
+      const body = {
+        session_id: sessionId || undefined,
+        start: true,
+        mode: mode || undefined,
+      };
+
+      const res = await fetch(`${API_BASE}/turn`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(`API error ${res.status}: ${t}`);
+      }
+
+      const data = await res.json();
+      const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
+
+      const newSessionId = parsed.session_id || sessionId;
+      if (newSessionId && newSessionId !== sessionId) {
+        setSessionId(newSessionId);
+        localStorage.setItem("session_id", newSessionId);
+      }
+
+      if (parsed.assistant) {
+        setChat([{ role: "assistant", content: parsed.assistant }]);
+      }
+    } catch (e) {
+      setError(e.message || String(e));
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function sendTurn() {
@@ -253,16 +311,6 @@ export default function App() {
           <option value="guided">guided</option>
           <option value="freeform">freeform</option>
         </select>
-        <button
-          onClick={() => {
-            setSessionId("");
-            localStorage.removeItem("session_id");
-            setChat([]);
-          }}
-          disabled={busy}
-        >
-          New Session
-        </button>
         <button onClick={endSession} disabled={!isAuthed || busy}>
           End Session (server)
         </button>
