@@ -494,25 +494,25 @@ export default function App() {
           </div>
         </div>
       ) : (
-        <div
-          style={{
-            border: "1px solid #ddd",
-            borderRadius: 10,
-            padding: 12,
-            minHeight: 260,
-            marginBottom: 12,
-          }}
-        >
-          {chat.length === 0 ? (
-            <div style={{ opacity: 0.7 }}>Start chatting after logging in.</div>
-          ) : (
-            chat.map((m, idx) => (
-              <div key={idx} style={{ marginBottom: 10 }}>
-                <b>{m.role === "user" ? "You" : "Interviewer"}:</b> {m.content}
-              </div>
-            ))
-          )}
-        </div>
+      <div
+        style={{
+          border: "1px solid #ddd",
+          borderRadius: 10,
+          padding: 12,
+          minHeight: 260,
+          marginBottom: 12,
+        }}
+      >
+        {chat.length === 0 ? (
+          <div style={{ opacity: 0.7 }}>Start chatting after logging in.</div>
+        ) : (
+          chat.map((m, idx) => (
+            <div key={idx} style={{ marginBottom: 10 }}>
+              <b>{m.role === "user" ? "You" : "Interviewer"}:</b> {m.content}
+            </div>
+          ))
+        )}
+      </div>
       )}
 
       <div style={{ display: "flex", gap: 8 }}>
