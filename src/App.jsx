@@ -23,6 +23,10 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [didStart, setDidStart] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [profileSchema, setProfileSchema] = useState(null);
+  const [bioProfile, setBioProfile] = useState({ preferred_name: "", age: "" });
+  const [profileBusy, setProfileBusy] = useState(false);
 
   const isAuthed = useMemo(() => !!user, [user]);
 
@@ -264,6 +268,98 @@ export default function App() {
     }
   }
 
+  async function openProfile() {
+    setError("");
+    if (!isAuthed) return;
+    setShowProfile(true);
+    setProfileBusy(true);
+    try {
+      const session = await fetchAuthSession();
+      const idToken = session.tokens?.idToken?.toString();
+      if (!idToken) throw new Error("Missing idToken. Are you logged in?");
+
+      const [schemaRes, profileRes] = await Promise.all([
+        fetch(`${API_BASE}/profile/schema`, {
+          method: "GET",
+          headers: { Authorization: `Bearer ${idToken}` },
+        }),
+        fetch(`${API_BASE}/profile`, {
+          method: "GET",
+          headers: { Authorization: `Bearer ${idToken}` },
+        }),
+      ]);
+
+      if (!schemaRes.ok) throw new Error(`API error ${schemaRes.status}: ${await schemaRes.text()}`);
+      if (!profileRes.ok) throw new Error(`API error ${profileRes.status}: ${await profileRes.text()}`);
+
+      const schemaData = await schemaRes.json();
+      const schemaParsed =
+        typeof schemaData.body === "string" ? JSON.parse(schemaData.body) : schemaData;
+      setProfileSchema(schemaParsed.schema || null);
+
+      const profData = await profileRes.json();
+      const profParsed =
+        typeof profData.body === "string" ? JSON.parse(profData.body) : profData;
+      const bp = profParsed.biography_user_profile || {};
+      setBioProfile({
+        preferred_name: bp.preferred_name || "",
+        age: bp.age === undefined || bp.age === null ? "" : String(bp.age),
+      });
+    } catch (e) {
+      setError(e.message || String(e));
+    } finally {
+      setProfileBusy(false);
+    }
+  }
+
+  async function saveProfile() {
+    setError("");
+    if (!isAuthed) return;
+    setProfileBusy(true);
+    try {
+      const session = await fetchAuthSession();
+      const idToken = session.tokens?.idToken?.toString();
+      if (!idToken) throw new Error("Missing idToken. Are you logged in?");
+
+      const preferred = (bioProfile.preferred_name || "").trim();
+      if (!preferred) throw new Error("Preferred name is required.");
+
+      const ageVal = (bioProfile.age || "").trim();
+      const payload = {
+        biography_user_profile: {
+          preferred_name: preferred,
+          age: ageVal ? Number(ageVal) : null,
+        },
+      };
+
+      const res = await fetch(`${API_BASE}/profile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(`API error ${res.status}: ${t}`);
+      }
+      const data = await res.json();
+      const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
+      const bp = parsed.biography_user_profile || {};
+      setBioProfile({
+        preferred_name: bp.preferred_name || preferred,
+        age: bp.age === undefined || bp.age === null ? "" : String(bp.age),
+      });
+      setShowProfile(false);
+    } catch (e) {
+      setError(e.message || String(e));
+    } finally {
+      setProfileBusy(false);
+    }
+  }
+
   return (
     <div
       style={{
@@ -341,27 +437,83 @@ export default function App() {
         <button onClick={endSession} disabled={!isAuthed || busy}>
           End Session (server)
         </button>
+        <button onClick={openProfile} disabled={!isAuthed || busy}>
+          Biography Profile
+        </button>
       </div>
 
-      <div
-        style={{
-          border: "1px solid #ddd",
-          borderRadius: 10,
-          padding: 12,
-          minHeight: 260,
-          marginBottom: 12,
-        }}
-      >
-        {chat.length === 0 ? (
-          <div style={{ opacity: 0.7 }}>Start chatting after logging in.</div>
-        ) : (
-          chat.map((m, idx) => (
-            <div key={idx} style={{ marginBottom: 10 }}>
-              <b>{m.role === "user" ? "You" : "Interviewer"}:</b> {m.content}
+      {showProfile ? (
+        <div
+          style={{
+            border: "1px solid #ddd",
+            borderRadius: 10,
+            padding: 12,
+            marginBottom: 12,
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <b>Biography Profile</b>
+              <div style={{ opacity: 0.7, fontSize: 12 }}>
+                {profileSchema?.title || "Profile"} (schema v{profileSchema?.version || "—"})
+              </div>
             </div>
-          ))
-        )}
-      </div>
+            <button onClick={() => setShowProfile(false)} disabled={profileBusy}>
+              Close
+            </button>
+          </div>
+
+          <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+            <label>
+              <div style={{ fontSize: 12, opacity: 0.8 }}>Preferred name *</div>
+              <input
+                value={bioProfile.preferred_name}
+                onChange={(e) => setBioProfile((p) => ({ ...p, preferred_name: e.target.value }))}
+                disabled={profileBusy}
+                style={{ width: "100%", padding: 10 }}
+              />
+            </label>
+            <label>
+              <div style={{ fontSize: 12, opacity: 0.8 }}>Age (optional)</div>
+              <input
+                value={bioProfile.age}
+                onChange={(e) => setBioProfile((p) => ({ ...p, age: e.target.value }))}
+                disabled={profileBusy}
+                style={{ width: "100%", padding: 10 }}
+                inputMode="numeric"
+              />
+            </label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={saveProfile} disabled={profileBusy}>
+                {profileBusy ? "Saving..." : "Save"}
+              </button>
+              <button onClick={() => setShowProfile(false)} disabled={profileBusy}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div
+          style={{
+            border: "1px solid #ddd",
+            borderRadius: 10,
+            padding: 12,
+            minHeight: 260,
+            marginBottom: 12,
+          }}
+        >
+          {chat.length === 0 ? (
+            <div style={{ opacity: 0.7 }}>Start chatting after logging in.</div>
+          ) : (
+            chat.map((m, idx) => (
+              <div key={idx} style={{ marginBottom: 10 }}>
+                <b>{m.role === "user" ? "You" : "Interviewer"}:</b> {m.content}
+              </div>
+            ))
+          )}
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 8 }}>
         <input
@@ -369,7 +521,7 @@ export default function App() {
           onChange={(e) => setMessage(e.target.value)}
           placeholder={isAuthed ? "Type a message..." : "Login to chat..."}
           style={{ flex: 1, padding: 10 }}
-          disabled={!isAuthed || busy}
+          disabled={!isAuthed || busy || showProfile}
           onKeyDown={(e) => {
             if (e.key === "Enter") sendTurn();
           }}
