@@ -144,10 +144,16 @@ export default function App() {
       const idToken = session.tokens?.idToken?.toString();
       if (!idToken) throw new Error("Missing idToken. Are you logged in?");
 
+      const clientRequestId =
+        globalThis.crypto && typeof globalThis.crypto.randomUUID === "function"
+          ? globalThis.crypto.randomUUID()
+          : `req-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
       const body = {
         session_id: sessionId || undefined,
         message: message.trim(),
         mode: mode || undefined,
+        client_request_id: clientRequestId,
       };
 
       const res = await fetch(`${API_BASE}/turn`, {
