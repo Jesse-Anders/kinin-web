@@ -17,7 +17,6 @@ export default function App() {
   const [journeyVersion, setJourneyVersion] = useState(
     () => localStorage.getItem("journey_version") || ""
   );
-  const [mode, setMode] = useState(() => localStorage.getItem("mode") || "guided");
   const [uiState, setUiState] = useState(null);
   const [message, setMessage] = useState("");
   const [chat, setChat] = useState([]);
@@ -98,7 +97,6 @@ export default function App() {
       const body = {
         session_id: sessionId || undefined,
         start: true,
-        mode: mode || undefined,
       };
 
       const res = await fetch(`${API_BASE}/turn`, {
@@ -161,7 +159,6 @@ export default function App() {
       const body = {
         session_id: sessionId || undefined,
         message: message.trim(),
-        mode: mode || undefined,
         client_request_id: clientRequestId,
       };
 
@@ -380,58 +377,6 @@ export default function App() {
       }}
     >
       <h2>Kinin — Interviewer</h2>
-      <div style={{ marginBottom: 8, opacity: 0.8 }}>
-        Auth status: <b>{user ? "SIGNED IN" : "SIGNED OUT"}</b>
-      </div>
-      <div style={{ marginBottom: 8, opacity: 0.8 }}>
-        Journey version: <b>{journeyVersion || "—"}</b>
-      </div>
-      <div style={{ marginBottom: 8, opacity: 0.8 }}>
-        Mode: <b>{uiState?.mode || "—"}</b>
-        {uiState?.current_step_title ? (
-          <>
-            {" "}— Step: <b>{uiState.current_step_title}</b>
-          </>
-        ) : null}
-      </div>
-
-      {uiState && (uiState.mode === "guided" || uiState.mode === "deepdive") ? (
-        <div
-          style={{
-            border: "1px solid #eee",
-            borderRadius: 10,
-            padding: 12,
-            marginBottom: 12,
-            background: "#fafafa",
-          }}
-        >
-          <div style={{ marginBottom: 8 }}>
-            <b>Step fields</b>
-          </div>
-          <div style={{ display: "flex", gap: 16 }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600, marginBottom: 6 }}>Covered</div>
-              <ul style={{ margin: 0, paddingLeft: 18 }}>
-                {(uiState.covered_fields || []).length ? (
-                  (uiState.covered_fields || []).map((f, i) => <li key={"c-" + i}>{f}</li>)
-                ) : (
-                  <li style={{ opacity: 0.7 }}>(none yet)</li>
-                )}
-              </ul>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600, marginBottom: 6 }}>Uncovered</div>
-              <ul style={{ margin: 0, paddingLeft: 18 }}>
-                {(uiState.uncovered_fields || []).length ? (
-                  (uiState.uncovered_fields || []).map((f, i) => <li key={"u-" + i}>{f}</li>)
-                ) : (
-                  <li style={{ opacity: 0.7 }}>(none)</li>
-                )}
-              </ul>
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       <div
         style={{
@@ -465,31 +410,7 @@ export default function App() {
           <b>Error:</b> {error}
         </div>
       )}
-
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        <input
-          value={sessionId}
-          onChange={(e) => {
-            setSessionId(e.target.value);
-            localStorage.setItem("session_id", e.target.value);
-          }}
-          placeholder="session_id (optional — leave blank to auto-create)"
-          style={{ flex: 1, padding: 10 }}
-          disabled={busy}
-        />
-        <select
-          value={mode}
-          onChange={(e) => {
-            setMode(e.target.value);
-            localStorage.setItem("mode", e.target.value);
-          }}
-          disabled={busy}
-          style={{ padding: 10 }}
-          title="Mode"
-        >
-          <option value="guided">guided</option>
-          <option value="freeform">freeform</option>
-        </select>
         <button onClick={endSession} disabled={!isAuthed || busy}>
           End Session (server)
         </button>
@@ -570,6 +491,86 @@ export default function App() {
         )}
       </div>
       )}
+
+      {!showProfile ? (
+        <details
+          style={{
+            border: "1px solid #ddd",
+            borderRadius: 10,
+            padding: 12,
+            marginBottom: 12,
+            background: "#fcfcfc",
+          }}
+        >
+          <summary style={{ cursor: "pointer", fontWeight: 700 }}>Interview Details</summary>
+          <div style={{ marginTop: 12 }}>
+            <div style={{ marginBottom: 8, opacity: 0.8 }}>
+              Auth status: <b>{user ? "SIGNED IN" : "SIGNED OUT"}</b>
+            </div>
+            <div style={{ marginBottom: 8, opacity: 0.8 }}>
+              Journey version: <b>{journeyVersion || "—"}</b>
+            </div>
+            <div style={{ marginBottom: 8, opacity: 0.8 }}>
+              Mode: <b>{uiState?.mode || "—"}</b>
+              {uiState?.current_step_title ? (
+                <>
+                  {" "}— Step: <b>{uiState.current_step_title}</b>
+                </>
+              ) : null}
+            </div>
+
+            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+              <input
+                value={sessionId}
+                onChange={(e) => {
+                  setSessionId(e.target.value);
+                  localStorage.setItem("session_id", e.target.value);
+                }}
+                placeholder="session_id (optional — leave blank to auto-create)"
+                style={{ flex: 1, padding: 10 }}
+                disabled={busy}
+              />
+            </div>
+
+            {uiState && (uiState.mode === "guided" || uiState.mode === "deepdive") ? (
+              <div
+                style={{
+                  border: "1px solid #eee",
+                  borderRadius: 10,
+                  padding: 12,
+                  background: "#fafafa",
+                }}
+              >
+                <div style={{ marginBottom: 8 }}>
+                  <b>Step fields</b>
+                </div>
+                <div style={{ display: "flex", gap: 16 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, marginBottom: 6 }}>Covered</div>
+                    <ul style={{ margin: 0, paddingLeft: 18 }}>
+                      {(uiState.covered_fields || []).length ? (
+                        (uiState.covered_fields || []).map((f, i) => <li key={"c-" + i}>{f}</li>)
+                      ) : (
+                        <li style={{ opacity: 0.7 }}>(none yet)</li>
+                      )}
+                    </ul>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, marginBottom: 6 }}>Uncovered</div>
+                    <ul style={{ margin: 0, paddingLeft: 18 }}>
+                      {(uiState.uncovered_fields || []).length ? (
+                        (uiState.uncovered_fields || []).map((f, i) => <li key={"u-" + i}>{f}</li>)
+                      ) : (
+                        <li style={{ opacity: 0.7 }}>(none)</li>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </details>
+      ) : null}
 
       <div style={{ display: "flex", gap: 8 }}>
         <input
