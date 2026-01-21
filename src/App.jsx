@@ -121,8 +121,8 @@ export default function App() {
         setSessionId(newSessionId);
         localStorage.setItem("session_id", newSessionId);
       }
-      if (parsed.journey_version !== undefined && parsed.journey_version !== null) {
-        const v = String(parsed.journey_version);
+      if ((parsed.journey_version_display !== undefined && parsed.journey_version_display !== null) || (parsed.journey_version !== undefined && parsed.journey_version !== null)) {
+        const v = String(parsed.journey_version_display ?? parsed.journey_version);
         setJourneyVersion(v);
         localStorage.setItem("journey_version", v);
       }
@@ -204,8 +204,8 @@ export default function App() {
         setSessionId(newSessionId);
         localStorage.setItem("session_id", newSessionId);
       }
-      if (parsed.journey_version !== undefined && parsed.journey_version !== null) {
-        const v = String(parsed.journey_version);
+      if ((parsed.journey_version_display !== undefined && parsed.journey_version_display !== null) || (parsed.journey_version !== undefined && parsed.journey_version !== null)) {
+        const v = String(parsed.journey_version_display ?? parsed.journey_version);
         setJourneyVersion(v);
         localStorage.setItem("journey_version", v);
       }
@@ -261,8 +261,8 @@ export default function App() {
       const newSessionId = parsed.session_id || "";
       setSessionId(newSessionId);
       localStorage.setItem("session_id", newSessionId);
-      if (parsed.journey_version !== undefined && parsed.journey_version !== null) {
-        const v = String(parsed.journey_version);
+      if ((parsed.journey_version_display !== undefined && parsed.journey_version_display !== null) || (parsed.journey_version !== undefined && parsed.journey_version !== null)) {
+        const v = String(parsed.journey_version_display ?? parsed.journey_version);
         setJourneyVersion(v);
         localStorage.setItem("journey_version", v);
       }
@@ -491,6 +491,22 @@ export default function App() {
         )}
       </div>
       )}
+      <div style={{ display: "flex", gap: 8 }}>
+        <input
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder={isAuthed ? "Type a message..." : "Login to chat..."}
+          style={{ flex: 1, padding: 10 }}
+          disabled={!isAuthed || busy || showProfile}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") sendTurn();
+          }}
+        />
+        <button onClick={sendTurn} disabled={!isAuthed || busy}>
+          {busy ? "Sending..." : "Send"}
+        </button>
+      </div>
+
 
       {!showProfile ? (
         <details
@@ -572,21 +588,6 @@ export default function App() {
         </details>
       ) : null}
 
-      <div style={{ display: "flex", gap: 8 }}>
-        <input
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder={isAuthed ? "Type a message..." : "Login to chat..."}
-          style={{ flex: 1, padding: 10 }}
-          disabled={!isAuthed || busy || showProfile}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") sendTurn();
-          }}
-        />
-        <button onClick={sendTurn} disabled={!isAuthed || busy}>
-          {busy ? "Sending..." : "Send"}
-        </button>
-      </div>
     </div>
   );
 }
