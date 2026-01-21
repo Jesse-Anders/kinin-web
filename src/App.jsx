@@ -18,6 +18,7 @@ export default function App() {
     () => localStorage.getItem("journey_version") || ""
   );
   const [mode, setMode] = useState(() => localStorage.getItem("mode") || "guided");
+  const [uiState, setUiState] = useState(null);
   const [message, setMessage] = useState("");
   const [chat, setChat] = useState([]);
   const [busy, setBusy] = useState(false);
@@ -131,6 +132,10 @@ export default function App() {
       if (parsed.assistant) {
         setChat([{ role: "assistant", content: parsed.assistant }]);
       }
+
+      if (parsed.ui_state) {
+        setUiState(parsed.ui_state);
+      }
     } catch (e) {
       setError(e.message || String(e));
     } finally {
@@ -208,6 +213,10 @@ export default function App() {
         localStorage.setItem("journey_version", v);
       }
 
+      if (parsed.ui_state) {
+        setUiState(parsed.ui_state);
+      }
+
       setChat((prev) => [
         ...prev,
         { role: "user", content: message.trim() },
@@ -261,6 +270,7 @@ export default function App() {
         localStorage.setItem("journey_version", v);
       }
       setChat([]);
+      setUiState(null);
     } catch (e) {
       setError(e.message || String(e));
     } finally {
@@ -376,6 +386,52 @@ export default function App() {
       <div style={{ marginBottom: 8, opacity: 0.8 }}>
         Journey version: <b>{journeyVersion || "—"}</b>
       </div>
+      <div style={{ marginBottom: 8, opacity: 0.8 }}>
+        Mode: <b>{uiState?.mode || "—"}</b>
+        {uiState?.current_step_title ? (
+          <>
+            {" "}— Step: <b>{uiState.current_step_title}</b>
+          </>
+        ) : null}
+      </div>
+
+      {uiState && (uiState.mode === "guided" || uiState.mode === "deepdive") ? (
+        <div
+          style={{
+            border: "1px solid #eee",
+            borderRadius: 10,
+            padding: 12,
+            marginBottom: 12,
+            background: "#fafafa",
+          }}
+        >
+          <div style={{ marginBottom: 8 }}>
+            <b>Step fields</b>
+          </div>
+          <div style={{ display: "flex", gap: 16 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>Covered</div>
+              <ul style={{ margin: 0, paddingLeft: 18 }}>
+                {(uiState.covered_fields || []).length ? (
+                  (uiState.covered_fields || []).map((f, i) => <li key={"c-" + i}>{f}</li>)
+                ) : (
+                  <li style={{ opacity: 0.7 }}>(none yet)</li>
+                )}
+              </ul>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>Uncovered</div>
+              <ul style={{ margin: 0, paddingLeft: 18 }}>
+                {(uiState.uncovered_fields || []).length ? (
+                  (uiState.uncovered_fields || []).map((f, i) => <li key={"u-" + i}>{f}</li>)
+                ) : (
+                  <li style={{ opacity: 0.7 }}>(none)</li>
+                )}
+              </ul>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div
         style={{
