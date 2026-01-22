@@ -412,7 +412,7 @@ export default function App() {
       )}
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
         <button onClick={endSession} disabled={!isAuthed || busy}>
-          End Session
+          End Session (server)
         </button>
         <button onClick={openProfile} disabled={!isAuthed || busy}>
           Biography Profile
