@@ -535,6 +535,26 @@ export default function App() {
               ) : null}
             </div>
 
+            <div style={{ marginBottom: 8, opacity: 0.8 }}>
+              Guided submode: <b>{uiState?.guided_submode || "—"}</b>
+            </div>
+            <div style={{ marginBottom: 8, opacity: 0.8 }}>
+              Pending advance:{" "}
+              <b>
+                {uiState?.pending_advance && Object.keys(uiState.pending_advance).length
+                  ? JSON.stringify(uiState.pending_advance)
+                  : "—"}
+              </b>
+            </div>
+            <div style={{ marginBottom: 8, opacity: 0.8 }}>
+              Deepdive:{" "}
+              <b>
+                {uiState?.deepdive && Object.keys(uiState.deepdive).length
+                  ? JSON.stringify(uiState.deepdive)
+                  : "—"}
+              </b>
+            </div>
+
             <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
               <input
                 value={sessionId}
