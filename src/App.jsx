@@ -485,7 +485,7 @@ export default function App() {
         ) : (
           chat.map((m, idx) => (
             <div key={idx} style={{ marginBottom: 10 }}>
-              <b>{m.role === "user" ? "You" : "Interviewer"}:</b> {m.content}
+              <b>{m.role === "user" ? "You" : "Kinin"}:</b> {m.content}
             </div>
           ))
         )}
