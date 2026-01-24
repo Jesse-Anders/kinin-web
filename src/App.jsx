@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   fetchAuthSession,
   getCurrentUser,
@@ -29,6 +29,72 @@ export default function App() {
   const [profileBusy, setProfileBusy] = useState(false);
 
   const isAuthed = useMemo(() => !!user, [user]);
+
+  // Polling for async evaluator UI state (/turn/status).
+  const statusPollRef = useRef({ runId: 0, timer: null, abort: null });
+
+  function stopStatusPoll() {
+    const cur = statusPollRef.current;
+    cur.runId += 1;
+    if (cur.timer) {
+      clearTimeout(cur.timer);
+      cur.timer = null;
+    }
+    if (cur.abort) {
+      try {
+        cur.abort.abort();
+      } catch {
+        // ignore
+      }
+      cur.abort = null;
+    }
+  }
+
+  function startStatusPoll(nextSessionId, idToken) {
+    if (!nextSessionId || !idToken) return;
+    stopStatusPoll();
+    const runId = statusPollRef.current.runId;
+    const abort = new AbortController();
+    statusPollRef.current.abort = abort;
+
+    const tick = async () => {
+      // Cancelled / superseded
+      if (statusPollRef.current.runId !== runId) return;
+      try {
+        const url = `${API_BASE}/turn/status?session_id=${encodeURIComponent(
+          nextSessionId
+        )}`;
+        const res = await fetch(url, {
+          method: "GET",
+          headers: { Authorization: `Bearer ${idToken}` },
+          signal: abort.signal,
+        });
+        if (statusPollRef.current.runId !== runId) return;
+        if (res.ok) {
+          const data = await res.json();
+          const parsed =
+            typeof data.body === "string" ? JSON.parse(data.body) : data;
+          if (parsed?.ui_state) {
+            setUiState(parsed.ui_state);
+          }
+          if (parsed && parsed.processing === false) {
+            stopStatusPoll();
+            return;
+          }
+        }
+      } catch {
+        // swallow and retry until max attempts (we rely on user actions/next turn if it never converges)
+      }
+      // Poll at 1000ms (low-frequency, low-cost).
+      statusPollRef.current.timer = setTimeout(tick, 1000);
+    };
+
+    // Kick off immediately.
+    statusPollRef.current.timer = setTimeout(tick, 0);
+  }
+
+  // Cleanup on unmount.
+  useEffect(() => stopStatusPoll, []);
 
   useEffect(() => {
     (async () => {
@@ -82,6 +148,7 @@ export default function App() {
   async function onLogout() {
     setError("");
     await signOut({ global: true });
+    stopStatusPoll();
     setUser(null);
     setChat([]);
   }
@@ -134,6 +201,9 @@ export default function App() {
       if (parsed.ui_state) {
         setUiState(parsed.ui_state);
       }
+
+      // Async UI state refresh (no visible "updating" UI; just keep step fields accurate).
+      startStatusPoll(newSessionId, idToken);
     } catch (e) {
       setError(e.message || String(e));
     } finally {
@@ -220,6 +290,9 @@ export default function App() {
         { role: "assistant", content: parsed.assistant },
       ]);
       setMessage("");
+
+      // Async UI state refresh (poll until worker releases lock).
+      startStatusPoll(newSessionId, idToken);
     } catch (e) {
       setError(e.message || String(e));
     } finally {
