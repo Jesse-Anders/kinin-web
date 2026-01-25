@@ -449,7 +449,7 @@ export default function App() {
         fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Arial",
       }}
     >
-      <h2>Kinin — Interviewer v2)</h2>
+      <h2>Kinin — Interviewer vbeta-lite)</h2>
 
       <div
         style={{
