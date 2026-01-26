@@ -7,6 +7,9 @@ import {
 } from "aws-amplify/auth";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const RELEASE_CHANNEL = (import.meta.env.VITE_RELEASE_CHANNEL || "dev").toLowerCase();
+const APP_TITLE =
+  RELEASE_CHANNEL === "beta-lite" ? "Kinin — Interviewer Beta Lite" : "Kinin — Interviewer Dev";
 
 
 export default function App() {
@@ -449,7 +452,7 @@ export default function App() {
         fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Arial",
       }}
     >
-      <h2>Kinin — Interviewer vbeta-lite)</h2>
+      <h2>{APP_TITLE}</h2>
 
       <div
         style={{
