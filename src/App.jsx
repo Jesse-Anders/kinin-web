@@ -30,6 +30,7 @@ export default function App() {
   const [profileSchema, setProfileSchema] = useState(null);
   const [bioProfile, setBioProfile] = useState({ preferred_name: "", age: "" });
   const [profileBusy, setProfileBusy] = useState(false);
+  const [activePage, setActivePage] = useState("interview");
   const [adminUserId, setAdminUserId] = useState(
     () => localStorage.getItem("admin_user_id") || ""
   );
@@ -37,6 +38,11 @@ export default function App() {
   const [adminBusy, setAdminBusy] = useState(false);
   const [adminError, setAdminError] = useState("");
   const [adminTokenClaims, setAdminTokenClaims] = useState(null);
+  const [lookupUsername, setLookupUsername] = useState("");
+  const [lookupEmail, setLookupEmail] = useState("");
+  const [lookupResults, setLookupResults] = useState([]);
+  const [lookupBusy, setLookupBusy] = useState(false);
+  const [lookupError, setLookupError] = useState("");
 
   const isAuthed = useMemo(() => !!user, [user]);
   const adminStatusCounts = useMemo(() => {
@@ -60,6 +66,13 @@ export default function App() {
     } catch {
       return null;
     }
+  }
+
+  async function getAccessToken() {
+    const session = await fetchAuthSession();
+    const token = session.tokens?.accessToken?.toString();
+    if (!token) throw new Error("Missing accessToken. Are you logged in?");
+    return token;
   }
 
   // Polling for async evaluator UI state (/turn/status).
@@ -477,9 +490,7 @@ export default function App() {
     setAdminBusy(true);
     setAdminOverview(null);
     try {
-      const session = await fetchAuthSession();
-      const idToken = session.tokens?.idToken?.toString();
-      if (!idToken) throw new Error("Missing idToken. Are you logged in?");
+      const accessToken = await getAccessToken();
       const target = (adminUserId || "").trim();
       if (!target) throw new Error("target_user_id required");
 
@@ -487,7 +498,7 @@ export default function App() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${idToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ target_user_id: target }),
       });
@@ -522,6 +533,58 @@ export default function App() {
       setAdminError(e.message || String(e));
     } finally {
       setAdminBusy(false);
+    }
+  }
+
+  async function lookupAdminUsers() {
+    setLookupError("");
+    setLookupBusy(true);
+    setLookupResults([]);
+    try {
+      const accessToken = await getAccessToken();
+      const username = (lookupUsername || "").trim();
+      const email = (lookupEmail || "").trim();
+      if (!username && !email) throw new Error("username or email required");
+
+      const res = await fetch(`${API_BASE}/admin/lookup_user`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ username: username || undefined, email: email || undefined }),
+      });
+
+      if (!res.ok) {
+        const t = await res.text();
+        let detail = t;
+        try {
+          const j = JSON.parse(t);
+          if (j && typeof j === "object") {
+            if (typeof j.body === "string") {
+              try {
+                const inner = JSON.parse(j.body);
+                detail = JSON.stringify(inner);
+              } catch {
+                detail = j.body;
+              }
+            } else {
+              detail = JSON.stringify(j);
+            }
+          }
+        } catch {
+          // keep raw text
+        }
+        throw new Error(`API error ${res.status}: ${detail}`);
+      }
+
+      const data = await res.json();
+      const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
+      setLookupResults(parsed.matches || []);
+    } catch (e) {
+      setLookupError(e.message || String(e));
+    } finally {
+      setLookupBusy(false);
     }
   }
 
@@ -583,6 +646,183 @@ export default function App() {
           <b>Error:</b> {error}
         </div>
       )}
+      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+        <button onClick={() => setActivePage("interview")} disabled={activePage === "interview"}>
+          Interview
+        </button>
+        <button onClick={() => setActivePage("admin")} disabled={activePage === "admin"}>
+          Admin
+        </button>
+      </div>
+
+      {activePage === "admin" ? (
+        <div
+          style={{
+            border: "1px solid #ddd",
+            borderRadius: 10,
+            padding: 12,
+            marginBottom: 12,
+          }}
+        >
+          <div style={{ marginBottom: 12 }}>
+            <b>Admin Lookup</b>
+            <div style={{ opacity: 0.7, fontSize: 12 }}>
+              Search by username and/or email to find a user, then fetch overview.
+            </div>
+          </div>
+          <div style={{ display: "grid", gap: 8, marginBottom: 8 }}>
+            <input
+              value={lookupUsername}
+              onChange={(e) => setLookupUsername(e.target.value)}
+              placeholder="username (optional)"
+              style={{ padding: 10 }}
+              disabled={!isAuthed || lookupBusy}
+            />
+            <input
+              value={lookupEmail}
+              onChange={(e) => setLookupEmail(e.target.value)}
+              placeholder="email (optional)"
+              style={{ padding: 10 }}
+              disabled={!isAuthed || lookupBusy}
+            />
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={lookupAdminUsers} disabled={!isAuthed || lookupBusy}>
+                {lookupBusy ? "Searching..." : "Lookup"}
+              </button>
+              <button onClick={loadAdminTokenClaims} disabled={!isAuthed || lookupBusy}>
+                Show Token Claims
+              </button>
+            </div>
+            {lookupError ? <div style={{ color: "#b00020" }}>{lookupError}</div> : null}
+          </div>
+
+          {lookupResults.length ? (
+            <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, marginBottom: 12 }}>
+              <div style={{ marginBottom: 8, fontWeight: 600 }}>Matches</div>
+              {lookupResults.map((u) => (
+                <div
+                  key={u.sub || u.username}
+                  style={{
+                    borderBottom: "1px solid #f0f0f0",
+                    paddingBottom: 8,
+                    marginBottom: 8,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 12,
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <div>
+                      <b>{u.username || "—"}</b> {u.email ? `(${u.email})` : ""}
+                    </div>
+                    <div style={{ fontSize: 12, opacity: 0.7 }}>
+                      sub: {u.sub || "—"} · status: {u.status || "—"} · enabled: {String(u.enabled)}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const sub = u.sub || "";
+                      setAdminUserId(sub);
+                      localStorage.setItem("admin_user_id", sub);
+                    }}
+                  >
+                    Use
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {adminTokenClaims ? (
+            <div style={{ marginBottom: 12, opacity: 0.85 }}>
+              <div>
+                Access groups:{" "}
+                <b>
+                  {adminTokenClaims.access?.["cognito:groups"]
+                    ? JSON.stringify(adminTokenClaims.access["cognito:groups"])
+                    : "—"}
+                </b>
+              </div>
+              <div>
+                ID groups:{" "}
+                <b>
+                  {adminTokenClaims.id?.["cognito:groups"]
+                    ? JSON.stringify(adminTokenClaims.id["cognito:groups"])
+                    : "—"}
+                </b>
+              </div>
+            </div>
+          ) : null}
+
+          <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 12 }}>
+            <div style={{ marginBottom: 8 }}>
+              <b>Journey Overview</b>
+            </div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+              <input
+                value={adminUserId}
+                onChange={(e) => {
+                  setAdminUserId(e.target.value);
+                  localStorage.setItem("admin_user_id", e.target.value);
+                }}
+                placeholder="target_user_id (sub)"
+                style={{ flex: 1, padding: 10 }}
+                disabled={!isAuthed || adminBusy}
+              />
+              <button onClick={fetchAdminOverview} disabled={!isAuthed || adminBusy}>
+                {adminBusy ? "Loading..." : "Fetch Overview"}
+              </button>
+            </div>
+            {adminError ? <div style={{ color: "#b00020", marginBottom: 8 }}>{adminError}</div> : null}
+            {adminOverview ? (
+              <div
+                style={{
+                  border: "1px solid #eee",
+                  borderRadius: 10,
+                  padding: 12,
+                  background: "#fafafa",
+                }}
+              >
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
+                  <div>
+                    Journey:{" "}
+                    <b>
+                      {adminOverview.journey_id || "—"} v{adminOverview.journey_version || "—"}
+                    </b>
+                  </div>
+                  <div>
+                    Current step: <b>{adminOverview.current_step_id || "—"}</b>
+                  </div>
+                </div>
+                {adminStatusCounts ? (
+                  <div style={{ marginBottom: 8, opacity: 0.8 }}>
+                    Status counts:{" "}
+                    <b>{Object.entries(adminStatusCounts).map(([k, v]) => `${k}:${v}`).join(", ")}</b>
+                  </div>
+                ) : null}
+                <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>Raw JSON</div>
+                <pre
+                  style={{
+                    whiteSpace: "pre-wrap",
+                    margin: 0,
+                    maxHeight: 360,
+                    overflow: "auto",
+                    background: "#fff",
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #eee",
+                  }}
+                >
+                  {JSON.stringify(adminOverview, null, 2)}
+                </pre>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {activePage === "interview" ? (
+      <>
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
         <button onClick={endSession} disabled={!isAuthed || busy}>
           End Session
@@ -779,109 +1019,9 @@ export default function App() {
             ) : null}
           </div>
         </details>
+      </>
       ) : null}
 
-      {!showProfile ? (
-        <details
-          style={{
-            border: "1px solid #ddd",
-            borderRadius: 10,
-            padding: 12,
-            marginBottom: 12,
-            background: "#fcfcfc",
-          }}
-        >
-          <summary style={{ cursor: "pointer", fontWeight: 700 }}>Admin Panel</summary>
-          <div style={{ marginTop: 12 }}>
-            <div style={{ marginBottom: 8, opacity: 0.8 }}>
-              Uses your current login session. Admin access required.
-            </div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-              <input
-                value={adminUserId}
-                onChange={(e) => {
-                  setAdminUserId(e.target.value);
-                  localStorage.setItem("admin_user_id", e.target.value);
-                }}
-                placeholder="target_user_id"
-                style={{ flex: 1, padding: 10 }}
-                disabled={!isAuthed || adminBusy}
-              />
-              <button onClick={fetchAdminOverview} disabled={!isAuthed || adminBusy}>
-                {adminBusy ? "Loading..." : "Fetch Overview"}
-              </button>
-              <button onClick={loadAdminTokenClaims} disabled={!isAuthed || adminBusy}>
-                Show Token Claims
-              </button>
-            </div>
-            {adminError ? (
-              <div style={{ color: "#b00020", marginBottom: 8 }}>{adminError}</div>
-            ) : null}
-            {adminTokenClaims ? (
-              <div style={{ marginBottom: 8, opacity: 0.85 }}>
-                <div>
-                  Access groups:{" "}
-                  <b>
-                    {adminTokenClaims.access?.["cognito:groups"]
-                      ? JSON.stringify(adminTokenClaims.access["cognito:groups"])
-                      : "—"}
-                  </b>
-                </div>
-                <div>
-                  ID groups:{" "}
-                  <b>
-                    {adminTokenClaims.id?.["cognito:groups"]
-                      ? JSON.stringify(adminTokenClaims.id["cognito:groups"])
-                      : "—"}
-                  </b>
-                </div>
-              </div>
-            ) : null}
-            {adminOverview ? (
-              <div
-                style={{
-                  border: "1px solid #eee",
-                  borderRadius: 10,
-                  padding: 12,
-                  background: "#fafafa",
-                }}
-              >
-                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
-                  <div>
-                    Journey:{" "}
-                    <b>
-                      {adminOverview.journey_id || "—"} v{adminOverview.journey_version || "—"}
-                    </b>
-                  </div>
-                  <div>
-                    Current step: <b>{adminOverview.current_step_id || "—"}</b>
-                  </div>
-                </div>
-                {adminStatusCounts ? (
-                  <div style={{ marginBottom: 8, opacity: 0.8 }}>
-                    Status counts:{" "}
-                    <b>{Object.entries(adminStatusCounts).map(([k, v]) => `${k}:${v}`).join(", ")}</b>
-                  </div>
-                ) : null}
-                <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>Raw JSON</div>
-                <pre
-                  style={{
-                    whiteSpace: "pre-wrap",
-                    margin: 0,
-                    maxHeight: 360,
-                    overflow: "auto",
-                    background: "#fff",
-                    padding: 10,
-                    borderRadius: 8,
-                    border: "1px solid #eee",
-                  }}
-                >
-                  {JSON.stringify(adminOverview, null, 2)}
-                </pre>
-              </div>
-            ) : null}
-          </div>
-        </details>
       ) : null}
 
     </div>
