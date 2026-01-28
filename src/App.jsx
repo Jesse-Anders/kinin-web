@@ -43,6 +43,11 @@ export default function App() {
   const [lookupResults, setLookupResults] = useState([]);
   const [lookupBusy, setLookupBusy] = useState(false);
   const [lookupError, setLookupError] = useState("");
+  const [turnsSessionId, setTurnsSessionId] = useState("");
+  const [turnsItems, setTurnsItems] = useState([]);
+  const [turnsBusy, setTurnsBusy] = useState(false);
+  const [turnsError, setTurnsError] = useState("");
+  const [turnsNextKey, setTurnsNextKey] = useState(null);
 
   const isAuthed = useMemo(() => !!user, [user]);
   const adminStatusCounts = useMemo(() => {
@@ -588,6 +593,68 @@ export default function App() {
     }
   }
 
+  async function fetchAdminTurns({ append = false } = {}) {
+    setTurnsError("");
+    if (!append) {
+      setTurnsItems([]);
+      setTurnsNextKey(null);
+    }
+    setTurnsBusy(true);
+    try {
+      const accessToken = await getAccessToken();
+      const target = (adminUserId || "").trim();
+      if (!target) throw new Error("target_user_id required");
+      const sessionId = (turnsSessionId || "").trim();
+
+      const res = await fetch(`${API_BASE}/admin/list_user_turns`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          target_user_id: target,
+          session_id: sessionId || undefined,
+          start_key: append ? turnsNextKey || undefined : undefined,
+          limit: 50,
+        }),
+      });
+
+      if (!res.ok) {
+        const t = await res.text();
+        let detail = t;
+        try {
+          const j = JSON.parse(t);
+          if (j && typeof j === "object") {
+            if (typeof j.body === "string") {
+              try {
+                const inner = JSON.parse(j.body);
+                detail = JSON.stringify(inner);
+              } catch {
+                detail = j.body;
+              }
+            } else {
+              detail = JSON.stringify(j);
+            }
+          }
+        } catch {
+          // keep raw text
+        }
+        throw new Error(`API error ${res.status}: ${detail}`);
+      }
+
+      const data = await res.json();
+      const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
+      const items = parsed.items || [];
+      setTurnsItems((prev) => (append ? [...prev, ...items] : items));
+      setTurnsNextKey(parsed.next_start_key || null);
+    } catch (e) {
+      setTurnsError(e.message || String(e));
+    } finally {
+      setTurnsBusy(false);
+    }
+  }
+
   async function loadAdminTokenClaims() {
     setAdminError("");
     try {
@@ -820,6 +887,54 @@ export default function App() {
                 </pre>
               </div>
             ) : null}
+          </div>
+
+          <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, marginTop: 12 }}>
+            <div style={{ marginBottom: 8 }}>
+              <b>Turn Log</b>
+            </div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+              <input
+                value={turnsSessionId}
+                onChange={(e) => setTurnsSessionId(e.target.value)}
+                placeholder="session_id (optional filter)"
+                style={{ flex: 1, padding: 10 }}
+                disabled={!isAuthed || turnsBusy}
+              />
+              <button onClick={() => fetchAdminTurns({ append: false })} disabled={!isAuthed || turnsBusy}>
+                {turnsBusy ? "Loading..." : "Load Turns"}
+              </button>
+              <button
+                onClick={() => fetchAdminTurns({ append: true })}
+                disabled={!isAuthed || turnsBusy || !turnsNextKey}
+              >
+                Load More
+              </button>
+            </div>
+            {turnsError ? <div style={{ color: "#b00020", marginBottom: 8 }}>{turnsError}</div> : null}
+            {turnsItems.length ? (
+              <div
+                style={{
+                  border: "1px solid #eee",
+                  borderRadius: 10,
+                  padding: 12,
+                  background: "#fafafa",
+                  maxHeight: 360,
+                  overflow: "auto",
+                }}
+              >
+                {turnsItems.map((t, i) => (
+                  <div key={`${t.session_id || ""}-${t.timestamp || ""}-${i}`} style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 4 }}>
+                      {t.timestamp || "—"} · {t.session_id || "—"} · {t.role || "—"}
+                    </div>
+                    <div>{t.content || ""}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ opacity: 0.7 }}>No turns loaded yet.</div>
+            )}
           </div>
         </div>
       ) : (
