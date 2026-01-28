@@ -60,7 +60,20 @@ export default function App() {
       return acc;
     }, {});
   }, [adminOverview]);
-  const turnsView = useMemo(() => [...turnsItems].reverse(), [turnsItems]);
+  const turnsView = useMemo(() => {
+    const roleOrder = { user: 0, assistant: 1 };
+    return [...turnsItems].sort((a, b) => {
+      const ta = a?.timestamp || "";
+      const tb = b?.timestamp || "";
+      if (ta && tb && ta !== tb) return ta.localeCompare(tb);
+      const ra = roleOrder[a?.role] ?? 2;
+      const rb = roleOrder[b?.role] ?? 2;
+      if (ra !== rb) return ra - rb;
+      const ska = a?.["ts#session_id#turn_id"] || "";
+      const skb = b?.["ts#session_id#turn_id"] || "";
+      return String(ska).localeCompare(String(skb));
+    });
+  }, [turnsItems]);
 
   useEffect(() => {
     if (!turnsListRef.current) return;
