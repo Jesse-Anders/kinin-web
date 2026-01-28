@@ -938,6 +938,7 @@ export default function App() {
                 <div style={{ marginBottom: 8, opacity: 0.8 }}>
                   Journey version: <b>{journeyVersion || "—"}</b>
                 </div>
+                {/* Journey progress bar (completed + closed steps / total). */}
                 <div style={{ marginBottom: 12, opacity: 0.8 }}>
                   Journey progress:{" "}
                   <b>{uiState?.progress?.percent ?? 0}%</b>{" "}
