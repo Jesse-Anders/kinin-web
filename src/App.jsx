@@ -30,8 +30,22 @@ export default function App() {
   const [profileSchema, setProfileSchema] = useState(null);
   const [bioProfile, setBioProfile] = useState({ preferred_name: "", age: "" });
   const [profileBusy, setProfileBusy] = useState(false);
+  const [adminUserId, setAdminUserId] = useState(
+    () => localStorage.getItem("admin_user_id") || ""
+  );
+  const [adminOverview, setAdminOverview] = useState(null);
+  const [adminBusy, setAdminBusy] = useState(false);
+  const [adminError, setAdminError] = useState("");
 
   const isAuthed = useMemo(() => !!user, [user]);
+  const adminStatusCounts = useMemo(() => {
+    if (!adminOverview?.steps || !Array.isArray(adminOverview.steps)) return null;
+    return adminOverview.steps.reduce((acc, step) => {
+      const status = step?.status || "unknown";
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {});
+  }, [adminOverview]);
 
   // Polling for async evaluator UI state (/turn/status).
   const statusPollRef = useRef({ runId: 0, timer: null, abort: null });
@@ -443,6 +457,59 @@ export default function App() {
     }
   }
 
+  async function fetchAdminOverview() {
+    setAdminError("");
+    setAdminBusy(true);
+    setAdminOverview(null);
+    try {
+      const session = await fetchAuthSession();
+      const idToken = session.tokens?.idToken?.toString();
+      if (!idToken) throw new Error("Missing idToken. Are you logged in?");
+      const target = (adminUserId || "").trim();
+      if (!target) throw new Error("target_user_id required");
+
+      const res = await fetch(`${API_BASE}/admin/get_user_journey_overview`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ target_user_id: target }),
+      });
+
+      if (!res.ok) {
+        const t = await res.text();
+        let detail = t;
+        try {
+          const j = JSON.parse(t);
+          if (j && typeof j === "object") {
+            if (typeof j.body === "string") {
+              try {
+                const inner = JSON.parse(j.body);
+                detail = JSON.stringify(inner);
+              } catch {
+                detail = j.body;
+              }
+            } else {
+              detail = JSON.stringify(j);
+            }
+          }
+        } catch {
+          // keep raw text
+        }
+        throw new Error(`API error ${res.status}: ${detail}`);
+      }
+
+      const data = await res.json();
+      const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
+      setAdminOverview(parsed);
+    } catch (e) {
+      setAdminError(e.message || String(e));
+    } finally {
+      setAdminBusy(false);
+    }
+  }
+
   return (
     <div
       style={{
@@ -678,6 +745,86 @@ export default function App() {
                     </ul>
                   </div>
                 </div>
+              </div>
+            ) : null}
+          </div>
+        </details>
+      ) : null}
+
+      {!showProfile ? (
+        <details
+          style={{
+            border: "1px solid #ddd",
+            borderRadius: 10,
+            padding: 12,
+            marginBottom: 12,
+            background: "#fcfcfc",
+          }}
+        >
+          <summary style={{ cursor: "pointer", fontWeight: 700 }}>Admin Panel</summary>
+          <div style={{ marginTop: 12 }}>
+            <div style={{ marginBottom: 8, opacity: 0.8 }}>
+              Uses your current login session. Admin access required.
+            </div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+              <input
+                value={adminUserId}
+                onChange={(e) => {
+                  setAdminUserId(e.target.value);
+                  localStorage.setItem("admin_user_id", e.target.value);
+                }}
+                placeholder="target_user_id"
+                style={{ flex: 1, padding: 10 }}
+                disabled={!isAuthed || adminBusy}
+              />
+              <button onClick={fetchAdminOverview} disabled={!isAuthed || adminBusy}>
+                {adminBusy ? "Loading..." : "Fetch Overview"}
+              </button>
+            </div>
+            {adminError ? (
+              <div style={{ color: "#b00020", marginBottom: 8 }}>{adminError}</div>
+            ) : null}
+            {adminOverview ? (
+              <div
+                style={{
+                  border: "1px solid #eee",
+                  borderRadius: 10,
+                  padding: 12,
+                  background: "#fafafa",
+                }}
+              >
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
+                  <div>
+                    Journey:{" "}
+                    <b>
+                      {adminOverview.journey_id || "—"} v{adminOverview.journey_version || "—"}
+                    </b>
+                  </div>
+                  <div>
+                    Current step: <b>{adminOverview.current_step_id || "—"}</b>
+                  </div>
+                </div>
+                {adminStatusCounts ? (
+                  <div style={{ marginBottom: 8, opacity: 0.8 }}>
+                    Status counts:{" "}
+                    <b>{Object.entries(adminStatusCounts).map(([k, v]) => `${k}:${v}`).join(", ")}</b>
+                  </div>
+                ) : null}
+                <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>Raw JSON</div>
+                <pre
+                  style={{
+                    whiteSpace: "pre-wrap",
+                    margin: 0,
+                    maxHeight: 360,
+                    overflow: "auto",
+                    background: "#fff",
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #eee",
+                  }}
+                >
+                  {JSON.stringify(adminOverview, null, 2)}
+                </pre>
               </div>
             ) : null}
           </div>
