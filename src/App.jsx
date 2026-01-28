@@ -36,6 +36,7 @@ export default function App() {
   const [adminOverview, setAdminOverview] = useState(null);
   const [adminBusy, setAdminBusy] = useState(false);
   const [adminError, setAdminError] = useState("");
+  const [adminTokenClaims, setAdminTokenClaims] = useState(null);
 
   const isAuthed = useMemo(() => !!user, [user]);
   const adminStatusCounts = useMemo(() => {
@@ -46,6 +47,20 @@ export default function App() {
       return acc;
     }, {});
   }, [adminOverview]);
+
+  function decodeJwtPayload(token) {
+    if (!token || typeof token !== "string") return null;
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    try {
+      const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+      const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+      const json = atob(padded);
+      return JSON.parse(json);
+    } catch {
+      return null;
+    }
+  }
 
   // Polling for async evaluator UI state (/turn/status).
   const statusPollRef = useRef({ runId: 0, timer: null, abort: null });
@@ -175,8 +190,8 @@ export default function App() {
     setBusy(true);
     try {
       const session = await fetchAuthSession();
-      const accessToken = session.tokens?.accessToken?.toString();
-      if (!accessToken) throw new Error("Missing accessToken. Are you logged in?");
+      const idToken = session.tokens?.idToken?.toString();
+      if (!idToken) throw new Error("Missing idToken. Are you logged in?");
 
       const body = {
         session_id: sessionId || undefined,
@@ -187,7 +202,7 @@ export default function App() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${idToken}`,
         },
         body: JSON.stringify(body),
       });
@@ -235,8 +250,8 @@ export default function App() {
     setBusy(true);
     try {
       const session = await fetchAuthSession();
-      const accessToken = session.tokens?.accessToken?.toString();
-      if (!accessToken) throw new Error("Missing accessToken. Are you logged in?");
+      const idToken = session.tokens?.idToken?.toString();
+      if (!idToken) throw new Error("Missing idToken. Are you logged in?");
 
       const clientRequestId =
         globalThis.crypto && typeof globalThis.crypto.randomUUID === "function"
@@ -253,7 +268,7 @@ export default function App() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${idToken}`,
         },
         body: JSON.stringify(body),
       });
@@ -507,6 +522,21 @@ export default function App() {
       setAdminError(e.message || String(e));
     } finally {
       setAdminBusy(false);
+    }
+  }
+
+  async function loadAdminTokenClaims() {
+    setAdminError("");
+    try {
+      const session = await fetchAuthSession();
+      const idToken = session.tokens?.idToken?.toString();
+      const accessToken = session.tokens?.accessToken?.toString();
+      setAdminTokenClaims({
+        id: decodeJwtPayload(idToken),
+        access: decodeJwtPayload(accessToken),
+      });
+    } catch (e) {
+      setAdminError(e.message || String(e));
     }
   }
 
@@ -780,9 +810,32 @@ export default function App() {
               <button onClick={fetchAdminOverview} disabled={!isAuthed || adminBusy}>
                 {adminBusy ? "Loading..." : "Fetch Overview"}
               </button>
+              <button onClick={loadAdminTokenClaims} disabled={!isAuthed || adminBusy}>
+                Show Token Claims
+              </button>
             </div>
             {adminError ? (
               <div style={{ color: "#b00020", marginBottom: 8 }}>{adminError}</div>
+            ) : null}
+            {adminTokenClaims ? (
+              <div style={{ marginBottom: 8, opacity: 0.85 }}>
+                <div>
+                  Access groups:{" "}
+                  <b>
+                    {adminTokenClaims.access?.["cognito:groups"]
+                      ? JSON.stringify(adminTokenClaims.access["cognito:groups"])
+                      : "—"}
+                  </b>
+                </div>
+                <div>
+                  ID groups:{" "}
+                  <b>
+                    {adminTokenClaims.id?.["cognito:groups"]
+                      ? JSON.stringify(adminTokenClaims.id["cognito:groups"])
+                      : "—"}
+                  </b>
+                </div>
+              </div>
             ) : null}
             {adminOverview ? (
               <div
