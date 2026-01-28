@@ -938,6 +938,32 @@ export default function App() {
                 <div style={{ marginBottom: 8, opacity: 0.8 }}>
                   Journey version: <b>{journeyVersion || "—"}</b>
                 </div>
+                <div style={{ marginBottom: 12, opacity: 0.8 }}>
+                  Journey progress:{" "}
+                  <b>{uiState?.progress?.percent ?? 0}%</b>{" "}
+                  <span style={{ opacity: 0.7 }}>
+                    ({uiState?.progress?.complete_steps ?? 0} complete,{" "}
+                    {uiState?.progress?.closed_steps ?? 0} closed /{" "}
+                    {uiState?.progress?.total_steps ?? 0} total)
+                  </span>
+                  <div
+                    style={{
+                      height: 8,
+                      marginTop: 6,
+                      borderRadius: 999,
+                      background: "#eee",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: "100%",
+                        width: `${Math.min(100, Math.max(0, uiState?.progress?.percent ?? 0))}%`,
+                        background: "#3b82f6",
+                      }}
+                    />
+                  </div>
+                </div>
                 <div style={{ marginBottom: 8, opacity: 0.8 }}>
                   Mode: <b>{uiState?.mode || "—"}</b>
                   {uiState?.current_step_title ? (
