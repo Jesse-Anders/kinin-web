@@ -48,6 +48,8 @@ export default function App() {
   const [turnsBusy, setTurnsBusy] = useState(false);
   const [turnsError, setTurnsError] = useState("");
   const [turnsNextKey, setTurnsNextKey] = useState(null);
+  const turnsListRef = useRef(null);
+  const turnsAppendRef = useRef(false);
 
   const isAuthed = useMemo(() => !!user, [user]);
   const adminStatusCounts = useMemo(() => {
@@ -58,6 +60,13 @@ export default function App() {
       return acc;
     }, {});
   }, [adminOverview]);
+  const turnsView = useMemo(() => [...turnsItems].reverse(), [turnsItems]);
+
+  useEffect(() => {
+    if (!turnsListRef.current) return;
+    if (turnsAppendRef.current) return;
+    turnsListRef.current.scrollTop = turnsListRef.current.scrollHeight;
+  }, [turnsView.length]);
 
   function decodeJwtPayload(token) {
     if (!token || typeof token !== "string") return null;
@@ -595,6 +604,7 @@ export default function App() {
 
   async function fetchAdminTurns({ append = false } = {}) {
     setTurnsError("");
+    turnsAppendRef.current = append;
     if (!append) {
       setTurnsItems([]);
       setTurnsNextKey(null);
@@ -652,6 +662,7 @@ export default function App() {
       setTurnsError(e.message || String(e));
     } finally {
       setTurnsBusy(false);
+      turnsAppendRef.current = false;
     }
   }
 
@@ -912,8 +923,9 @@ export default function App() {
               </button>
             </div>
             {turnsError ? <div style={{ color: "#b00020", marginBottom: 8 }}>{turnsError}</div> : null}
-            {turnsItems.length ? (
+            {turnsView.length ? (
               <div
+                ref={turnsListRef}
                 style={{
                   border: "1px solid #eee",
                   borderRadius: 10,
@@ -923,12 +935,14 @@ export default function App() {
                   overflow: "auto",
                 }}
               >
-                {turnsItems.map((t, i) => (
+                {turnsView.map((t, i) => (
                   <div key={`${t.session_id || ""}-${t.timestamp || ""}-${i}`} style={{ marginBottom: 10 }}>
                     <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 4 }}>
                       {t.timestamp || "—"} · {t.session_id || "—"} · {t.role || "—"}
                     </div>
-                    <div>{t.content || ""}</div>
+                    <div style={{ color: t.role === "assistant" ? "#2563eb" : "#111" }}>
+                      {t.content || ""}
+                    </div>
                   </div>
                 ))}
               </div>
