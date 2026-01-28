@@ -971,7 +971,7 @@ export default function App() {
               End Session
             </button>
             <button onClick={openProfile} disabled={!isAuthed || busy}>
-              Biography Profile
+              Bio Profile
             </button>
           </div>
 
@@ -1003,7 +1003,7 @@ export default function App() {
                     value={bioProfile.preferred_name}
                     onChange={(e) => setBioProfile((p) => ({ ...p, preferred_name: e.target.value }))}
                     disabled={profileBusy}
-                    style={{ width: "100%", padding: 10 }}
+                    style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
                   />
                 </label>
                 <label>
@@ -1012,7 +1012,7 @@ export default function App() {
                     value={bioProfile.age}
                     onChange={(e) => setBioProfile((p) => ({ ...p, age: e.target.value }))}
                     disabled={profileBusy}
-                    style={{ width: "100%", padding: 10 }}
+                    style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
                     inputMode="numeric"
                   />
                 </label>
