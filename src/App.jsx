@@ -235,8 +235,8 @@ export default function App() {
     setBusy(true);
     try {
       const session = await fetchAuthSession();
-      const idToken = session.tokens?.idToken?.toString();
-      if (!idToken) throw new Error("Missing idToken. Are you logged in?");
+      const accessToken = session.tokens?.accessToken?.toString();
+      if (!accessToken) throw new Error("Missing accessToken. Are you logged in?");
 
       const clientRequestId =
         globalThis.crypto && typeof globalThis.crypto.randomUUID === "function"
@@ -253,7 +253,7 @@ export default function App() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${idToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify(body),
       });
