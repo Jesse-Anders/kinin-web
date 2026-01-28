@@ -9,7 +9,7 @@ import {
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const RELEASE_CHANNEL = (import.meta.env.VITE_RELEASE_CHANNEL || "dev").toLowerCase();
 const APP_TITLE =
-  RELEASE_CHANNEL === "beta-lite" ? "Kinin — Interviewer Beta Lite" : "Kinin — Interviewer Dev";
+  RELEASE_CHANNEL === "beta-lite" ? "Kinin — Interviewer Beta Lite" : "Kinin — Interviewer Dev - 1";
 
 
 export default function App() {
@@ -646,6 +646,7 @@ export default function App() {
           <b>Error:</b> {error}
         </div>
       )}
+
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
         <button onClick={() => setActivePage("interview")} disabled={activePage === "interview"}>
           Interview
@@ -819,209 +820,207 @@ export default function App() {
             ) : null}
           </div>
         </div>
-      ) : null}
-
-      {activePage === "interview" ? (
-      <div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        <button onClick={endSession} disabled={!isAuthed || busy}>
-          End Session
-        </button>
-        <button onClick={openProfile} disabled={!isAuthed || busy}>
-          Biography Profile
-        </button>
-      </div>
-
-      {showProfile ? (
-        <div
-          style={{
-            border: "1px solid #ddd",
-            borderRadius: 10,
-            padding: 12,
-            marginBottom: 12,
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div>
-              <b>Biography Profile</b>
-              <div style={{ opacity: 0.7, fontSize: 12 }}>
-                {profileSchema?.title || "Profile"} (schema v{profileSchema?.version || "—"})
-              </div>
-            </div>
-            <button onClick={() => setShowProfile(false)} disabled={profileBusy}>
-              Close
+      ) : (
+        <div>
+          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            <button onClick={endSession} disabled={!isAuthed || busy}>
+              End Session
+            </button>
+            <button onClick={openProfile} disabled={!isAuthed || busy}>
+              Biography Profile
             </button>
           </div>
 
-          <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-            <label>
-              <div style={{ fontSize: 12, opacity: 0.8 }}>Preferred name *</div>
-              <input
-                value={bioProfile.preferred_name}
-                onChange={(e) => setBioProfile((p) => ({ ...p, preferred_name: e.target.value }))}
-                disabled={profileBusy}
-                style={{ width: "100%", padding: 10 }}
-              />
-            </label>
-            <label>
-              <div style={{ fontSize: 12, opacity: 0.8 }}>Age (optional)</div>
-              <input
-                value={bioProfile.age}
-                onChange={(e) => setBioProfile((p) => ({ ...p, age: e.target.value }))}
-                disabled={profileBusy}
-                style={{ width: "100%", padding: 10 }}
-                inputMode="numeric"
-              />
-            </label>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={saveProfile} disabled={profileBusy}>
-                {profileBusy ? "Saving..." : "Save"}
-              </button>
-              <button onClick={() => setShowProfile(false)} disabled={profileBusy}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : (
-      <div
-        style={{
-          border: "1px solid #ddd",
-          borderRadius: 10,
-          padding: 12,
-          minHeight: 260,
-          marginBottom: 12,
-        }}
-      >
-        {chat.length === 0 ? (
-          <div style={{ opacity: 0.7 }}>Start chatting after logging in.</div>
-        ) : (
-          chat.map((m, idx) => (
-            <div key={idx} style={{ marginBottom: 10 }}>
-              <b>{m.role === "user" ? "You" : "Kinin"}:</b> {m.content}
-            </div>
-          ))
-        )}
-      </div>
-      )}
-      <div style={{ display: "flex", gap: 8 }}>
-        <input
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder={isAuthed ? "Type a message..." : "Login to chat..."}
-          style={{ flex: 1, padding: 10 }}
-          disabled={!isAuthed || busy || showProfile}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") sendTurn();
-          }}
-        />
-        <button onClick={sendTurn} disabled={!isAuthed || busy}>
-          {busy ? "Sending..." : "Send"}
-        </button>
-      </div>
-
-
-      {!showProfile ? (
-        <details
-          style={{
-            border: "1px solid #ddd",
-            borderRadius: 10,
-            padding: 12,
-            marginBottom: 12,
-            background: "#fcfcfc",
-          }}
-        >
-          <summary style={{ cursor: "pointer", fontWeight: 700 }}>Interview Details</summary>
-          <div style={{ marginTop: 12 }}>
-            <div style={{ marginBottom: 8, opacity: 0.8 }}>
-              Auth status: <b>{user ? "SIGNED IN" : "SIGNED OUT"}</b>
-            </div>
-            <div style={{ marginBottom: 8, opacity: 0.8 }}>
-              Journey version: <b>{journeyVersion || "—"}</b>
-            </div>
-            <div style={{ marginBottom: 8, opacity: 0.8 }}>
-              Mode: <b>{uiState?.mode || "—"}</b>
-              {uiState?.current_step_title ? (
-                <>
-                  {" "}— Step: <b>{uiState.current_step_title}</b>
-                </>
-              ) : null}
-            </div>
-
-            <div style={{ marginBottom: 8, opacity: 0.8 }}>
-              Guided submode: <b>{uiState?.guided_submode || "—"}</b>
-            </div>
-            <div style={{ marginBottom: 8, opacity: 0.8 }}>
-              Pending advance:{" "}
-              <b>
-                {uiState?.pending_advance && Object.keys(uiState.pending_advance).length
-                  ? JSON.stringify(uiState.pending_advance)
-                  : "—"}
-              </b>
-            </div>
-            <div style={{ marginBottom: 8, opacity: 0.8 }}>
-              Deepdive:{" "}
-              <b>
-                {uiState?.deepdive && Object.keys(uiState.deepdive).length
-                  ? JSON.stringify(uiState.deepdive)
-                  : "—"}
-              </b>
-            </div>
-
-            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-              <input
-                value={sessionId}
-                onChange={(e) => {
-                  setSessionId(e.target.value);
-                  localStorage.setItem("session_id", e.target.value);
-                }}
-                placeholder="session_id (optional — leave blank to auto-create)"
-                style={{ flex: 1, padding: 10 }}
-                disabled={busy}
-              />
-            </div>
-
-            {uiState && (uiState.mode === "guided" || uiState.mode === "deepdive") ? (
-              <div
-                style={{
-                  border: "1px solid #eee",
-                  borderRadius: 10,
-                  padding: 12,
-                  background: "#fafafa",
-                }}
-              >
-                <div style={{ marginBottom: 8 }}>
-                  <b>Step fields</b>
+          {showProfile ? (
+            <div
+              style={{
+                border: "1px solid #ddd",
+                borderRadius: 10,
+                padding: 12,
+                marginBottom: 12,
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <b>Biography Profile</b>
+                  <div style={{ opacity: 0.7, fontSize: 12 }}>
+                    {profileSchema?.title || "Profile"} (schema v{profileSchema?.version || "—"})
+                  </div>
                 </div>
-                <div style={{ display: "flex", gap: 16 }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, marginBottom: 6 }}>Covered</div>
-                    <ul style={{ margin: 0, paddingLeft: 18 }}>
-                      {(uiState.covered_fields || []).length ? (
-                        (uiState.covered_fields || []).map((f, i) => <li key={"c-" + i}>{f}</li>)
-                      ) : (
-                        <li style={{ opacity: 0.7 }}>(none yet)</li>
-                      )}
-                    </ul>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, marginBottom: 6 }}>Uncovered</div>
-                    <ul style={{ margin: 0, paddingLeft: 18 }}>
-                      {(uiState.uncovered_fields || []).length ? (
-                        (uiState.uncovered_fields || []).map((f, i) => <li key={"u-" + i}>{f}</li>)
-                      ) : (
-                        <li style={{ opacity: 0.7 }}>(none)</li>
-                      )}
-                    </ul>
-                  </div>
+                <button onClick={() => setShowProfile(false)} disabled={profileBusy}>
+                  Close
+                </button>
+              </div>
+
+              <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+                <label>
+                  <div style={{ fontSize: 12, opacity: 0.8 }}>Preferred name *</div>
+                  <input
+                    value={bioProfile.preferred_name}
+                    onChange={(e) => setBioProfile((p) => ({ ...p, preferred_name: e.target.value }))}
+                    disabled={profileBusy}
+                    style={{ width: "100%", padding: 10 }}
+                  />
+                </label>
+                <label>
+                  <div style={{ fontSize: 12, opacity: 0.8 }}>Age (optional)</div>
+                  <input
+                    value={bioProfile.age}
+                    onChange={(e) => setBioProfile((p) => ({ ...p, age: e.target.value }))}
+                    disabled={profileBusy}
+                    style={{ width: "100%", padding: 10 }}
+                    inputMode="numeric"
+                  />
+                </label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={saveProfile} disabled={profileBusy}>
+                    {profileBusy ? "Saving..." : "Save"}
+                  </button>
+                  <button onClick={() => setShowProfile(false)} disabled={profileBusy}>
+                    Cancel
+                  </button>
                 </div>
               </div>
-            ) : null}
-          </div>
-        </details>
-      </div>
-      ) : null}
+            </div>
+          ) : (
+            <div
+              style={{
+                border: "1px solid #ddd",
+                borderRadius: 10,
+                padding: 12,
+                minHeight: 260,
+                marginBottom: 12,
+              }}
+            >
+              {chat.length === 0 ? (
+                <div style={{ opacity: 0.7 }}>Start chatting after logging in.</div>
+              ) : (
+                chat.map((m, idx) => (
+                  <div key={idx} style={{ marginBottom: 10 }}>
+                    <b>{m.role === "user" ? "You" : "Kinin"}:</b> {m.content}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
 
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder={isAuthed ? "Type a message..." : "Login to chat..."}
+              style={{ flex: 1, padding: 10 }}
+              disabled={!isAuthed || busy || showProfile}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") sendTurn();
+              }}
+            />
+            <button onClick={sendTurn} disabled={!isAuthed || busy}>
+              {busy ? "Sending..." : "Send"}
+            </button>
+          </div>
+
+          {!showProfile ? (
+            <details
+              style={{
+                border: "1px solid #ddd",
+                borderRadius: 10,
+                padding: 12,
+                marginBottom: 12,
+                background: "#fcfcfc",
+              }}
+            >
+              <summary style={{ cursor: "pointer", fontWeight: 700 }}>Interview Details</summary>
+              <div style={{ marginTop: 12 }}>
+                <div style={{ marginBottom: 8, opacity: 0.8 }}>
+                  Auth status: <b>{user ? "SIGNED IN" : "SIGNED OUT"}</b>
+                </div>
+                <div style={{ marginBottom: 8, opacity: 0.8 }}>
+                  Journey version: <b>{journeyVersion || "—"}</b>
+                </div>
+                <div style={{ marginBottom: 8, opacity: 0.8 }}>
+                  Mode: <b>{uiState?.mode || "—"}</b>
+                  {uiState?.current_step_title ? (
+                    <>
+                      {" "}— Step: <b>{uiState.current_step_title}</b>
+                    </>
+                  ) : null}
+                </div>
+
+                <div style={{ marginBottom: 8, opacity: 0.8 }}>
+                  Guided submode: <b>{uiState?.guided_submode || "—"}</b>
+                </div>
+                <div style={{ marginBottom: 8, opacity: 0.8 }}>
+                  Pending advance:{" "}
+                  <b>
+                    {uiState?.pending_advance && Object.keys(uiState.pending_advance).length
+                      ? JSON.stringify(uiState.pending_advance)
+                      : "—"}
+                  </b>
+                </div>
+                <div style={{ marginBottom: 8, opacity: 0.8 }}>
+                  Deepdive:{" "}
+                  <b>
+                    {uiState?.deepdive && Object.keys(uiState.deepdive).length
+                      ? JSON.stringify(uiState.deepdive)
+                      : "—"}
+                  </b>
+                </div>
+
+                <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                  <input
+                    value={sessionId}
+                    onChange={(e) => {
+                      setSessionId(e.target.value);
+                      localStorage.setItem("session_id", e.target.value);
+                    }}
+                    placeholder="session_id (optional — leave blank to auto-create)"
+                    style={{ flex: 1, padding: 10 }}
+                    disabled={busy}
+                  />
+                </div>
+
+                {uiState && (uiState.mode === "guided" || uiState.mode === "deepdive") ? (
+                  <div
+                    style={{
+                      border: "1px solid #eee",
+                      borderRadius: 10,
+                      padding: 12,
+                      background: "#fafafa",
+                    }}
+                  >
+                    <div style={{ marginBottom: 8 }}>
+                      <b>Step fields</b>
+                    </div>
+                    <div style={{ display: "flex", gap: 16 }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, marginBottom: 6 }}>Covered</div>
+                        <ul style={{ margin: 0, paddingLeft: 18 }}>
+                          {(uiState.covered_fields || []).length ? (
+                            (uiState.covered_fields || []).map((f, i) => <li key={"c-" + i}>{f}</li>)
+                          ) : (
+                            <li style={{ opacity: 0.7 }}>(none yet)</li>
+                          )}
+                        </ul>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, marginBottom: 6 }}>Uncovered</div>
+                        <ul style={{ margin: 0, paddingLeft: 18 }}>
+                          {(uiState.uncovered_fields || []).length ? (
+                            (uiState.uncovered_fields || []).map((f, i) => <li key={"u-" + i}>{f}</li>)
+                          ) : (
+                            <li style={{ opacity: 0.7 }}>(none)</li>
+                          )}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </details>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }
