@@ -8,8 +8,8 @@ import {
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const RELEASE_CHANNEL = (import.meta.env.VITE_RELEASE_CHANNEL || "dev").toLowerCase();
-const APP_TITLE =
-  RELEASE_CHANNEL === "beta-lite" ? "Kinin — Interviewer Beta Lite" : "Kinin — Interviewer Dev - 1";
+const IS_BETA_LITE = RELEASE_CHANNEL === "beta-lite";
+const APP_TITLE = IS_BETA_LITE ? "Kinin — Interviewer Beta Lite" : "Kinin — Interviewer Dev - 1";
 
 
 export default function App() {
@@ -651,12 +651,14 @@ export default function App() {
         <button onClick={() => setActivePage("interview")} disabled={activePage === "interview"}>
           Interview
         </button>
-        <button onClick={() => setActivePage("admin")} disabled={activePage === "admin"}>
-          Admin
-        </button>
+        {!IS_BETA_LITE ? (
+          <button onClick={() => setActivePage("admin")} disabled={activePage === "admin"}>
+            Admin
+          </button>
+        ) : null}
       </div>
 
-      {activePage === "admin" ? (
+      {activePage === "admin" && !IS_BETA_LITE ? (
         <div
           style={{
             border: "1px solid #ddd",
