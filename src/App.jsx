@@ -822,7 +822,7 @@ export default function App() {
       ) : null}
 
       {activePage === "interview" ? (
-      <>
+      <div>
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
         <button onClick={endSession} disabled={!isAuthed || busy}>
           End Session
@@ -1019,7 +1019,7 @@ export default function App() {
             ) : null}
           </div>
         </details>
-      </>
+      </div>
       ) : null}
 
     </div>
