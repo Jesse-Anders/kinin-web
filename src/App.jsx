@@ -1053,7 +1053,7 @@ export default function App() {
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder={isAuthed ? "Type a message..." : "Login to chat..."}
-              style={{ flex: 1, padding: 10 }}
+              style={{ flex: 1, padding: 10, fontSize: 16 }}
               disabled={!isAuthed || busy || showProfile}
               onKeyDown={(e) => {
                 if (e.key === "Enter") sendTurn();
