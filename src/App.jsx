@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Home as HomeIcon,
   CircleUserRound,
-  Crown,
+  Footprints,
   Grid2X2Check,
   Megaphone,
 } from "lucide-react";
@@ -722,7 +722,7 @@ export default function App() {
         </button>
         <div className="sidebar-divider" />
         <button type="button" className="sidebar-home sidebar-home-secondary" onClick={openProfile}>
-          <Crown className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+          <Footprints className="sidebar-home-icon" size={20} strokeWidth={1.5} />
           Bio Profile
         </button>
         <button type="button" className="sidebar-home sidebar-home-secondary">
@@ -1001,12 +1001,6 @@ export default function App() {
         </div>
       ) : (
         <div>
-          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-            <button onClick={openProfile} disabled={!isAuthed || busy}>
-              Bio Profile
-            </button>
-          </div>
-
           {showProfile ? (
             <div
               style={{
