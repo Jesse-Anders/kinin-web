@@ -50,6 +50,7 @@ export default function App() {
   const [turnsNextKey, setTurnsNextKey] = useState(null);
   const turnsListRef = useRef(null);
   const turnsAppendRef = useRef(false);
+  const messageInputRef = useRef(null);
 
   const isAuthed = useMemo(() => !!user, [user]);
   const adminStatusCounts = useMemo(() => {
@@ -80,6 +81,11 @@ export default function App() {
     if (turnsAppendRef.current) return;
     turnsListRef.current.scrollTop = turnsListRef.current.scrollHeight;
   }, [turnsView.length]);
+  useEffect(() => {
+    if (!messageInputRef.current) return;
+    if (message) return;
+    messageInputRef.current.style.height = "auto";
+  }, [message]);
 
   function decodeJwtPayload(token) {
     if (!token || typeof token !== "string") return null;
@@ -370,6 +376,12 @@ export default function App() {
     } finally {
       setBusy(false);
     }
+  }
+
+  function autoResizeMessageInput(el) {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 240)}px`;
   }
 
   async function endSession() {
@@ -738,16 +750,16 @@ export default function App() {
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        <button onClick={() => setActivePage("interview")} disabled={activePage === "interview"}>
-          Interview
-        </button>
-        {!IS_BETA_LITE ? (
+      {!IS_BETA_LITE ? (
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          <button onClick={() => setActivePage("interview")} disabled={activePage === "interview"}>
+            Interview
+          </button>
           <button onClick={() => setActivePage("admin")} disabled={activePage === "admin"}>
             Admin
           </button>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       {activePage === "admin" && !IS_BETA_LITE ? (
         <div
@@ -1048,16 +1060,25 @@ export default function App() {
             </div>
           )}
 
-          <div style={{ display: "flex", gap: 8 }}>
-            <input
+          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            <textarea
+              ref={messageInputRef}
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder={isAuthed ? "Type a message..." : "Login to chat..."}
-              style={{ flex: 1, padding: 10, fontSize: 16 }}
-              disabled={!isAuthed || busy || showProfile}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") sendTurn();
+              onChange={(e) => {
+                setMessage(e.target.value);
+                autoResizeMessageInput(e.target);
               }}
+              onInput={(e) => autoResizeMessageInput(e.target)}
+              placeholder={isAuthed ? "Type a message..." : "Login to chat..."}
+              style={{
+                flex: 1,
+                padding: 10,
+                fontSize: 16,
+                resize: "none",
+                overflow: "hidden",
+              }}
+              rows={1}
+              disabled={!isAuthed || busy || showProfile}
             />
             <button onClick={sendTurn} disabled={!isAuthed || busy}>
               {busy ? "Sending..." : "Send"}
