@@ -707,37 +707,57 @@ export default function App() {
   }
 
   return (
-    <div
-      style={{
-        maxWidth: 900,
-        margin: "40px auto",
-        padding: 16,
-        fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Arial",
-      }}
-    >
-      <h2>{APP_TITLE}</h2>
+    <div className="app-shell">
+      <aside className="sidebar">
+        <button className="sidebar-logo" type="button" aria-label="Home">
+          HOME
+        </button>
+        <nav className="sidebar-links">
+          <button className="sidebar-link" type="button">
+            About
+          </button>
+          <button className="sidebar-link" type="button">
+            FAQ
+          </button>
+          <button className="sidebar-link" type="button">
+            Feedback
+          </button>
+        </nav>
+        <div className="sidebar-spacer" />
+        <div className="sidebar-footer">
+          {!isAuthed ? (
+            <button className="sidebar-signin" type="button" onClick={onLogin}>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M15 7a3 3 0 1 1-6 0a3 3 0 0 1 6 0Z" />
+                <path d="M4 20a8 8 0 0 1 16 0" />
+              </svg>
+              Sign In
+            </button>
+          ) : (
+            <>
+              <div className="sidebar-muted">Signed in as {user?.username}</div>
+              <button className="sidebar-link" type="button" onClick={onLogout}>
+                Sign Out
+              </button>
+            </>
+          )}
+        </div>
+      </aside>
+      <main className="main-content">
+        <div className="main-inner">
+          <h2>{APP_TITLE}</h2>
 
-      <div
-        style={{
-          display: "flex",
-          gap: 12,
-          alignItems: "center",
-          marginBottom: 16,
-        }}
-      >
-        {!isAuthed ? (
-          <button onClick={onLogin}>Login / Sign up</button>
-        ) : (
-          <>
-            <div style={{ opacity: 0.8 }}>
-              Signed in as <b>{user?.username}</b>
-            </div>
-            <button onClick={onLogout}>Logout</button>
-          </>
-        )}
-      </div>
-
-      {error && (
+          {error && (
         <div
           style={{
             background: "#ffe8e8",
@@ -748,7 +768,7 @@ export default function App() {
         >
           <b>Error:</b> {error}
         </div>
-      )}
+          )}
 
       {!IS_BETA_LITE ? (
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
@@ -1212,7 +1232,9 @@ export default function App() {
             </details>
           ) : null}
         </div>
-      )}
+          )}
+        </div>
+      </main>
     </div>
   );
 }
