@@ -718,37 +718,77 @@ export default function App() {
   return (
     <div className="app-shell">
       <aside className={`sidebar ${menuOpen ? "sidebar-open" : ""}`}>
-        <button type="button" className="sidebar-home sidebar-home-primary">
+        <button
+          type="button"
+          className="sidebar-home sidebar-home-primary"
+          onClick={() => setMenuOpen(false)}
+        >
           <HomeIcon className="sidebar-home-icon" size={26} strokeWidth={1.5} />
           Kinin
         </button>
         <div className="sidebar-divider" />
-        <button type="button" className="sidebar-home sidebar-home-secondary" onClick={openProfile}>
+        <button
+          type="button"
+          className="sidebar-home sidebar-home-secondary"
+          onClick={() => {
+            setMenuOpen(false);
+            openProfile();
+          }}
+        >
           <Footprints className="sidebar-home-icon" size={20} strokeWidth={1.5} />
           Bio Profile
         </button>
-        <button type="button" className="sidebar-home sidebar-home-secondary">
+        <button
+          type="button"
+          className="sidebar-home sidebar-home-secondary"
+          onClick={() => setMenuOpen(false)}
+        >
           <Grid2X2Check className="sidebar-home-icon" size={20} strokeWidth={1.5} />
           FAQ
         </button>
-        <button type="button" className="sidebar-home sidebar-home-secondary">
+        <button
+          type="button"
+          className="sidebar-home sidebar-home-secondary"
+          onClick={() => setMenuOpen(false)}
+        >
           <Megaphone className="sidebar-home-icon" size={20} strokeWidth={1.5} />
           Feedback
         </button>
         <div className="sidebar-spacer" />
         {!isAuthed ? (
-          <button type="button" className="sidebar-home sidebar-home-secondary signin" onClick={onLogin}>
+          <button
+            type="button"
+            className="sidebar-home sidebar-home-secondary signin"
+            onClick={() => {
+              setMenuOpen(false);
+              onLogin();
+            }}
+          >
             <CircleUserRound className="sidebar-home-icon" size={20} strokeWidth={1.5} />
             Sign In
           </button>
         ) : (
-          <button type="button" className="sidebar-home sidebar-home-secondary signin" onClick={onLogout}>
+          <button
+            type="button"
+            className="sidebar-home sidebar-home-secondary signin"
+            onClick={() => {
+              setMenuOpen(false);
+              onLogout();
+            }}
+          >
             <CircleUserRound className="sidebar-home-icon" size={20} strokeWidth={1.5} />
             Sign Out
           </button>
         )}
         <div className="sidebar-divider" />
-        <button type="button" className="sidebar-home sidebar-home-secondary" onClick={endSession}>
+        <button
+          type="button"
+          className="sidebar-home sidebar-home-secondary"
+          onClick={() => {
+            setMenuOpen(false);
+            endSession();
+          }}
+        >
           End Session
         </button>
       </aside>
