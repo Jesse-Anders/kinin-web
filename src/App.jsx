@@ -60,6 +60,15 @@ export default function App() {
   const turnsAppendRef = useRef(false);
   const messageInputRef = useRef(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [feedbackName, setFeedbackName] = useState("");
+  const [feedbackEmail, setFeedbackEmail] = useState("");
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [feedbackStatus, setFeedbackStatus] = useState("");
+  const [feedbackBusy, setFeedbackBusy] = useState(false);
+  const [adminFeedbackItems, setAdminFeedbackItems] = useState([]);
+  const [adminFeedbackNextKey, setAdminFeedbackNextKey] = useState(null);
+  const [adminFeedbackBusy, setAdminFeedbackBusy] = useState(false);
+  const [adminFeedbackError, setAdminFeedbackError] = useState("");
 
   const isAuthed = useMemo(() => !!user, [user]);
   const adminStatusCounts = useMemo(() => {
@@ -702,6 +711,75 @@ export default function App() {
     }
   }
 
+  async function submitFeedback() {
+    setFeedbackStatus("");
+    setFeedbackBusy(true);
+    try {
+      const session = await fetchAuthSession();
+      const idToken = session?.tokens?.idToken?.toString();
+      const payload = {
+        message: (feedbackMessage || "").trim(),
+        username: (feedbackName || "").trim() || (user?.username || ""),
+        email: (feedbackEmail || "").trim() || undefined,
+      };
+      if (!payload.message) {
+        throw new Error("Please enter a message.");
+      }
+      const headers = { "Content-Type": "application/json" };
+      if (idToken) {
+        headers.Authorization = `Bearer ${idToken}`;
+      }
+      const res = await fetch(`${API_BASE}/feedback`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(`API error ${res.status}: ${t}`);
+      }
+      setFeedbackMessage("");
+      setFeedbackStatus("Thanks for the feedback!");
+    } catch (e) {
+      setFeedbackStatus(e.message || String(e));
+    } finally {
+      setFeedbackBusy(false);
+    }
+  }
+
+  async function fetchAdminFeedback({ append = false } = {}) {
+    setAdminFeedbackError("");
+    setAdminFeedbackBusy(true);
+    try {
+      const accessToken = await getAccessToken();
+      const res = await fetch(`${API_BASE}/admin/list_feedback`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          limit: 50,
+          start_key: append ? adminFeedbackNextKey || undefined : undefined,
+          user_id: (adminUserId || "").trim() || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(`API error ${res.status}: ${t}`);
+      }
+      const data = await res.json();
+      const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
+      const items = parsed.items || [];
+      setAdminFeedbackItems((prev) => (append ? [...prev, ...items] : items));
+      setAdminFeedbackNextKey(parsed.next_start_key || null);
+    } catch (e) {
+      setAdminFeedbackError(e.message || String(e));
+    } finally {
+      setAdminFeedbackBusy(false);
+    }
+  }
+
   async function loadAdminTokenClaims() {
     setAdminError("");
     try {
@@ -1062,6 +1140,49 @@ export default function App() {
               <div style={{ opacity: 0.7 }}>No turns loaded yet.</div>
             )}
           </div>
+
+          <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, marginTop: 12 }}>
+            <div style={{ marginBottom: 8 }}>
+              <b>Feedback</b>
+            </div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+              <button onClick={() => fetchAdminFeedback({ append: false })} disabled={!isAuthed || adminFeedbackBusy}>
+                {adminFeedbackBusy ? "Loading..." : "Load Feedback"}
+              </button>
+              <button
+                onClick={() => fetchAdminFeedback({ append: true })}
+                disabled={!isAuthed || adminFeedbackBusy || !adminFeedbackNextKey}
+              >
+                Load More
+              </button>
+            </div>
+            {adminFeedbackError ? (
+              <div style={{ color: "#b00020", marginBottom: 8 }}>{adminFeedbackError}</div>
+            ) : null}
+            {adminFeedbackItems.length ? (
+              <div
+                style={{
+                  border: "1px solid #eee",
+                  borderRadius: 10,
+                  padding: 12,
+                  background: "#fafafa",
+                  maxHeight: 360,
+                  overflow: "auto",
+                }}
+              >
+                {adminFeedbackItems.map((f, i) => (
+                  <div key={`${f.user_id || "anon"}-${f.created_at || ""}-${i}`} style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 4 }}>
+                      {f.created_at || "—"} · {f.user_id || "anon"} · {f.username || "—"} · {f.email || "—"}
+                    </div>
+                    <div>{f.message || ""}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ opacity: 0.7 }}>No feedback loaded yet.</div>
+            )}
+          </div>
         </div>
       ) : activePage === "faq" ? (
         <div style={{ padding: 16 }}>
@@ -1071,11 +1192,46 @@ export default function App() {
           <div style={{ minHeight: 240 }} />
         </div>
       ) : activePage === "feedback" ? (
-        <div style={{ padding: 16 }}>
+        <div style={{ padding: 16, maxWidth: 720 }}>
           <div style={{ fontSize: 22, fontWeight: 600, marginBottom: 12 }}>
             Feedback: Please, let us know your thoughts.
           </div>
-          <div style={{ minHeight: 240 }} />
+          <div style={{ display: "grid", gap: 10 }}>
+            <label>
+              <div style={{ fontSize: 12, opacity: 0.8 }}>Name (optional)</div>
+              <input
+                value={feedbackName}
+                onChange={(e) => setFeedbackName(e.target.value)}
+                style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
+                placeholder="Your name"
+              />
+            </label>
+            <label>
+              <div style={{ fontSize: 12, opacity: 0.8 }}>Email (optional)</div>
+              <input
+                value={feedbackEmail}
+                onChange={(e) => setFeedbackEmail(e.target.value)}
+                style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
+                placeholder="you@example.com"
+                inputMode="email"
+              />
+            </label>
+            <label>
+              <div style={{ fontSize: 12, opacity: 0.8 }}>Message *</div>
+              <textarea
+                value={feedbackMessage}
+                onChange={(e) => setFeedbackMessage(e.target.value)}
+                style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10, minHeight: 120 }}
+                placeholder="What should we improve?"
+              />
+            </label>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <button onClick={submitFeedback} disabled={feedbackBusy}>
+                {feedbackBusy ? "Sending..." : "Send Feedback"}
+              </button>
+              {feedbackStatus ? <div style={{ opacity: 0.7 }}>{feedbackStatus}</div> : null}
+            </div>
+          </div>
         </div>
       ) : activePage === "bio" ? (
         <div style={{ padding: 16 }}>
