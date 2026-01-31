@@ -707,38 +707,13 @@ export default function App() {
   }
 
   return (
-    <div
-      style={{
-        display: "flex",
-        minHeight: "100vh",
-        fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Arial",
-      }}
-    >
-      <aside
-        style={{
-          width: 200,
-          padding: "16px 12px",
-          borderRight: "1px solid #e5e7eb",
-          display: "flex",
-          flexDirection: "column",
-          gap: 12,
-        }}
-      >
-        <button
-          type="button"
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 8,
-            border: "1px solid #e5e7eb",
-            background: "#f3f4f6",
-            fontSize: 12,
-          }}
-        >
-          home
+    <div className="app-shell">
+      <aside className="sidebar">
+        <button type="button" className="sidebar-home">
+          Home
         </button>
       </aside>
-      <main style={{ flex: 1 }}>
+      <main className="main-content">
         <div
           style={{
             maxWidth: 900,
@@ -1104,7 +1079,7 @@ export default function App() {
               style={{
                 flex: 1,
                 padding: 10,
-                fontSize: 16,
+                fontSize: 12,
                 resize: "none",
                 overflow: "hidden",
               }}
