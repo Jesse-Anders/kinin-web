@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Home as HomeIcon, CircleUserRound } from "lucide-react";
+import { Home as HomeIcon, CircleUserRound, Crown } from "lucide-react";
 import {
   fetchAuthSession,
   getCurrentUser,
@@ -714,14 +714,18 @@ export default function App() {
           <HomeIcon className="sidebar-home-icon" size={24} strokeWidth={1.5} />
           Kinin
         </button>
+        <button type="button" className="sidebar-home" onClick={openProfile}>
+          <Crown className="sidebar-home-icon" size={22} strokeWidth={1.5} />
+          Bio Profile
+        </button>
         <div className="sidebar-spacer" />
         {!isAuthed ? (
-          <button type="button" className="sidebar-home" onClick={onLogin}>
+          <button type="button" className="sidebar-home signin" onClick={onLogin}>
             <CircleUserRound className="sidebar-home-icon" size={22} strokeWidth={1.5} />
             Sign In
           </button>
         ) : (
-          <button type="button" className="sidebar-home" onClick={onLogout}>
+          <button type="button" className="sidebar-home signin" onClick={onLogout}>
             <CircleUserRound className="sidebar-home-icon" size={22} strokeWidth={1.5} />
             Sign Out
           </button>
@@ -736,26 +740,6 @@ export default function App() {
           }}
         >
           <h2>{APP_TITLE}</h2>
-
-      <div
-        style={{
-          display: "flex",
-          gap: 12,
-          alignItems: "center",
-          marginBottom: 16,
-        }}
-      >
-        {!isAuthed ? (
-          <button onClick={onLogin}>Login / Sign up</button>
-        ) : (
-          <>
-            <div style={{ opacity: 0.8 }}>
-              Signed in as <b>{user?.username}</b>
-            </div>
-            <button onClick={onLogout}>Logout</button>
-          </>
-        )}
-      </div>
 
       {error && (
         <div

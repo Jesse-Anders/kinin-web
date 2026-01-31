@@ -29,7 +29,7 @@
   border: none;
   padding: 4px 6px;
   text-align: center;
-  color: #111;
+  color: rgba(17, 17, 17, 0.75);
   font-size: 14px;
   display: flex;
   flex-direction: column;
@@ -40,6 +40,7 @@
   box-shadow: none;
   cursor: default;
   text-transform: capitalize;
+  transition: color 0.15s ease;
 }
 
 .sidebar-home:focus {
@@ -47,11 +48,19 @@
 }
 
 .sidebar-home-icon {
-  color: #111;
+  color: currentColor;
 }
 
 .sidebar-spacer {
   flex: 1;
+}
+
+.sidebar-home:hover {
+  color: rgba(17, 17, 17, 1);
+}
+
+.sidebar-home.signin {
+  margin-bottom: 12px;
 }
 
 .main-content {
