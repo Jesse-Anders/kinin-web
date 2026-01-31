@@ -709,13 +709,44 @@ export default function App() {
   return (
     <div
       style={{
-        maxWidth: 900,
-        margin: "40px auto",
-        padding: 16,
+        display: "flex",
+        minHeight: "100vh",
         fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Arial",
       }}
     >
-      <h2>{APP_TITLE}</h2>
+      <aside
+        style={{
+          width: 200,
+          padding: "16px 12px",
+          borderRight: "1px solid #e5e7eb",
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+        }}
+      >
+        <button
+          type="button"
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 8,
+            border: "1px solid #e5e7eb",
+            background: "#f3f4f6",
+            fontSize: 12,
+          }}
+        >
+          home
+        </button>
+      </aside>
+      <main style={{ flex: 1 }}>
+        <div
+          style={{
+            maxWidth: 900,
+            margin: "40px auto",
+            padding: 16,
+          }}
+        >
+          <h2>{APP_TITLE}</h2>
 
       <div
         style={{
@@ -1212,7 +1243,9 @@ export default function App() {
             </details>
           ) : null}
         </div>
-      )}
+          )}
+        </div>
+      </main>
     </div>
   );
 }
