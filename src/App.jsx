@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Home as HomeIcon } from "lucide-react";
 import {
   fetchAuthSession,
   getCurrentUser,
@@ -710,6 +711,7 @@ export default function App() {
     <div className="app-shell">
       <aside className="sidebar">
         <button type="button" className="sidebar-home">
+          <HomeIcon className="sidebar-home-icon" size={18} strokeWidth={1.5} />
           Home
         </button>
       </aside>

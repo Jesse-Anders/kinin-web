@@ -31,6 +31,10 @@
   text-align: left;
   color: #111;
   font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
   appearance: none;
   outline: none;
   box-shadow: none;
@@ -39,6 +43,10 @@
 
 .sidebar-home:focus {
   outline: none;
+}
+
+.sidebar-home-icon {
+  color: #111;
 }
 
 .main-content {
