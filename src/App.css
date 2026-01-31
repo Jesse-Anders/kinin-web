@@ -39,6 +39,7 @@
   outline: none;
   box-shadow: none;
   cursor: default;
+  text-transform: capitalize;
 }
 
 .sidebar-home:focus {
