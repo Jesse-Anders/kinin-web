@@ -20,23 +20,31 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  border-right: 1px solid #e5e7eb;
+  border-right: 1px solid #d1d5db;
   background: #fff;
 }
 
 .sidebar-home {
-  background: none;
+  background: transparent;
   border: none;
   padding: 4px 6px;
   text-align: left;
   color: #111;
   font-size: 14px;
+  appearance: none;
+  outline: none;
+  box-shadow: none;
   cursor: default;
+}
+
+.sidebar-home:focus {
+  outline: none;
 }
 
 .main-content {
   flex: 1;
   padding: 24px;
+  background: #fafafa;
 }
 
 .main-inner {
