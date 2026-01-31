@@ -5,6 +5,7 @@ import {
   Footprints,
   Grid2X2Check,
   Megaphone,
+  Menu,
 } from "lucide-react";
 import {
   fetchAuthSession,
@@ -58,6 +59,7 @@ export default function App() {
   const turnsListRef = useRef(null);
   const turnsAppendRef = useRef(false);
   const messageInputRef = useRef(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const isAuthed = useMemo(() => !!user, [user]);
   const adminStatusCounts = useMemo(() => {
@@ -715,7 +717,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      <aside className={`sidebar ${menuOpen ? "sidebar-open" : ""}`}>
         <button type="button" className="sidebar-home sidebar-home-primary">
           <HomeIcon className="sidebar-home-icon" size={26} strokeWidth={1.5} />
           Kinin
@@ -751,6 +753,10 @@ export default function App() {
         </button>
       </aside>
       <main className="main-content">
+        <button type="button" className="menu-toggle" onClick={() => setMenuOpen(true)}>
+          <Menu className="menu-toggle-icon" size={22} strokeWidth={1.5} />
+          Kinin
+        </button>
         <div
           style={{
             maxWidth: 900,
@@ -1229,6 +1235,7 @@ export default function App() {
           )}
         </div>
       </main>
+      {menuOpen ? <div className="menu-backdrop" onClick={() => setMenuOpen(false)} /> : null}
     </div>
   );
 }
