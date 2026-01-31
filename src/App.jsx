@@ -725,6 +725,7 @@ export default function App() {
           className="sidebar-home sidebar-home-primary"
           onClick={() => {
             setMenuOpen(false);
+            setShowProfile(false);
             setActivePage("interview");
           }}
         >
@@ -1188,18 +1189,17 @@ export default function App() {
             </button>
           </div>
 
-          {!showProfile ? (
-            <details
-              style={{
-                border: "1px solid #ddd",
-                borderRadius: 10,
-                padding: 12,
-                marginBottom: 12,
-                background: "#fcfcfc",
-              }}
-            >
-              <summary style={{ cursor: "pointer", fontWeight: 700 }}>Interview Details</summary>
-              <div style={{ marginTop: 12 }}>
+          <details
+            style={{
+              border: "1px solid #ddd",
+              borderRadius: 10,
+              padding: 12,
+              marginBottom: 12,
+              background: "#fcfcfc",
+            }}
+          >
+            <summary style={{ cursor: "pointer", fontWeight: 700 }}>Interview Details</summary>
+            <div style={{ marginTop: 12 }}>
                 <div style={{ marginBottom: 8, opacity: 0.8 }}>
                   Auth status: <b>{user ? "SIGNED IN" : "SIGNED OUT"}</b>
                 </div>
@@ -1311,9 +1311,8 @@ export default function App() {
                     </div>
                   </div>
                 ) : null}
-              </div>
-            </details>
-          ) : null}
+            </div>
+          </details>
         </div>
           )}
         </div>
