@@ -43,12 +43,26 @@
   transition: color 0.15s ease;
 }
 
+.sidebar-home-primary {
+  font-size: 15px;
+}
+
+.sidebar-home-secondary {
+  font-size: 13px;
+}
+
 .sidebar-home:focus {
   outline: none;
 }
 
 .sidebar-home-icon {
   color: currentColor;
+}
+
+.sidebar-divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 4px 6px;
 }
 
 .sidebar-spacer {

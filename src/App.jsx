@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Home as HomeIcon, CircleUserRound, Crown } from "lucide-react";
+import {
+  Home as HomeIcon,
+  CircleUserRound,
+  Crown,
+  List,
+  Megaphone,
+} from "lucide-react";
 import {
   fetchAuthSession,
   getCurrentUser,
@@ -710,23 +716,32 @@ export default function App() {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <button type="button" className="sidebar-home">
-          <HomeIcon className="sidebar-home-icon" size={24} strokeWidth={1.5} />
+        <button type="button" className="sidebar-home sidebar-home-primary">
+          <HomeIcon className="sidebar-home-icon" size={26} strokeWidth={1.5} />
           Kinin
         </button>
-        <button type="button" className="sidebar-home" onClick={openProfile}>
-          <Crown className="sidebar-home-icon" size={22} strokeWidth={1.5} />
+        <div className="sidebar-divider" />
+        <button type="button" className="sidebar-home sidebar-home-secondary" onClick={openProfile}>
+          <Crown className="sidebar-home-icon" size={20} strokeWidth={1.5} />
           Bio Profile
+        </button>
+        <button type="button" className="sidebar-home sidebar-home-secondary">
+          <List className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+          FAQ
+        </button>
+        <button type="button" className="sidebar-home sidebar-home-secondary">
+          <Megaphone className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+          Feedback
         </button>
         <div className="sidebar-spacer" />
         {!isAuthed ? (
-          <button type="button" className="sidebar-home signin" onClick={onLogin}>
-            <CircleUserRound className="sidebar-home-icon" size={22} strokeWidth={1.5} />
+          <button type="button" className="sidebar-home sidebar-home-secondary signin" onClick={onLogin}>
+            <CircleUserRound className="sidebar-home-icon" size={20} strokeWidth={1.5} />
             Sign In
           </button>
         ) : (
-          <button type="button" className="sidebar-home signin" onClick={onLogout}>
-            <CircleUserRound className="sidebar-home-icon" size={22} strokeWidth={1.5} />
+          <button type="button" className="sidebar-home sidebar-home-secondary signin" onClick={onLogout}>
+            <CircleUserRound className="sidebar-home-icon" size={20} strokeWidth={1.5} />
             Sign Out
           </button>
         )}
