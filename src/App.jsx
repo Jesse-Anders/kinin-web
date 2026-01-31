@@ -17,7 +17,7 @@ import {
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const RELEASE_CHANNEL = (import.meta.env.VITE_RELEASE_CHANNEL || "dev").toLowerCase();
 const IS_BETA_LITE = RELEASE_CHANNEL === "beta-lite";
-const APP_TITLE = IS_BETA_LITE ? "Kinin — Biography Interviewer - Beta Lite" : "Kinin — Dev - 1";
+const VERSION_LABEL = IS_BETA_LITE ? "Beta-lite Version 1.0" : "Dev Version 1.0";
 
 
 export default function App() {
@@ -721,7 +721,10 @@ export default function App() {
         <button
           type="button"
           className="sidebar-home sidebar-home-primary"
-          onClick={() => setMenuOpen(false)}
+          onClick={() => {
+            setMenuOpen(false);
+            setActivePage("interview");
+          }}
         >
           <HomeIcon className="sidebar-home-icon" size={26} strokeWidth={1.5} />
           Kinin
@@ -741,7 +744,10 @@ export default function App() {
         <button
           type="button"
           className="sidebar-home sidebar-home-secondary"
-          onClick={() => setMenuOpen(false)}
+          onClick={() => {
+            setMenuOpen(false);
+            setActivePage("faq");
+          }}
         >
           <Grid2X2Check className="sidebar-home-icon" size={20} strokeWidth={1.5} />
           FAQ
@@ -749,7 +755,10 @@ export default function App() {
         <button
           type="button"
           className="sidebar-home sidebar-home-secondary"
-          onClick={() => setMenuOpen(false)}
+          onClick={() => {
+            setMenuOpen(false);
+            setActivePage("feedback");
+          }}
         >
           <Megaphone className="sidebar-home-icon" size={20} strokeWidth={1.5} />
           Feedback
@@ -768,17 +777,20 @@ export default function App() {
             Sign In
           </button>
         ) : (
-          <button
-            type="button"
-            className="sidebar-home sidebar-home-secondary signin"
-            onClick={() => {
-              setMenuOpen(false);
-              onLogout();
-            }}
-          >
-            <CircleUserRound className="sidebar-home-icon" size={20} strokeWidth={1.5} />
-            Sign Out
-          </button>
+          <div className="sidebar-signout">
+            <button
+              type="button"
+              className="sidebar-home sidebar-home-secondary signin"
+              onClick={() => {
+                setMenuOpen(false);
+                onLogout();
+              }}
+            >
+              <CircleUserRound className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+              Sign Out
+            </button>
+            <div className="sidebar-muted">{user?.username}</div>
+          </div>
         )}
         <div className="sidebar-divider" />
         <button
@@ -804,7 +816,10 @@ export default function App() {
             padding: 16,
           }}
         >
-          <h2>{APP_TITLE}</h2>
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 28, fontWeight: 600 }}>Kinin Interviewer</div>
+            <div style={{ fontSize: 14, opacity: 0.65 }}>{VERSION_LABEL}</div>
+          </div>
 
       {error && (
         <div
@@ -1044,6 +1059,20 @@ export default function App() {
               <div style={{ opacity: 0.7 }}>No turns loaded yet.</div>
             )}
           </div>
+        </div>
+      ) : activePage === "faq" ? (
+        <div style={{ padding: 16 }}>
+          <div style={{ fontSize: 22, fontWeight: 600, marginBottom: 12 }}>
+            Kinin Frequently Asked Questions
+          </div>
+          <div style={{ minHeight: 240 }} />
+        </div>
+      ) : activePage === "feedback" ? (
+        <div style={{ padding: 16 }}>
+          <div style={{ fontSize: 22, fontWeight: 600, marginBottom: 12 }}>
+            Feedback: Please, let us know your thoughts.
+          </div>
+          <div style={{ minHeight: 240 }} />
         </div>
       ) : (
         <div>

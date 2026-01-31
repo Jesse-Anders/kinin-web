@@ -55,6 +55,11 @@
   outline: none;
 }
 
+.sidebar-home:hover {
+  background: rgba(17, 17, 17, 0.08);
+  border-radius: 8px;
+}
+
 .sidebar-home-icon {
   color: currentColor;
 }
@@ -67,6 +72,18 @@
 
 .sidebar-spacer {
   flex: 1;
+}
+
+.sidebar-muted {
+  font-size: 11px;
+  color: rgba(17, 17, 17, 0.6);
+  padding: 0 6px 12px;
+}
+
+.sidebar-signout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .sidebar-home:hover {
