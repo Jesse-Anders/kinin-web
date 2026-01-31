@@ -445,6 +445,7 @@ export default function App() {
     setError("");
     if (!isAuthed) return;
     setShowProfile(true);
+    setActivePage("bio");
     setProfileBusy(true);
     try {
       const session = await fetchAuthSession();
@@ -526,6 +527,7 @@ export default function App() {
         age: bp.age === undefined || bp.age === null ? "" : String(bp.age),
       });
       setShowProfile(false);
+      setActivePage("interview");
     } catch (e) {
       setError(e.message || String(e));
     } finally {
@@ -1074,80 +1076,92 @@ export default function App() {
           </div>
           <div style={{ minHeight: 240 }} />
         </div>
-      ) : (
-        <div>
-          {showProfile ? (
-            <div
-              style={{
-                border: "1px solid #ddd",
-                borderRadius: 10,
-                padding: 12,
-                marginBottom: 12,
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <b>Biography Profile</b>
-                  <div style={{ opacity: 0.7, fontSize: 12 }}>
-                    {profileSchema?.title || "Profile"} (schema v{profileSchema?.version || "—"})
-                  </div>
+      ) : activePage === "bio" ? (
+        <div style={{ padding: 16 }}>
+          <div
+            style={{
+              border: "1px solid #ddd",
+              borderRadius: 10,
+              padding: 12,
+              marginBottom: 12,
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <b>Biography Profile</b>
+                <div style={{ opacity: 0.7, fontSize: 12 }}>
+                  {profileSchema?.title || "Profile"} (schema v{profileSchema?.version || "—"})
                 </div>
-                <button onClick={() => setShowProfile(false)} disabled={profileBusy}>
-                  Close
+              </div>
+              <button
+                onClick={() => {
+                  setShowProfile(false);
+                  setActivePage("interview");
+                }}
+                disabled={profileBusy}
+              >
+                Close
+              </button>
+            </div>
+
+            <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+              <label>
+                <div style={{ fontSize: 12, opacity: 0.8 }}>Preferred name *</div>
+                <input
+                  value={bioProfile.preferred_name}
+                  onChange={(e) => setBioProfile((p) => ({ ...p, preferred_name: e.target.value }))}
+                  disabled={profileBusy}
+                  style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
+                />
+              </label>
+              <label>
+                <div style={{ fontSize: 12, opacity: 0.8 }}>Age (optional)</div>
+                <input
+                  value={bioProfile.age}
+                  onChange={(e) => setBioProfile((p) => ({ ...p, age: e.target.value }))}
+                  disabled={profileBusy}
+                  style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
+                  inputMode="numeric"
+                />
+              </label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={saveProfile} disabled={profileBusy}>
+                  {profileBusy ? "Saving..." : "Save"}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowProfile(false);
+                    setActivePage("interview");
+                  }}
+                  disabled={profileBusy}
+                >
+                  Cancel
                 </button>
               </div>
-
-              <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-                <label>
-                  <div style={{ fontSize: 12, opacity: 0.8 }}>Preferred name *</div>
-                  <input
-                    value={bioProfile.preferred_name}
-                    onChange={(e) => setBioProfile((p) => ({ ...p, preferred_name: e.target.value }))}
-                    disabled={profileBusy}
-                    style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
-                  />
-                </label>
-                <label>
-                  <div style={{ fontSize: 12, opacity: 0.8 }}>Age (optional)</div>
-                  <input
-                    value={bioProfile.age}
-                    onChange={(e) => setBioProfile((p) => ({ ...p, age: e.target.value }))}
-                    disabled={profileBusy}
-                    style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
-                    inputMode="numeric"
-                  />
-                </label>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={saveProfile} disabled={profileBusy}>
-                    {profileBusy ? "Saving..." : "Save"}
-                  </button>
-                  <button onClick={() => setShowProfile(false)} disabled={profileBusy}>
-                    Cancel
-                  </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div>
+          <div
+            style={{
+              border: "1px solid #ddd",
+              borderRadius: 10,
+              padding: 12,
+              minHeight: 260,
+              marginBottom: 12,
+            }}
+          >
+            {chat.length === 0 ? (
+              <div style={{ opacity: 0.7 }}>Start chatting after logging in.</div>
+            ) : (
+              chat.map((m, idx) => (
+                <div key={idx} style={{ marginBottom: 10 }}>
+                  <b>{m.role === "user" ? "You" : "Kinin"}:</b> {m.content}
                 </div>
-              </div>
-            </div>
-          ) : (
-            <div
-              style={{
-                border: "1px solid #ddd",
-                borderRadius: 10,
-                padding: 12,
-                minHeight: 260,
-                marginBottom: 12,
-              }}
-            >
-              {chat.length === 0 ? (
-                <div style={{ opacity: 0.7 }}>Start chatting after logging in.</div>
-              ) : (
-                chat.map((m, idx) => (
-                  <div key={idx} style={{ marginBottom: 10 }}>
-                    <b>{m.role === "user" ? "You" : "Kinin"}:</b> {m.content}
-                  </div>
-                ))
-              )}
-            </div>
-          )}
+              ))
+            )}
+          </div>
 
           <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
             <textarea
@@ -1167,7 +1181,7 @@ export default function App() {
                 overflow: "hidden",
               }}
               rows={1}
-              disabled={!isAuthed || busy || showProfile}
+              disabled={!isAuthed || busy}
             />
             <button onClick={sendTurn} disabled={!isAuthed || busy}>
               {busy ? "Sending..." : "Send"}
