@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Home as HomeIcon } from "lucide-react";
+import { Home as HomeIcon, CircleUserRound } from "lucide-react";
 import {
   fetchAuthSession,
   getCurrentUser,
@@ -711,9 +711,21 @@ export default function App() {
     <div className="app-shell">
       <aside className="sidebar">
         <button type="button" className="sidebar-home">
-          <HomeIcon className="sidebar-home-icon" size={18} strokeWidth={1.5} />
-          Home
+          <HomeIcon className="sidebar-home-icon" size={24} strokeWidth={1.5} />
+          Kinin
         </button>
+        <div className="sidebar-spacer" />
+        {!isAuthed ? (
+          <button type="button" className="sidebar-home" onClick={onLogin}>
+            <CircleUserRound className="sidebar-home-icon" size={22} strokeWidth={1.5} />
+            Sign In
+          </button>
+        ) : (
+          <button type="button" className="sidebar-home" onClick={onLogout}>
+            <CircleUserRound className="sidebar-home-icon" size={22} strokeWidth={1.5} />
+            Sign Out
+          </button>
+        )}
       </aside>
       <main className="main-content">
         <div
