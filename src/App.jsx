@@ -3,7 +3,7 @@ import {
   Home as HomeIcon,
   CircleUserRound,
   Crown,
-  List,
+  Grid2X2Check,
   Megaphone,
 } from "lucide-react";
 import {
@@ -16,7 +16,7 @@ import {
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const RELEASE_CHANNEL = (import.meta.env.VITE_RELEASE_CHANNEL || "dev").toLowerCase();
 const IS_BETA_LITE = RELEASE_CHANNEL === "beta-lite";
-const APP_TITLE = IS_BETA_LITE ? "Kinin — Interviewer Beta Lite" : "Kinin — Interviewer Dev - 1";
+const APP_TITLE = IS_BETA_LITE ? "Kinin — Biography Interviewer - Beta Lite" : "Kinin — Dev - 1";
 
 
 export default function App() {
@@ -726,7 +726,7 @@ export default function App() {
           Bio Profile
         </button>
         <button type="button" className="sidebar-home sidebar-home-secondary">
-          <List className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+          <Grid2X2Check className="sidebar-home-icon" size={20} strokeWidth={1.5} />
           FAQ
         </button>
         <button type="button" className="sidebar-home sidebar-home-secondary">
@@ -745,6 +745,10 @@ export default function App() {
             Sign Out
           </button>
         )}
+        <div className="sidebar-divider" />
+        <button type="button" className="sidebar-home sidebar-home-secondary" onClick={endSession}>
+          End Session
+        </button>
       </aside>
       <main className="main-content">
         <div
@@ -998,9 +1002,6 @@ export default function App() {
       ) : (
         <div>
           <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-            <button onClick={endSession} disabled={!isAuthed || busy}>
-              End Session
-            </button>
             <button onClick={openProfile} disabled={!isAuthed || busy}>
               Bio Profile
             </button>
