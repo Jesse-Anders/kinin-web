@@ -28,6 +28,15 @@ export default function App() {
   const [journeyVersion, setJourneyVersion] = useState(
     () => localStorage.getItem("journey_version") || ""
   );
+  const [userFocusLabels, setUserFocusLabels] = useState(() => {
+    try {
+      const raw = localStorage.getItem("user_focus_labels");
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
   const [uiState, setUiState] = useState(null);
   const [message, setMessage] = useState("");
   const [chat, setChat] = useState([]);
@@ -315,6 +324,14 @@ export default function App() {
         setJourneyVersion(v);
         localStorage.setItem("journey_version", v);
       }
+      if (Array.isArray(parsed.user_focus_labels)) {
+        const labels = parsed.user_focus_labels
+          .filter((x) => typeof x === "string")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        setUserFocusLabels(labels);
+        localStorage.setItem("user_focus_labels", JSON.stringify(labels));
+      }
 
       if (parsed.assistant) {
         setChat([{ role: "assistant", content: parsed.assistant }]);
@@ -401,6 +418,14 @@ export default function App() {
         setJourneyVersion(v);
         localStorage.setItem("journey_version", v);
       }
+      if (Array.isArray(parsed.user_focus_labels)) {
+        const labels = parsed.user_focus_labels
+          .filter((x) => typeof x === "string")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        setUserFocusLabels(labels);
+        localStorage.setItem("user_focus_labels", JSON.stringify(labels));
+      }
 
       if (parsed.ui_state) {
         setUiState(parsed.ui_state);
@@ -466,6 +491,14 @@ export default function App() {
         const v = String(parsed.journey_version_display ?? parsed.journey_version);
         setJourneyVersion(v);
         localStorage.setItem("journey_version", v);
+      }
+      if (Array.isArray(parsed.user_focus_labels)) {
+        const labels = parsed.user_focus_labels
+          .filter((x) => typeof x === "string")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        setUserFocusLabels(labels);
+        localStorage.setItem("user_focus_labels", JSON.stringify(labels));
       }
       setChat([]);
       setUiState(null);
@@ -1414,6 +1447,10 @@ export default function App() {
                 </div>
                 <div style={{ marginBottom: 8, opacity: 0.8 }}>
                   Journey version: <b>{journeyVersion || "—"}</b>
+                </div>
+                <div style={{ marginBottom: 8, opacity: 0.8 }}>
+                  User focus:{" "}
+                  <b>{userFocusLabels?.length ? userFocusLabels.join(", ") : "—"}</b>
                 </div>
                 {/* Journey progress bar (completed + closed steps / total). */}
                 <div style={{ marginBottom: 12, opacity: 0.8 }}>
