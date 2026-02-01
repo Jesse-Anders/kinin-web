@@ -69,6 +69,9 @@ export default function App() {
   const [adminFeedbackNextKey, setAdminFeedbackNextKey] = useState(null);
   const [adminFeedbackBusy, setAdminFeedbackBusy] = useState(false);
   const [adminFeedbackError, setAdminFeedbackError] = useState("");
+  const [feedbackRangeDays, setFeedbackRangeDays] = useState(7);
+  const [feedbackUserFilter, setFeedbackUserFilter] = useState("");
+  const [newFeedbackCount, setNewFeedbackCount] = useState(0);
 
   const isAuthed = useMemo(() => !!user, [user]);
   const adminStatusCounts = useMemo(() => {
@@ -93,6 +96,17 @@ export default function App() {
       return String(ska).localeCompare(String(skb));
     });
   }, [turnsItems]);
+  const filteredFeedbackItems = useMemo(() => {
+    const days = Number(feedbackRangeDays) || 7;
+    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+    const userFilter = (feedbackUserFilter || "").trim();
+    return (adminFeedbackItems || []).filter((item) => {
+      const createdAt = item?.created_at ? Date.parse(item.created_at) : NaN;
+      if (!Number.isNaN(createdAt) && createdAt < cutoff) return false;
+      if (userFilter && item?.user_id !== userFilter) return false;
+      return true;
+    });
+  }, [adminFeedbackItems, feedbackRangeDays, feedbackUserFilter]);
 
   useEffect(() => {
     if (!turnsListRef.current) return;
@@ -104,6 +118,18 @@ export default function App() {
     if (message) return;
     messageInputRef.current.style.height = "auto";
   }, [message]);
+  useEffect(() => {
+    if (!adminFeedbackItems.length) {
+      setNewFeedbackCount(0);
+      return;
+    }
+    const lastSeen = Number(localStorage.getItem("feedback_last_seen_ms") || "0");
+    const newer = adminFeedbackItems.filter((item) => {
+      const createdAt = item?.created_at ? Date.parse(item.created_at) : NaN;
+      return !Number.isNaN(createdAt) && createdAt > lastSeen;
+    });
+    setNewFeedbackCount(newer.length);
+  }, [adminFeedbackItems]);
 
   function decodeJwtPayload(token) {
     if (!token || typeof token !== "string") return null;
@@ -761,7 +787,7 @@ export default function App() {
         body: JSON.stringify({
           limit: 50,
           start_key: append ? adminFeedbackNextKey || undefined : undefined,
-          user_id: (adminUserId || "").trim() || undefined,
+          user_id: (feedbackUserFilter || "").trim() || undefined,
         }),
       });
       if (!res.ok) {
@@ -773,6 +799,15 @@ export default function App() {
       const items = parsed.items || [];
       setAdminFeedbackItems((prev) => (append ? [...prev, ...items] : items));
       setAdminFeedbackNextKey(parsed.next_start_key || null);
+      if (items.length) {
+        const newest = items
+          .map((i) => (i?.created_at ? Date.parse(i.created_at) : NaN))
+          .filter((v) => !Number.isNaN(v))
+          .sort((a, b) => b - a)[0];
+        if (newest) {
+          localStorage.setItem("feedback_last_seen_ms", String(newest));
+        }
+      }
     } catch (e) {
       setAdminFeedbackError(e.message || String(e));
     } finally {
@@ -842,7 +877,12 @@ export default function App() {
           }}
         >
           <Megaphone className="sidebar-home-icon" size={20} strokeWidth={1.5} />
-          Feedback
+          <span className="sidebar-label">
+            Feedback
+            {newFeedbackCount > 0 ? (
+              <span className="sidebar-badge">{newFeedbackCount}</span>
+            ) : null}
+          </span>
         </button>
         <div className="sidebar-spacer" />
         {!isAuthed ? (
@@ -1231,6 +1271,60 @@ export default function App() {
               </button>
               {feedbackStatus ? <div style={{ opacity: 0.7 }}>{feedbackStatus}</div> : null}
             </div>
+          </div>
+          <div style={{ marginTop: 20 }}>
+            <div style={{ fontWeight: 600, marginBottom: 8 }}>Recent feedback</div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+              <select
+                value={feedbackRangeDays}
+                onChange={(e) => setFeedbackRangeDays(Number(e.target.value))}
+              >
+                <option value={7}>Last 7 days</option>
+                <option value={30}>Last 30 days</option>
+                <option value={90}>Last 90 days</option>
+                <option value={365}>Last 1 year</option>
+              </select>
+              <input
+                value={feedbackUserFilter}
+                onChange={(e) => setFeedbackUserFilter(e.target.value)}
+                placeholder="filter by user_id (optional)"
+                style={{ flex: 1, padding: 8 }}
+              />
+              <button
+                onClick={() => {
+                  fetchAdminFeedback({ append: false });
+                }}
+                disabled={!isAuthed || adminFeedbackBusy}
+              >
+                {adminFeedbackBusy ? "Loading..." : "Load All"}
+              </button>
+            </div>
+            {adminFeedbackError ? (
+              <div style={{ color: "#b00020", marginBottom: 8 }}>{adminFeedbackError}</div>
+            ) : null}
+            {filteredFeedbackItems.length ? (
+              <div
+                style={{
+                  border: "1px solid #eee",
+                  borderRadius: 10,
+                  padding: 12,
+                  background: "#fafafa",
+                  maxHeight: 280,
+                  overflow: "auto",
+                }}
+              >
+                {filteredFeedbackItems.map((f, i) => (
+                  <div key={`${f.user_id || "anon"}-${f.created_at || ""}-${i}`} style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 4 }}>
+                      {f.created_at || "—"} · {f.user_id || "anon"} · {f.username || "—"} · {f.email || "—"}
+                    </div>
+                    <div>{f.message || ""}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ opacity: 0.7 }}>No feedback loaded yet.</div>
+            )}
           </div>
         </div>
       ) : activePage === "bio" ? (
