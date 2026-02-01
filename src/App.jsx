@@ -1182,35 +1182,47 @@ export default function App() {
           </div>
 
           <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, marginTop: 12 }}>
-            <div style={{ marginBottom: 8 }}>
-              <b>Feedback</b>
-            </div>
+            <div style={{ fontWeight: 600, marginBottom: 8 }}>Feedback</div>
             <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-              <button onClick={() => fetchAdminFeedback({ append: false })} disabled={!isAuthed || adminFeedbackBusy}>
-                {adminFeedbackBusy ? "Loading..." : "Load Feedback"}
-              </button>
-              <button
-                onClick={() => fetchAdminFeedback({ append: true })}
-                disabled={!isAuthed || adminFeedbackBusy || !adminFeedbackNextKey}
+              <select
+                value={feedbackRangeDays}
+                onChange={(e) => setFeedbackRangeDays(Number(e.target.value))}
               >
-                Load More
+                <option value={7}>Last 7 days</option>
+                <option value={30}>Last 30 days</option>
+                <option value={90}>Last 90 days</option>
+                <option value={365}>Last 1 year</option>
+              </select>
+              <input
+                value={feedbackUserFilter}
+                onChange={(e) => setFeedbackUserFilter(e.target.value)}
+                placeholder="filter by user_id (optional)"
+                style={{ flex: 1, padding: 8 }}
+              />
+              <button
+                onClick={() => {
+                  fetchAdminFeedback({ append: false });
+                }}
+                disabled={!isAuthed || adminFeedbackBusy}
+              >
+                {adminFeedbackBusy ? "Loading..." : "Load All"}
               </button>
             </div>
             {adminFeedbackError ? (
               <div style={{ color: "#b00020", marginBottom: 8 }}>{adminFeedbackError}</div>
             ) : null}
-            {adminFeedbackItems.length ? (
+            {filteredFeedbackItems.length ? (
               <div
                 style={{
                   border: "1px solid #eee",
                   borderRadius: 10,
                   padding: 12,
                   background: "#fafafa",
-                  maxHeight: 360,
+                  maxHeight: 280,
                   overflow: "auto",
                 }}
               >
-                {adminFeedbackItems.map((f, i) => (
+                {filteredFeedbackItems.map((f, i) => (
                   <div key={`${f.user_id || "anon"}-${f.created_at || ""}-${i}`} style={{ marginBottom: 10 }}>
                     <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 4 }}>
                       {f.created_at || "—"} · {f.user_id || "anon"} · {f.username || "—"} · {f.email || "—"}
@@ -1272,60 +1284,7 @@ export default function App() {
               {feedbackStatus ? <div style={{ opacity: 0.7 }}>{feedbackStatus}</div> : null}
             </div>
           </div>
-          <div style={{ marginTop: 20 }}>
-            <div style={{ fontWeight: 600, marginBottom: 8 }}>Recent feedback</div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-              <select
-                value={feedbackRangeDays}
-                onChange={(e) => setFeedbackRangeDays(Number(e.target.value))}
-              >
-                <option value={7}>Last 7 days</option>
-                <option value={30}>Last 30 days</option>
-                <option value={90}>Last 90 days</option>
-                <option value={365}>Last 1 year</option>
-              </select>
-              <input
-                value={feedbackUserFilter}
-                onChange={(e) => setFeedbackUserFilter(e.target.value)}
-                placeholder="filter by user_id (optional)"
-                style={{ flex: 1, padding: 8 }}
-              />
-              <button
-                onClick={() => {
-                  fetchAdminFeedback({ append: false });
-                }}
-                disabled={!isAuthed || adminFeedbackBusy}
-              >
-                {adminFeedbackBusy ? "Loading..." : "Load All"}
-              </button>
-            </div>
-            {adminFeedbackError ? (
-              <div style={{ color: "#b00020", marginBottom: 8 }}>{adminFeedbackError}</div>
-            ) : null}
-            {filteredFeedbackItems.length ? (
-              <div
-                style={{
-                  border: "1px solid #eee",
-                  borderRadius: 10,
-                  padding: 12,
-                  background: "#fafafa",
-                  maxHeight: 280,
-                  overflow: "auto",
-                }}
-              >
-                {filteredFeedbackItems.map((f, i) => (
-                  <div key={`${f.user_id || "anon"}-${f.created_at || ""}-${i}`} style={{ marginBottom: 10 }}>
-                    <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 4 }}>
-                      {f.created_at || "—"} · {f.user_id || "anon"} · {f.username || "—"} · {f.email || "—"}
-                    </div>
-                    <div>{f.message || ""}</div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ opacity: 0.7 }}>No feedback loaded yet.</div>
-            )}
-          </div>
+          <div style={{ minHeight: 12 }} />
         </div>
       ) : activePage === "bio" ? (
         <div style={{ padding: 16 }}>
