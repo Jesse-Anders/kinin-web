@@ -37,6 +37,24 @@ export default function App() {
       return [];
     }
   });
+  const [mustAvoidTopics, setMustAvoidTopics] = useState(() => {
+    try {
+      const raw = localStorage.getItem("must_avoid_topics");
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
+  const [handleLightlyTopics, setHandleLightlyTopics] = useState(() => {
+    try {
+      const raw = localStorage.getItem("handle_lightly_topics");
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
   const [uiState, setUiState] = useState(null);
   const [message, setMessage] = useState("");
   const [chat, setChat] = useState([]);
@@ -332,6 +350,22 @@ export default function App() {
         setUserFocusLabels(labels);
         localStorage.setItem("user_focus_labels", JSON.stringify(labels));
       }
+      if (Array.isArray(parsed.must_avoid_topics)) {
+        const topics = parsed.must_avoid_topics
+          .filter((x) => typeof x === "string")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        setMustAvoidTopics(topics);
+        localStorage.setItem("must_avoid_topics", JSON.stringify(topics));
+      }
+      if (Array.isArray(parsed.handle_lightly_topics)) {
+        const topics = parsed.handle_lightly_topics
+          .filter((x) => typeof x === "string")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        setHandleLightlyTopics(topics);
+        localStorage.setItem("handle_lightly_topics", JSON.stringify(topics));
+      }
 
       if (parsed.assistant) {
         setChat([{ role: "assistant", content: parsed.assistant }]);
@@ -426,6 +460,22 @@ export default function App() {
         setUserFocusLabels(labels);
         localStorage.setItem("user_focus_labels", JSON.stringify(labels));
       }
+      if (Array.isArray(parsed.must_avoid_topics)) {
+        const topics = parsed.must_avoid_topics
+          .filter((x) => typeof x === "string")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        setMustAvoidTopics(topics);
+        localStorage.setItem("must_avoid_topics", JSON.stringify(topics));
+      }
+      if (Array.isArray(parsed.handle_lightly_topics)) {
+        const topics = parsed.handle_lightly_topics
+          .filter((x) => typeof x === "string")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        setHandleLightlyTopics(topics);
+        localStorage.setItem("handle_lightly_topics", JSON.stringify(topics));
+      }
 
       if (parsed.ui_state) {
         setUiState(parsed.ui_state);
@@ -499,6 +549,22 @@ export default function App() {
           .filter(Boolean);
         setUserFocusLabels(labels);
         localStorage.setItem("user_focus_labels", JSON.stringify(labels));
+      }
+      if (Array.isArray(parsed.must_avoid_topics)) {
+        const topics = parsed.must_avoid_topics
+          .filter((x) => typeof x === "string")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        setMustAvoidTopics(topics);
+        localStorage.setItem("must_avoid_topics", JSON.stringify(topics));
+      }
+      if (Array.isArray(parsed.handle_lightly_topics)) {
+        const topics = parsed.handle_lightly_topics
+          .filter((x) => typeof x === "string")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        setHandleLightlyTopics(topics);
+        localStorage.setItem("handle_lightly_topics", JSON.stringify(topics));
       }
       setChat([]);
       setUiState(null);
@@ -1451,6 +1517,14 @@ export default function App() {
                 <div style={{ marginBottom: 8, opacity: 0.8 }}>
                   User focus:{" "}
                   <b>{userFocusLabels?.length ? userFocusLabels.join(", ") : "—"}</b>
+                </div>
+                <div style={{ marginBottom: 8, opacity: 0.8 }}>
+                  Must avoid topics:{" "}
+                  <b>{mustAvoidTopics?.length ? mustAvoidTopics.join(", ") : "—"}</b>
+                </div>
+                <div style={{ marginBottom: 8, opacity: 0.8 }}>
+                  Handle lightly topics:{" "}
+                  <b>{handleLightlyTopics?.length ? handleLightlyTopics.join(", ") : "—"}</b>
                 </div>
                 {/* Journey progress bar (completed + closed steps / total). */}
                 <div style={{ marginBottom: 12, opacity: 0.8 }}>
