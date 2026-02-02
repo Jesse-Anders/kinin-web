@@ -1561,6 +1561,18 @@ export default function App() {
                     </>
                   ) : null}
                 </div>
+                {uiState?.interviewer_step_specific_context ? (
+                  <div style={{ marginBottom: 8, opacity: 0.8 }}>
+                    Interviewer step context:{" "}
+                    <b>{uiState.interviewer_step_specific_context}</b>
+                  </div>
+                ) : null}
+                {uiState?.evaluator_step_specific_context ? (
+                  <div style={{ marginBottom: 8, opacity: 0.8 }}>
+                    Evaluator step context:{" "}
+                    <b>{uiState.evaluator_step_specific_context}</b>
+                  </div>
+                ) : null}
 
                 <div style={{ marginBottom: 8, opacity: 0.8 }}>
                   Guided submode: <b>{uiState?.guided_submode || "—"}</b>
