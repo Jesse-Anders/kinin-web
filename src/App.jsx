@@ -1083,19 +1083,21 @@ export default function App() {
         <div className="sidebar-spacer" />
         <div ref={sidebarBottomRef}>
           {!isAuthed ? (
-            <button
-              type="button"
-              className="sidebar-home sidebar-home-secondary signin"
-              onClick={() => {
-                setMenuOpen(false);
-                onLogin();
-              }}
-            >
-              <CircleUserRound className="sidebar-home-icon" size={20} strokeWidth={1.5} />
-              Sign In
-            </button>
+            <div className="sidebar-auth">
+              <button
+                type="button"
+                className="sidebar-home sidebar-home-secondary signin"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onLogin();
+                }}
+              >
+                <CircleUserRound className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+                Sign In
+              </button>
+            </div>
           ) : (
-            <div className="sidebar-signout">
+            <div className="sidebar-auth">
               <button
                 type="button"
                 className="sidebar-home sidebar-home-secondary signin"
