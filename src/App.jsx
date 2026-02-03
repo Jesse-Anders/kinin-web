@@ -6,6 +6,7 @@ import {
   Grid2X2Check,
   Megaphone,
   Menu,
+  CirclePlus,
 } from "lucide-react";
 import {
   fetchAuthSession,
@@ -87,6 +88,7 @@ export default function App() {
   const turnsAppendRef = useRef(false);
   const messageInputRef = useRef(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuOverflowOpen, setMenuOverflowOpen] = useState(false);
   const [feedbackName, setFeedbackName] = useState("");
   const [feedbackEmail, setFeedbackEmail] = useState("");
   const [feedbackMessage, setFeedbackMessage] = useState("");
@@ -945,43 +947,52 @@ export default function App() {
           Kinin
         </button>
         <div className="sidebar-divider" />
+        <div className={`sidebar-overflow ${menuOverflowOpen ? "open" : ""}`}>
+          <button
+            type="button"
+            className="sidebar-home sidebar-home-secondary"
+            onClick={() => {
+              setMenuOpen(false);
+              openProfile();
+            }}
+          >
+            <Footprints className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+            Bio Profile
+          </button>
+          <button
+            type="button"
+            className="sidebar-home sidebar-home-secondary"
+            onClick={() => {
+              setMenuOpen(false);
+              setActivePage("faq");
+            }}
+          >
+            <Grid2X2Check className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+            FAQ
+          </button>
+          <button
+            type="button"
+            className="sidebar-home sidebar-home-secondary"
+            onClick={() => {
+              setMenuOpen(false);
+              setActivePage("feedback");
+            }}
+          >
+            <Megaphone className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+            <span className="sidebar-label">
+              Feedback
+              {newFeedbackCount > 0 ? (
+                <span className="sidebar-badge">{newFeedbackCount}</span>
+              ) : null}
+            </span>
+          </button>
+        </div>
         <button
           type="button"
-          className="sidebar-home sidebar-home-secondary"
-          onClick={() => {
-            setMenuOpen(false);
-            openProfile();
-          }}
+          className="sidebar-home sidebar-home-secondary sidebar-overflow-toggle"
+          onClick={() => setMenuOverflowOpen((prev) => !prev)}
         >
-          <Footprints className="sidebar-home-icon" size={20} strokeWidth={1.5} />
-          Bio Profile
-        </button>
-        <button
-          type="button"
-          className="sidebar-home sidebar-home-secondary"
-          onClick={() => {
-            setMenuOpen(false);
-            setActivePage("faq");
-          }}
-        >
-          <Grid2X2Check className="sidebar-home-icon" size={20} strokeWidth={1.5} />
-          FAQ
-        </button>
-        <button
-          type="button"
-          className="sidebar-home sidebar-home-secondary"
-          onClick={() => {
-            setMenuOpen(false);
-            setActivePage("feedback");
-          }}
-        >
-          <Megaphone className="sidebar-home-icon" size={20} strokeWidth={1.5} />
-          <span className="sidebar-label">
-            Feedback
-            {newFeedbackCount > 0 ? (
-              <span className="sidebar-badge">{newFeedbackCount}</span>
-            ) : null}
-          </span>
+          <CirclePlus className="sidebar-home-icon" size={20} strokeWidth={1.5} />
         </button>
         <div className="sidebar-spacer" />
         {!isAuthed ? (
