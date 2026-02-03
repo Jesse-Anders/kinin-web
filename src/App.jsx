@@ -89,6 +89,10 @@ export default function App() {
   const messageInputRef = useRef(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuOverflowOpen, setMenuOverflowOpen] = useState(false);
+  const [menuCollapsed, setMenuCollapsed] = useState(false);
+  const sidebarRef = useRef(null);
+  const sidebarMeasureRef = useRef(null);
+  const sidebarBottomRef = useRef(null);
   const [feedbackName, setFeedbackName] = useState("");
   const [feedbackEmail, setFeedbackEmail] = useState("");
   const [feedbackMessage, setFeedbackMessage] = useState("");
@@ -147,6 +151,20 @@ export default function App() {
     if (message) return;
     messageInputRef.current.style.height = "auto";
   }, [message]);
+  useEffect(() => {
+    function recompute() {
+      if (!sidebarRef.current || !sidebarMeasureRef.current || !sidebarBottomRef.current) {
+        return;
+      }
+      const available = sidebarRef.current.clientHeight - 32;
+      const topHeight = sidebarMeasureRef.current.scrollHeight;
+      const bottomHeight = sidebarBottomRef.current.scrollHeight;
+      setMenuCollapsed(topHeight + bottomHeight > available);
+    }
+    recompute();
+    window.addEventListener("resize", recompute);
+    return () => window.removeEventListener("resize", recompute);
+  }, [newFeedbackCount, isAuthed, user?.username]);
   useEffect(() => {
     if (!adminFeedbackItems.length) {
       setNewFeedbackCount(0);
@@ -933,13 +951,14 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <aside className={`sidebar ${menuOpen ? "sidebar-open" : ""}`}>
+      <aside className={`sidebar ${menuOpen ? "sidebar-open" : ""}`} ref={sidebarRef}>
         <button
           type="button"
           className="sidebar-home sidebar-home-primary"
           onClick={() => {
             setMenuOpen(false);
             setShowProfile(false);
+            setMenuOverflowOpen(false);
             setActivePage("interview");
           }}
         >
@@ -947,94 +966,165 @@ export default function App() {
           Kinin
         </button>
         <div className="sidebar-divider" />
-        <div className={`sidebar-overflow ${menuOverflowOpen ? "open" : ""}`}>
-          <button
-            type="button"
-            className="sidebar-home sidebar-home-secondary"
-            onClick={() => {
-              setMenuOpen(false);
-              openProfile();
-            }}
-          >
-            <Footprints className="sidebar-home-icon" size={20} strokeWidth={1.5} />
-            Bio Profile
-          </button>
-          <button
-            type="button"
-            className="sidebar-home sidebar-home-secondary"
-            onClick={() => {
-              setMenuOpen(false);
-              setActivePage("faq");
-            }}
-          >
-            <Grid2X2Check className="sidebar-home-icon" size={20} strokeWidth={1.5} />
-            FAQ
-          </button>
-          <button
-            type="button"
-            className="sidebar-home sidebar-home-secondary"
-            onClick={() => {
-              setMenuOpen(false);
-              setActivePage("feedback");
-            }}
-          >
-            <Megaphone className="sidebar-home-icon" size={20} strokeWidth={1.5} />
-            <span className="sidebar-label">
-              Feedback
-              {newFeedbackCount > 0 ? (
-                <span className="sidebar-badge">{newFeedbackCount}</span>
-              ) : null}
-            </span>
-          </button>
-        </div>
-        <button
-          type="button"
-          className="sidebar-home sidebar-home-secondary sidebar-overflow-toggle"
-          onClick={() => setMenuOverflowOpen((prev) => !prev)}
-        >
-          <CirclePlus className="sidebar-home-icon" size={20} strokeWidth={1.5} />
-        </button>
-        <div className="sidebar-spacer" />
-        {!isAuthed ? (
-          <button
-            type="button"
-            className="sidebar-home sidebar-home-secondary signin"
-            onClick={() => {
-              setMenuOpen(false);
-              onLogin();
-            }}
-          >
-            <CircleUserRound className="sidebar-home-icon" size={20} strokeWidth={1.5} />
-            Sign In
-          </button>
+        {!menuCollapsed ? (
+          <>
+            <button
+              type="button"
+              className="sidebar-home sidebar-home-secondary"
+              onClick={() => {
+                setMenuOpen(false);
+                openProfile();
+              }}
+            >
+              <Footprints className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+              Bio Profile
+            </button>
+            <button
+              type="button"
+              className="sidebar-home sidebar-home-secondary"
+              onClick={() => {
+                setMenuOpen(false);
+                setActivePage("faq");
+              }}
+            >
+              <Grid2X2Check className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+              FAQ
+            </button>
+            <button
+              type="button"
+              className="sidebar-home sidebar-home-secondary"
+              onClick={() => {
+                setMenuOpen(false);
+                setActivePage("feedback");
+              }}
+            >
+              <Megaphone className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+              <span className="sidebar-label">
+                Feedback
+                {newFeedbackCount > 0 ? (
+                  <span className="sidebar-badge">{newFeedbackCount}</span>
+                ) : null}
+              </span>
+            </button>
+          </>
         ) : (
-          <div className="sidebar-signout">
+          <div className="sidebar-overflow-toggle">
+            <button
+              type="button"
+              className="sidebar-home sidebar-home-secondary"
+              onClick={() => setMenuOverflowOpen((prev) => !prev)}
+            >
+              <CirclePlus className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+            </button>
+            {menuOverflowOpen ? (
+              <div className="sidebar-popover">
+                <button
+                  type="button"
+                  className="sidebar-home sidebar-home-secondary"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setMenuOverflowOpen(false);
+                    openProfile();
+                  }}
+                >
+                  <Footprints className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+                  Bio Profile
+                </button>
+                <button
+                  type="button"
+                  className="sidebar-home sidebar-home-secondary"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setMenuOverflowOpen(false);
+                    setActivePage("faq");
+                  }}
+                >
+                  <Grid2X2Check className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+                  FAQ
+                </button>
+                <button
+                  type="button"
+                  className="sidebar-home sidebar-home-secondary"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setMenuOverflowOpen(false);
+                    setActivePage("feedback");
+                  }}
+                >
+                  <Megaphone className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+                  <span className="sidebar-label">
+                    Feedback
+                    {newFeedbackCount > 0 ? (
+                      <span className="sidebar-badge">{newFeedbackCount}</span>
+                    ) : null}
+                  </span>
+                </button>
+              </div>
+            ) : null}
+          </div>
+        )}
+        <div className="sidebar-spacer" />
+        <div ref={sidebarBottomRef}>
+          {!isAuthed ? (
             <button
               type="button"
               className="sidebar-home sidebar-home-secondary signin"
               onClick={() => {
                 setMenuOpen(false);
-                onLogout();
+                onLogin();
               }}
             >
               <CircleUserRound className="sidebar-home-icon" size={20} strokeWidth={1.5} />
-              Sign Out
+              Sign In
             </button>
-            <div className="sidebar-muted">{user?.username}</div>
-          </div>
-        )}
-        <div className="sidebar-divider" />
-        <button
-          type="button"
-          className="sidebar-home sidebar-home-secondary"
-          onClick={() => {
-            setMenuOpen(false);
-            endSession();
-          }}
-        >
-          End Session
-        </button>
+          ) : (
+            <div className="sidebar-signout">
+              <button
+                type="button"
+                className="sidebar-home sidebar-home-secondary signin"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onLogout();
+                }}
+              >
+                <CircleUserRound className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+                Sign Out
+              </button>
+              <div className="sidebar-muted">{user?.username}</div>
+            </div>
+          )}
+          <div className="sidebar-divider" />
+          <button
+            type="button"
+            className="sidebar-home sidebar-home-secondary"
+            onClick={() => {
+              setMenuOpen(false);
+              endSession();
+            }}
+          >
+            End Session
+          </button>
+        </div>
       </aside>
+      <div className="sidebar-measure" ref={sidebarMeasureRef}>
+        <button type="button" className="sidebar-home sidebar-home-primary">
+          <HomeIcon className="sidebar-home-icon" size={26} strokeWidth={1.5} />
+          Kinin
+        </button>
+        <div className="sidebar-divider" />
+        <button type="button" className="sidebar-home sidebar-home-secondary">
+          <Footprints className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+          Bio Profile
+        </button>
+        <button type="button" className="sidebar-home sidebar-home-secondary">
+          <Grid2X2Check className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+          FAQ
+        </button>
+        <button type="button" className="sidebar-home sidebar-home-secondary">
+          <Megaphone className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+          Feedback
+        </button>
+      </div>
       <main className="main-content">
         <button type="button" className="menu-toggle" onClick={() => setMenuOpen(true)}>
           <Menu className="menu-toggle-icon" size={22} strokeWidth={1.5} />
