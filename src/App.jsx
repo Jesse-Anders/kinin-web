@@ -57,6 +57,7 @@ export default function App() {
     }
   });
   const [uiState, setUiState] = useState(null);
+  const [lastProgress, setLastProgress] = useState(null);
   const [message, setMessage] = useState("");
   const [chat, setChat] = useState([]);
   const [busy, setBusy] = useState(false);
@@ -140,6 +141,17 @@ export default function App() {
       return true;
     });
   }, [adminFeedbackItems, feedbackRangeDays, feedbackUserFilter]);
+  const progressForDisplay = useMemo(() => {
+    return (
+      uiState?.progress ||
+      lastProgress || {
+        total_steps: 0,
+        complete_steps: 0,
+        closed_steps: 0,
+        percent: 0,
+      }
+    );
+  }, [uiState, lastProgress]);
 
   useEffect(() => {
     if (!turnsListRef.current) return;
@@ -151,6 +163,11 @@ export default function App() {
     if (message) return;
     messageInputRef.current.style.height = "auto";
   }, [message]);
+  useEffect(() => {
+    if (uiState?.progress && typeof uiState.progress.percent === "number") {
+      setLastProgress(uiState.progress);
+    }
+  }, [uiState]);
   useEffect(() => {
     function recompute() {
       if (!sidebarRef.current || !sidebarMeasureRef.current || !sidebarBottomRef.current) {
@@ -1629,12 +1646,11 @@ export default function App() {
                 </div>
                 {/* Journey progress bar (completed + closed steps / total). */}
                 <div style={{ marginBottom: 12, opacity: 0.8 }}>
-                  Journey progress:{" "}
-                  <b>{uiState?.progress?.percent ?? 0}%</b>{" "}
+                  Journey progress: <b>{progressForDisplay.percent}%</b>{" "}
                   <span style={{ opacity: 0.7 }}>
-                    ({uiState?.progress?.complete_steps ?? 0} complete,{" "}
-                    {uiState?.progress?.closed_steps ?? 0} closed /{" "}
-                    {uiState?.progress?.total_steps ?? 0} total)
+                    ({progressForDisplay.complete_steps} complete,{" "}
+                    {progressForDisplay.closed_steps} closed /{" "}
+                    {progressForDisplay.total_steps} total)
                   </span>
                   <div
                     style={{
@@ -1648,7 +1664,7 @@ export default function App() {
                     <div
                       style={{
                         height: "100%",
-                        width: `${Math.min(100, Math.max(0, uiState?.progress?.percent ?? 0))}%`,
+                        width: `${Math.min(100, Math.max(0, progressForDisplay.percent))}%`,
                         background: "#3b82f6",
                       }}
                     />
