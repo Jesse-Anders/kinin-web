@@ -1155,7 +1155,7 @@ export default function App() {
           }}
         >
           <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 28, fontWeight: 600 }}>Kinin Interviewer - Title Test</div>
+            <div style={{ fontSize: 28, fontWeight: 600 }}>Kinin Interviewer</div>
             <div style={{ fontSize: 14, opacity: 0.65 }}>{VERSION_LABEL}</div>
           </div>
 
