@@ -18,5 +18,8 @@ export function configureAmplify() {
       },
     },
   });
+
+  console.log("origin:", window.location.origin);
+  console.log("amplify config:", Amplify.getConfig());
 }
 
