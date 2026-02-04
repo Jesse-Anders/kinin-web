@@ -108,6 +108,8 @@ export default function App() {
   const [feedbackUserFilter, setFeedbackUserFilter] = useState("");
   const [newFeedbackCount, setNewFeedbackCount] = useState(0);
   const [accountConfirmText, setAccountConfirmText] = useState("");
+  const [accountUsername, setAccountUsername] = useState("");
+  const [accountPassword, setAccountPassword] = useState("");
   const [accountBusy, setAccountBusy] = useState(false);
   const [accountError, setAccountError] = useState("");
   const [accountStatus, setAccountStatus] = useState("");
@@ -330,6 +332,11 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthed]);
 
+  useEffect(() => {
+    if (!user?.username) return;
+    setAccountUsername(user.username);
+  }, [user]);
+
   async function onLogin() {
     setError("");
     try {
@@ -371,7 +378,11 @@ export default function App() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${idToken}`,
         },
-        body: JSON.stringify({ confirmation: accountConfirmText }),
+        body: JSON.stringify({
+          confirmation: accountConfirmText,
+          username: accountUsername,
+          password: accountPassword,
+        }),
       });
 
       if (!res.ok) {
@@ -403,6 +414,7 @@ export default function App() {
     } catch (e) {
       setAccountError(e?.message || String(e));
     } finally {
+      setAccountPassword("");
       setAccountBusy(false);
     }
   }
@@ -1616,6 +1628,27 @@ export default function App() {
           </div>
           <div style={{ display: "grid", gap: 10 }}>
             <label>
+              <div style={{ fontSize: 12, opacity: 0.8 }}>Cognito username</div>
+              <input
+                value={accountUsername}
+                readOnly
+                style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10, opacity: 0.7 }}
+                placeholder="username"
+              />
+            </label>
+            <label>
+              <div style={{ fontSize: 12, opacity: 0.8 }}>Password</div>
+              <input
+                type="password"
+                value={accountPassword}
+                onChange={(e) => setAccountPassword(e.target.value)}
+                style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
+                placeholder="Your password"
+                disabled={accountBusy}
+                autoComplete="current-password"
+              />
+            </label>
+            <label>
               <div style={{ fontSize: 12, opacity: 0.8 }}>
                 Type "{ACCOUNT_CONFIRM_PHRASE}" to confirm
               </div>
@@ -1628,7 +1661,12 @@ export default function App() {
               />
             </label>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <button onClick={closeAccount} disabled={accountBusy || !accountConfirmMatches || !isAuthed}>
+              <button
+                onClick={closeAccount}
+                disabled={
+                  accountBusy || !accountConfirmMatches || !isAuthed || !accountUsername || !accountPassword
+                }
+              >
                 {accountBusy ? "Deleting..." : "Delete My Account"}
               </button>
               {accountStatus ? <div style={{ opacity: 0.7 }}>{accountStatus}</div> : null}
