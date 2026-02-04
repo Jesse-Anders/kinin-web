@@ -19,6 +19,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const RELEASE_CHANNEL = (import.meta.env.VITE_RELEASE_CHANNEL || "dev").toLowerCase();
 const IS_BETA_LITE = RELEASE_CHANNEL === "beta-lite";
 const VERSION_LABEL = IS_BETA_LITE ? "Beta-lite Version 1.0" : "Dev Version 1.0";
+const ACCOUNT_CONFIRM_PHRASE = "delete my account and all data";
 
 
 export default function App() {
@@ -106,8 +107,16 @@ export default function App() {
   const [feedbackRangeDays, setFeedbackRangeDays] = useState(7);
   const [feedbackUserFilter, setFeedbackUserFilter] = useState("");
   const [newFeedbackCount, setNewFeedbackCount] = useState(0);
+  const [accountConfirmText, setAccountConfirmText] = useState("");
+  const [accountBusy, setAccountBusy] = useState(false);
+  const [accountError, setAccountError] = useState("");
+  const [accountStatus, setAccountStatus] = useState("");
 
   const isAuthed = useMemo(() => !!user, [user]);
+  const accountConfirmMatches = useMemo(
+    () => accountConfirmText.trim().toLowerCase() === ACCOUNT_CONFIRM_PHRASE,
+    [accountConfirmText]
+  );
   const adminStatusCounts = useMemo(() => {
     if (!adminOverview?.steps || !Array.isArray(adminOverview.steps)) return null;
     return adminOverview.steps.reduce((acc, step) => {
@@ -337,6 +346,65 @@ export default function App() {
     stopStatusPoll();
     setUser(null);
     setChat([]);
+  }
+
+  async function closeAccount() {
+    setAccountError("");
+    setAccountStatus("");
+    if (!isAuthed) {
+      setAccountError("You must be signed in to delete your account.");
+      return;
+    }
+    if (!accountConfirmMatches) {
+      setAccountError(`Type "${ACCOUNT_CONFIRM_PHRASE}" to confirm.`);
+      return;
+    }
+    setAccountBusy(true);
+    try {
+      const session = await fetchAuthSession();
+      const idToken = session.tokens?.idToken?.toString();
+      if (!idToken) throw new Error("Missing idToken. Are you logged in?");
+
+      const res = await fetch(`${API_BASE}/account/close`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ confirmation: accountConfirmText }),
+      });
+
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(`API error ${res.status}: ${t}`);
+      }
+
+      setAccountStatus("Account deleted. Signing you out...");
+      try {
+        await signOut({ global: true });
+      } catch {
+        // Ignore sign-out errors after account deletion.
+      }
+      stopStatusPoll();
+      setUser(null);
+      setChat([]);
+      setSessionId("");
+      setJourneyVersion("");
+      setUserFocusLabels([]);
+      setMustAvoidTopics([]);
+      setHandleLightlyTopics([]);
+      localStorage.removeItem("session_id");
+      localStorage.removeItem("journey_version");
+      localStorage.removeItem("user_focus_labels");
+      localStorage.removeItem("must_avoid_topics");
+      localStorage.removeItem("handle_lightly_topics");
+      setActivePage("interview");
+      window.location.assign(window.location.origin + window.location.pathname);
+    } catch (e) {
+      setAccountError(e?.message || String(e));
+    } finally {
+      setAccountBusy(false);
+    }
   }
 
   async function startSession() {
@@ -1119,6 +1187,18 @@ export default function App() {
               <div className="sidebar-muted">{user?.username}</div>
             </div>
           )}
+          {isAuthed ? (
+            <button
+              type="button"
+              className="sidebar-home sidebar-home-secondary"
+              onClick={() => {
+                setMenuOpen(false);
+                setActivePage("account");
+              }}
+            >
+              My Account
+            </button>
+          ) : null}
           <div className="sidebar-divider" />
           <button
             type="button"
@@ -1515,6 +1595,49 @@ export default function App() {
             </div>
           </div>
           <div style={{ minHeight: 12 }} />
+        </div>
+      ) : activePage === "account" ? (
+        <div style={{ padding: 16, maxWidth: 720 }}>
+          <div style={{ fontSize: 22, fontWeight: 600, marginBottom: 12 }}>My Account</div>
+          <div
+            style={{
+              border: "1px solid #f5c2c7",
+              background: "#fff5f5",
+              borderRadius: 10,
+              padding: 12,
+              marginBottom: 12,
+            }}
+          >
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>Delete account and all data</div>
+            <div style={{ fontSize: 13, opacity: 0.85 }}>
+              This permanently deletes your account and all associated DynamoDB and S3 data. This action
+              cannot be undone.
+            </div>
+          </div>
+          <div style={{ display: "grid", gap: 10 }}>
+            <label>
+              <div style={{ fontSize: 12, opacity: 0.8 }}>
+                Type "{ACCOUNT_CONFIRM_PHRASE}" to confirm
+              </div>
+              <input
+                value={accountConfirmText}
+                onChange={(e) => setAccountConfirmText(e.target.value)}
+                style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
+                placeholder={ACCOUNT_CONFIRM_PHRASE}
+                disabled={accountBusy}
+              />
+            </label>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <button onClick={closeAccount} disabled={accountBusy || !accountConfirmMatches || !isAuthed}>
+                {accountBusy ? "Deleting..." : "Delete My Account"}
+              </button>
+              {accountStatus ? <div style={{ opacity: 0.7 }}>{accountStatus}</div> : null}
+            </div>
+            {accountError ? <div style={{ color: "#b00020" }}>{accountError}</div> : null}
+            {!isAuthed ? (
+              <div style={{ opacity: 0.7, fontSize: 12 }}>Sign in to manage your account.</div>
+            ) : null}
+          </div>
         </div>
       ) : activePage === "bio" ? (
         <div style={{ padding: 16 }}>
