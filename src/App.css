@@ -88,6 +88,13 @@
   color: currentColor;
 }
 
+.sidebar-home-icon-img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  display: block;
+}
+
 .sidebar-divider {
   height: 1px;
   background: #e5e7eb;

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Home as HomeIcon,
   CircleUserRound,
   Footprints,
   Grid2X2Check,
@@ -8,6 +7,7 @@ import {
   Menu,
   CirclePlus,
 } from "lucide-react";
+import kininHomeIcon from "./assets/icons/kinin-icon-390sq.png";
 import {
   fetchAuthSession,
   getCurrentUser,
@@ -979,7 +979,11 @@ export default function App() {
             setActivePage("interview");
           }}
         >
-          <HomeIcon className="sidebar-home-icon" size={26} strokeWidth={1.5} />
+          <img
+            src={kininHomeIcon}
+            alt="Kinin"
+            className="sidebar-home-icon sidebar-home-icon-img"
+          />
           Kinin
         </button>
         <div className="sidebar-divider" />
@@ -1127,7 +1131,11 @@ export default function App() {
       </aside>
       <div className="sidebar-measure" ref={sidebarMeasureRef}>
         <button type="button" className="sidebar-home sidebar-home-primary">
-          <HomeIcon className="sidebar-home-icon" size={26} strokeWidth={1.5} />
+          <img
+            src={kininHomeIcon}
+            alt="Kinin"
+            className="sidebar-home-icon sidebar-home-icon-img"
+          />
           Kinin
         </button>
         <div className="sidebar-divider" />
