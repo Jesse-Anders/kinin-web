@@ -614,9 +614,12 @@ export default function App() {
 
   async function openProfile() {
     setError("");
-    if (!isAuthed) return;
     setShowProfile(true);
     setActivePage("bio");
+    if (!isAuthed) {
+      setError("Please sign in to view your profile.");
+      return;
+    }
     setProfileBusy(true);
     try {
       const session = await fetchAuthSession();
