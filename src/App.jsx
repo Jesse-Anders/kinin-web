@@ -228,7 +228,7 @@ export default function App() {
   }
 
   // Polling for async evaluator UI state (/turn/status).
-  const statusPollRef = useRef({ runId: 0, timer: null, abort: null, postCompletePolls: 0 });
+  const statusPollRef = useRef({ runId: 0, timer: null, abort: null, postCompletePolls: 2 });
 
   function stopStatusPoll() {
     const cur = statusPollRef.current;
