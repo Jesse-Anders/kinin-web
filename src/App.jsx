@@ -228,7 +228,7 @@ export default function App() {
   }
 
   // Polling for async evaluator UI state (/turn/status).
-  const statusPollRef = useRef({ runId: 0, timer: null, abort: null });
+  const statusPollRef = useRef({ runId: 0, timer: null, abort: null, postCompletePolls: 0 });
 
   function stopStatusPoll() {
     const cur = statusPollRef.current;
@@ -253,6 +253,7 @@ export default function App() {
     const runId = statusPollRef.current.runId;
     const abort = new AbortController();
     statusPollRef.current.abort = abort;
+    statusPollRef.current.postCompletePolls = 0;
 
     const tick = async () => {
       // Cancelled / superseded
@@ -275,8 +276,11 @@ export default function App() {
             setUiState(parsed.ui_state);
           }
           if (parsed && parsed.processing === false) {
-            stopStatusPoll();
-            return;
+            if (statusPollRef.current.postCompletePolls >= 1) {
+              stopStatusPoll();
+              return;
+            }
+            statusPollRef.current.postCompletePolls += 1;
           }
         }
       } catch {
