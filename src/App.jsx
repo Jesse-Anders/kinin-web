@@ -228,7 +228,7 @@ export default function App() {
   }
 
   // Polling for async evaluator UI state (/turn/status).
-  const statusPollRef = useRef({ runId: 0, timer: null, abort: null, postCompletePolls: 2 });
+  const statusPollRef = useRef({ runId: 0, timer: null, abort: null });
 
   function stopStatusPoll() {
     const cur = statusPollRef.current;
@@ -253,7 +253,6 @@ export default function App() {
     const runId = statusPollRef.current.runId;
     const abort = new AbortController();
     statusPollRef.current.abort = abort;
-    statusPollRef.current.postCompletePolls = 0;
 
     const tick = async () => {
       // Cancelled / superseded
@@ -276,11 +275,8 @@ export default function App() {
             setUiState(parsed.ui_state);
           }
           if (parsed && parsed.processing === false) {
-            if (statusPollRef.current.postCompletePolls >= 1) {
-              stopStatusPoll();
-              return;
-            }
-            statusPollRef.current.postCompletePolls += 1;
+            stopStatusPoll();
+            return;
           }
         }
       } catch {
@@ -1805,7 +1801,7 @@ export default function App() {
             <summary style={{ cursor: "pointer", fontWeight: 700 }}>Interview Details</summary>
             <div style={{ marginTop: 12 }}>
                 <div style={{ marginBottom: 8, opacity: 0.8 }}>
-                  Auth status: <b>{user ? "SIGNED IN" : "SIGNED OUT"}</b>
+                  Note: Details update on next turn. <i>Info is one turn behind.</i>
                 </div>
                 <div style={{ marginBottom: 8, opacity: 0.8 }}>
                   Journey version: <b>{journeyVersion || "—"}</b>
