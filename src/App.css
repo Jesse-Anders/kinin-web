@@ -216,6 +216,12 @@
   z-index: 30;
 }
 
+.chat-message {
+  margin-bottom: 10px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .sidebar-measure {
   position: absolute;
   left: -9999px;

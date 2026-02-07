@@ -1757,7 +1757,7 @@ export default function App() {
               <div style={{ opacity: 0.7 }}>Start chatting after logging in.</div>
             ) : (
               chat.map((m, idx) => (
-                <div key={idx} style={{ marginBottom: 10 }}>
+                <div key={idx} className="chat-message">
                   <b>{m.role === "user" ? "You" : "Kinin"}:</b> {m.content}
                 </div>
               ))
