@@ -1119,7 +1119,7 @@ export default function App() {
           {isAuthed ? (
             <button
               type="button"
-              className="sidebar-home sidebar-home-secondary"
+              className="sidebar-home sidebar-home-secondary sidebar-home-bottom"
               onClick={() => {
                 setMenuOpen(false);
                 setActivePage("account");
@@ -1133,7 +1133,7 @@ export default function App() {
           <button
             key={item.id}
             type="button"
-            className="sidebar-home sidebar-home-secondary"
+            className="sidebar-home sidebar-home-secondary sidebar-home-bottom"
             onClick={() => {
               setMenuOpen(false);
               item.onClick();
