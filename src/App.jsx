@@ -23,6 +23,12 @@ const ACCOUNT_CONFIRM_PHRASE = "delete my account and all data";
 
 
 export default function App() {
+  const LABEL_GROUPS = [
+    { key: "user_focus_labels", label: "User focus" },
+    { key: "user_interest_labels", label: "User interests" },
+    { key: "must_avoid_topics", label: "Must avoid topics" },
+    { key: "handle_lightly_topics", label: "Handle lightly topics" },
+  ];
   const [user, setUser] = useState(null);
   const [sessionId, setSessionId] = useState(
     () => localStorage.getItem("session_id") || ""
@@ -30,32 +36,18 @@ export default function App() {
   const [journeyVersion, setJourneyVersion] = useState(
     () => localStorage.getItem("journey_version") || ""
   );
-  const [userFocusLabels, setUserFocusLabels] = useState(() => {
-    try {
-      const raw = localStorage.getItem("user_focus_labels");
-      const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  });
-  const [mustAvoidTopics, setMustAvoidTopics] = useState(() => {
-    try {
-      const raw = localStorage.getItem("must_avoid_topics");
-      const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  });
-  const [handleLightlyTopics, setHandleLightlyTopics] = useState(() => {
-    try {
-      const raw = localStorage.getItem("handle_lightly_topics");
-      const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
+  const [labelGroups, setLabelGroups] = useState(() => {
+    const out = {};
+    LABEL_GROUPS.forEach(({ key }) => {
+      try {
+        const raw = localStorage.getItem(key);
+        const parsed = raw ? JSON.parse(raw) : [];
+        out[key] = Array.isArray(parsed) ? parsed : [];
+      } catch {
+        out[key] = [];
+      }
+    });
+    return out;
   });
   const [uiState, setUiState] = useState(null);
   const [lastProgress, setLastProgress] = useState(null);
@@ -115,6 +107,29 @@ export default function App() {
   const [accountStatus, setAccountStatus] = useState("");
 
   const isAuthed = useMemo(() => !!user, [user]);
+  function normalizeLabelArray(values) {
+    if (!Array.isArray(values)) return [];
+    return values
+      .filter((x) => typeof x === "string")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
+  function syncLabelGroupsFromParsed(parsed) {
+    setLabelGroups((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      LABEL_GROUPS.forEach(({ key }) => {
+        if (Array.isArray(parsed?.[key])) {
+          const labels = normalizeLabelArray(parsed[key]);
+          next[key] = labels;
+          localStorage.setItem(key, JSON.stringify(labels));
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }
   const accountConfirmMatches = useMemo(
     () => accountConfirmText.trim().toLowerCase() === ACCOUNT_CONFIRM_PHRASE,
     [accountConfirmText]
@@ -401,14 +416,15 @@ export default function App() {
       setChat([]);
       setSessionId("");
       setJourneyVersion("");
-      setUserFocusLabels([]);
-      setMustAvoidTopics([]);
-      setHandleLightlyTopics([]);
       localStorage.removeItem("session_id");
       localStorage.removeItem("journey_version");
-      localStorage.removeItem("user_focus_labels");
-      localStorage.removeItem("must_avoid_topics");
-      localStorage.removeItem("handle_lightly_topics");
+      LABEL_GROUPS.forEach(({ key }) => localStorage.removeItem(key));
+      setLabelGroups(
+        LABEL_GROUPS.reduce((acc, { key }) => {
+          acc[key] = [];
+          return acc;
+        }, {})
+      );
       setActivePage("interview");
       window.location.assign(window.location.origin + window.location.pathname);
     } catch (e) {
@@ -459,30 +475,7 @@ export default function App() {
         setJourneyVersion(v);
         localStorage.setItem("journey_version", v);
       }
-      if (Array.isArray(parsed.user_focus_labels)) {
-        const labels = parsed.user_focus_labels
-          .filter((x) => typeof x === "string")
-          .map((s) => s.trim())
-          .filter(Boolean);
-        setUserFocusLabels(labels);
-        localStorage.setItem("user_focus_labels", JSON.stringify(labels));
-      }
-      if (Array.isArray(parsed.must_avoid_topics)) {
-        const topics = parsed.must_avoid_topics
-          .filter((x) => typeof x === "string")
-          .map((s) => s.trim())
-          .filter(Boolean);
-        setMustAvoidTopics(topics);
-        localStorage.setItem("must_avoid_topics", JSON.stringify(topics));
-      }
-      if (Array.isArray(parsed.handle_lightly_topics)) {
-        const topics = parsed.handle_lightly_topics
-          .filter((x) => typeof x === "string")
-          .map((s) => s.trim())
-          .filter(Boolean);
-        setHandleLightlyTopics(topics);
-        localStorage.setItem("handle_lightly_topics", JSON.stringify(topics));
-      }
+      syncLabelGroupsFromParsed(parsed);
 
       if (parsed.assistant) {
         setChat([{ role: "assistant", content: parsed.assistant }]);
@@ -569,30 +562,7 @@ export default function App() {
         setJourneyVersion(v);
         localStorage.setItem("journey_version", v);
       }
-      if (Array.isArray(parsed.user_focus_labels)) {
-        const labels = parsed.user_focus_labels
-          .filter((x) => typeof x === "string")
-          .map((s) => s.trim())
-          .filter(Boolean);
-        setUserFocusLabels(labels);
-        localStorage.setItem("user_focus_labels", JSON.stringify(labels));
-      }
-      if (Array.isArray(parsed.must_avoid_topics)) {
-        const topics = parsed.must_avoid_topics
-          .filter((x) => typeof x === "string")
-          .map((s) => s.trim())
-          .filter(Boolean);
-        setMustAvoidTopics(topics);
-        localStorage.setItem("must_avoid_topics", JSON.stringify(topics));
-      }
-      if (Array.isArray(parsed.handle_lightly_topics)) {
-        const topics = parsed.handle_lightly_topics
-          .filter((x) => typeof x === "string")
-          .map((s) => s.trim())
-          .filter(Boolean);
-        setHandleLightlyTopics(topics);
-        localStorage.setItem("handle_lightly_topics", JSON.stringify(topics));
-      }
+      syncLabelGroupsFromParsed(parsed);
 
       if (parsed.ui_state) {
         setUiState(parsed.ui_state);
@@ -659,30 +629,7 @@ export default function App() {
         setJourneyVersion(v);
         localStorage.setItem("journey_version", v);
       }
-      if (Array.isArray(parsed.user_focus_labels)) {
-        const labels = parsed.user_focus_labels
-          .filter((x) => typeof x === "string")
-          .map((s) => s.trim())
-          .filter(Boolean);
-        setUserFocusLabels(labels);
-        localStorage.setItem("user_focus_labels", JSON.stringify(labels));
-      }
-      if (Array.isArray(parsed.must_avoid_topics)) {
-        const topics = parsed.must_avoid_topics
-          .filter((x) => typeof x === "string")
-          .map((s) => s.trim())
-          .filter(Boolean);
-        setMustAvoidTopics(topics);
-        localStorage.setItem("must_avoid_topics", JSON.stringify(topics));
-      }
-      if (Array.isArray(parsed.handle_lightly_topics)) {
-        const topics = parsed.handle_lightly_topics
-          .filter((x) => typeof x === "string")
-          .map((s) => s.trim())
-          .filter(Boolean);
-        setHandleLightlyTopics(topics);
-        localStorage.setItem("handle_lightly_topics", JSON.stringify(topics));
-      }
+      syncLabelGroupsFromParsed(parsed);
       setChat([]);
       setUiState(null);
     } catch (e) {
@@ -1806,18 +1753,14 @@ export default function App() {
                 <div style={{ marginBottom: 8, opacity: 0.8 }}>
                   Journey version: <b>{journeyVersion || "—"}</b>
                 </div>
-                <div style={{ marginBottom: 8, opacity: 0.8 }}>
-                  User focus:{" "}
-                  <b>{userFocusLabels?.length ? userFocusLabels.join(", ") : "—"}</b>
-                </div>
-                <div style={{ marginBottom: 8, opacity: 0.8 }}>
-                  Must avoid topics:{" "}
-                  <b>{mustAvoidTopics?.length ? mustAvoidTopics.join(", ") : "—"}</b>
-                </div>
-                <div style={{ marginBottom: 8, opacity: 0.8 }}>
-                  Handle lightly topics:{" "}
-                  <b>{handleLightlyTopics?.length ? handleLightlyTopics.join(", ") : "—"}</b>
-                </div>
+                {LABEL_GROUPS.map(({ key, label }) => (
+                  <div key={key} style={{ marginBottom: 8, opacity: 0.8 }}>
+                    {label}:{" "}
+                    <b>
+                      {labelGroups?.[key]?.length ? labelGroups[key].join(", ") : "—"}
+                    </b>
+                  </div>
+                ))}
                 {/* Journey progress bar (completed + closed steps / total). */}
                 <div style={{ marginBottom: 12, opacity: 0.8 }}>
                   Journey progress: <b>{progressForDisplay.percent}%</b>{" "}
