@@ -99,6 +99,7 @@ export default function App() {
   const [feedbackRangeDays, setFeedbackRangeDays] = useState(7);
   const [feedbackUserFilter, setFeedbackUserFilter] = useState("");
   const [newFeedbackCount, setNewFeedbackCount] = useState(0);
+  const [detailsBusy, setDetailsBusy] = useState(false);
   const [accountConfirmText, setAccountConfirmText] = useState("");
   const [accountUsername, setAccountUsername] = useState("");
   const [accountPassword, setAccountPassword] = useState("");
@@ -242,71 +243,37 @@ export default function App() {
     return token;
   }
 
-  // Polling for async evaluator UI state (/turn/status).
-  const statusPollRef = useRef({ runId: 0, timer: null, abort: null });
-
-  function stopStatusPoll() {
-    const cur = statusPollRef.current;
-    cur.runId += 1;
-    if (cur.timer) {
-      clearTimeout(cur.timer);
-      cur.timer = null;
-    }
-    if (cur.abort) {
-      try {
-        cur.abort.abort();
-      } catch {
-        // ignore
+  async function updateInterviewDetails() {
+    if (!sessionId || !isAuthed) return;
+    setDetailsBusy(true);
+    try {
+      const idToken = await getAccessToken();
+      const url = `${API_BASE}/turn/status?session_id=${encodeURIComponent(sessionId)}`;
+      const res = await fetch(url, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(`API error ${res.status}: ${t}`);
       }
-      cur.abort = null;
-    }
-  }
-
-  function startStatusPoll(nextSessionId, idToken) {
-    if (!nextSessionId || !idToken) return;
-    stopStatusPoll();
-    const runId = statusPollRef.current.runId;
-    const abort = new AbortController();
-    statusPollRef.current.abort = abort;
-
-    const tick = async () => {
-      // Cancelled / superseded
-      if (statusPollRef.current.runId !== runId) return;
-      try {
-        const url = `${API_BASE}/turn/status?session_id=${encodeURIComponent(
-          nextSessionId
-        )}`;
-        const res = await fetch(url, {
-          method: "GET",
-          headers: { Authorization: `Bearer ${idToken}` },
-          signal: abort.signal,
-        });
-        if (statusPollRef.current.runId !== runId) return;
-        if (res.ok) {
-          const data = await res.json();
-          const parsed =
-            typeof data.body === "string" ? JSON.parse(data.body) : data;
-          if (parsed?.ui_state) {
-            setUiState(parsed.ui_state);
-          }
-          if (parsed && parsed.processing === false) {
-            stopStatusPoll();
-            return;
-          }
+      const data = await res.json();
+      const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
+      if (parsed?.ui_state) {
+        setUiState(parsed.ui_state);
+        if ((parsed.ui_state.journey_version_display ?? parsed.ui_state.journey_version) != null) {
+          const v = String(parsed.ui_state.journey_version_display ?? parsed.ui_state.journey_version);
+          setJourneyVersion(v);
+          localStorage.setItem("journey_version", v);
         }
-      } catch {
-        // swallow and retry until max attempts (we rely on user actions/next turn if it never converges)
       }
-      // Poll at 1000ms (low-frequency, low-cost).
-      statusPollRef.current.timer = setTimeout(tick, 1000);
-    };
-
-    // Kick off immediately.
-    statusPollRef.current.timer = setTimeout(tick, 0);
+      syncLabelGroupsFromParsed(parsed);
+    } catch (e) {
+      setError(e.message || String(e));
+    } finally {
+      setDetailsBusy(false);
+    }
   }
-
-  // Cleanup on unmount.
-  useEffect(() => stopStatusPoll, []);
 
   useEffect(() => {
     (async () => {
@@ -365,7 +332,6 @@ export default function App() {
   async function onLogout() {
     setError("");
     await signOut({ global: true });
-    stopStatusPoll();
     setUser(null);
     setChat([]);
   }
@@ -485,8 +451,6 @@ export default function App() {
         setUiState(parsed.ui_state);
       }
 
-      // Async UI state refresh (no visible "updating" UI; just keep step fields accurate).
-      startStatusPoll(newSessionId, idToken);
     } catch (e) {
       setError(e.message || String(e));
     } finally {
@@ -575,8 +539,6 @@ export default function App() {
       ]);
       setMessage("");
 
-      // Async UI state refresh (poll until worker releases lock).
-      startStatusPoll(newSessionId, idToken);
     } catch (e) {
       setError(e.message || String(e));
     } finally {
@@ -1747,8 +1709,13 @@ export default function App() {
           >
             <summary style={{ cursor: "pointer", fontWeight: 700 }}>Interview Details</summary>
             <div style={{ marginTop: 12 }}>
-                <div style={{ marginBottom: 8, opacity: 0.8 }}>
-                  Note: Details update on next turn. <i>Info is one turn behind.</i>
+                <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                  <button onClick={updateInterviewDetails} disabled={!isAuthed || !sessionId || detailsBusy}>
+                    {detailsBusy ? "Updating..." : "Update Details"}
+                  </button>
+                  <div style={{ opacity: 0.7, alignSelf: "center", fontSize: 12 }}>
+                    Manual refresh
+                  </div>
                 </div>
                 <div style={{ marginBottom: 8, opacity: 0.8 }}>
                   Journey version: <b>{journeyVersion || "—"}</b>
