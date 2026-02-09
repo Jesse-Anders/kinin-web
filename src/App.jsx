@@ -87,6 +87,37 @@ export default function App() {
   const sidebarRef = useRef(null);
   const sidebarMeasureRef = useRef(null);
   const sidebarBottomRef = useRef(null);
+  const menuItems = [
+    {
+      id: "bio",
+      label: "Bio Profile",
+      icon: Footprints,
+      requiresAuth: true,
+      onClick: () => openProfile(),
+    },
+    {
+      id: "faq",
+      label: "FAQ",
+      icon: Grid2X2Check,
+      requiresAuth: false,
+      onClick: () => setActivePage("faq"),
+    },
+    {
+      id: "feedback",
+      label: "Feedback",
+      icon: Megaphone,
+      requiresAuth: false,
+      onClick: () => setActivePage("feedback"),
+    },
+    {
+      id: "end-session",
+      label: "End Session",
+      icon: null,
+      requiresAuth: true,
+      onClick: () => endSession(),
+      section: "bottom",
+    },
+  ];
   const [feedbackName, setFeedbackName] = useState("");
   const [feedbackEmail, setFeedbackEmail] = useState("");
   const [feedbackMessage, setFeedbackMessage] = useState("");
@@ -190,6 +221,8 @@ export default function App() {
     if (message) return;
     messageInputRef.current.style.height = "auto";
   }, [message]);
+  const visibleTopItems = menuItems.filter((item) => item.section !== "bottom" && (isAuthed || !item.requiresAuth));
+  const visibleBottomItems = menuItems.filter((item) => item.section === "bottom" && (isAuthed || !item.requiresAuth));
   useEffect(() => {
     if (uiState?.progress && typeof uiState.progress.percent === "number") {
       setLastProgress(uiState.progress);
@@ -981,44 +1014,33 @@ export default function App() {
         <div className="sidebar-divider" />
         {!menuCollapsed ? (
           <>
-            <button
-              type="button"
-              className="sidebar-home sidebar-home-secondary"
-              onClick={() => {
-                setMenuOpen(false);
-                openProfile();
-              }}
-            >
-              <Footprints className="sidebar-home-icon" size={20} strokeWidth={1.5} />
-              Bio Profile
-            </button>
-            <button
-              type="button"
-              className="sidebar-home sidebar-home-secondary"
-              onClick={() => {
-                setMenuOpen(false);
-                setActivePage("faq");
-              }}
-            >
-              <Grid2X2Check className="sidebar-home-icon" size={20} strokeWidth={1.5} />
-              FAQ
-            </button>
-            <button
-              type="button"
-              className="sidebar-home sidebar-home-secondary"
-              onClick={() => {
-                setMenuOpen(false);
-                setActivePage("feedback");
-              }}
-            >
-              <Megaphone className="sidebar-home-icon" size={20} strokeWidth={1.5} />
-              <span className="sidebar-label">
-                Feedback
-                {newFeedbackCount > 0 ? (
-                  <span className="sidebar-badge">{newFeedbackCount}</span>
-                ) : null}
-              </span>
-            </button>
+            {visibleTopItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className="sidebar-home sidebar-home-secondary"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setMenuOverflowOpen(false);
+                    item.onClick();
+                  }}
+                >
+                  {Icon ? <Icon className="sidebar-home-icon" size={20} strokeWidth={1.5} /> : null}
+                  {item.id === "feedback" ? (
+                    <span className="sidebar-label">
+                      {item.label}
+                      {newFeedbackCount > 0 ? (
+                        <span className="sidebar-badge">{newFeedbackCount}</span>
+                      ) : null}
+                    </span>
+                  ) : (
+                    item.label
+                  )}
+                </button>
+              );
+            })}
           </>
         ) : (
           <div className="sidebar-overflow-toggle">
@@ -1031,47 +1053,33 @@ export default function App() {
             </button>
             {menuOverflowOpen ? (
               <div className="sidebar-popover">
-                <button
-                  type="button"
-                  className="sidebar-home sidebar-home-secondary"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setMenuOverflowOpen(false);
-                    openProfile();
-                  }}
-                >
-                  <Footprints className="sidebar-home-icon" size={20} strokeWidth={1.5} />
-                  Bio Profile
-                </button>
-                <button
-                  type="button"
-                  className="sidebar-home sidebar-home-secondary"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setMenuOverflowOpen(false);
-                    setActivePage("faq");
-                  }}
-                >
-                  <Grid2X2Check className="sidebar-home-icon" size={20} strokeWidth={1.5} />
-                  FAQ
-                </button>
-                <button
-                  type="button"
-                  className="sidebar-home sidebar-home-secondary"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setMenuOverflowOpen(false);
-                    setActivePage("feedback");
-                  }}
-                >
-                  <Megaphone className="sidebar-home-icon" size={20} strokeWidth={1.5} />
-                  <span className="sidebar-label">
-                    Feedback
-                    {newFeedbackCount > 0 ? (
-                      <span className="sidebar-badge">{newFeedbackCount}</span>
-                    ) : null}
-                  </span>
-                </button>
+                {visibleTopItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className="sidebar-home sidebar-home-secondary"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setMenuOverflowOpen(false);
+                        item.onClick();
+                      }}
+                    >
+                      {Icon ? <Icon className="sidebar-home-icon" size={20} strokeWidth={1.5} /> : null}
+                      {item.id === "feedback" ? (
+                        <span className="sidebar-label">
+                          {item.label}
+                          {newFeedbackCount > 0 ? (
+                            <span className="sidebar-badge">{newFeedbackCount}</span>
+                          ) : null}
+                        </span>
+                      ) : (
+                        item.label
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             ) : null}
           </div>
@@ -1120,17 +1128,20 @@ export default function App() {
               My Account
             </button>
           ) : null}
-          <div className="sidebar-divider" />
+        {visibleBottomItems.length ? <div className="sidebar-divider" /> : null}
+        {visibleBottomItems.map((item) => (
           <button
+            key={item.id}
             type="button"
             className="sidebar-home sidebar-home-secondary"
             onClick={() => {
               setMenuOpen(false);
-              endSession();
+              item.onClick();
             }}
           >
-            End Session
+            {item.label}
           </button>
+        ))}
         </div>
       </aside>
       <div className="sidebar-measure" ref={sidebarMeasureRef}>
@@ -1143,18 +1154,15 @@ export default function App() {
           Kinin
         </button>
         <div className="sidebar-divider" />
-        <button type="button" className="sidebar-home sidebar-home-secondary">
-          <Footprints className="sidebar-home-icon" size={20} strokeWidth={1.5} />
-          Bio Profile
-        </button>
-        <button type="button" className="sidebar-home sidebar-home-secondary">
-          <Grid2X2Check className="sidebar-home-icon" size={20} strokeWidth={1.5} />
-          FAQ
-        </button>
-        <button type="button" className="sidebar-home sidebar-home-secondary">
-          <Megaphone className="sidebar-home-icon" size={20} strokeWidth={1.5} />
-          Feedback
-        </button>
+        {visibleTopItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button key={item.id} type="button" className="sidebar-home sidebar-home-secondary">
+              {Icon ? <Icon className="sidebar-home-icon" size={20} strokeWidth={1.5} /> : null}
+              {item.label}
+            </button>
+          );
+        })}
       </div>
       <main className="main-content">
         <button type="button" className="menu-toggle" onClick={() => setMenuOpen(true)}>
