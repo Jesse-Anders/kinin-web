@@ -1588,12 +1588,11 @@ export default function App() {
 
           <details
             style={{
-              borderTop: "1px solid #e5e7eb",
-              padding: "12px 12px 8px",
-              position: "sticky",
-              bottom: 0,
-              background: "#fafafa",
-              zIndex: 5,
+              border: "1px solid #ddd",
+              borderRadius: 10,
+              padding: 12,
+              marginBottom: 12,
+              background: "#fcfcfc",
             }}
           >
             <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#999" }}>
