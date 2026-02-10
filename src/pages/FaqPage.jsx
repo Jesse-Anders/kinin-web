@@ -25,7 +25,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Can I delete my data?",
-    a: "Yes. You can request full deletion of your account and all associated data at any time by contacting us through the Feedback form or at our support email. We will honor every deletion request promptly.",
+    a: "Yes. When logged in, click the \"My Account\" link in the sidebar menu and follow the instructions to permanently delete your account and all associated data. The process requires authentication and a confirmation step to protect against unauthorized deletion. You can do this at any time — your data is yours to keep or remove.",
   },
   {
     q: "What is a Bio Profile?",

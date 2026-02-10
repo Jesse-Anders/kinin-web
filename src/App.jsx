@@ -1522,19 +1522,32 @@ export default function App() {
         <div>
           <div
             style={{
-              border: "1px solid #ddd",
-              borderRadius: 10,
-              padding: 12,
               minHeight: 260,
               marginBottom: 12,
+              padding: "8px 0",
             }}
           >
             {chat.length === 0 ? (
-              <div style={{ opacity: 0.7 }}>Start chatting after logging in.</div>
+              <div style={{ opacity: 0.5, textAlign: "center", paddingTop: 80, fontSize: 15 }}>
+                Start chatting after logging in.
+              </div>
             ) : (
               chat.map((m, idx) => (
-                <div key={idx} className="chat-message">
-                  <b>{m.role === "user" ? "You" : "Kinin"}:</b> {m.content}
+                <div
+                  key={idx}
+                  className={
+                    m.role === "user" ? "chat-row chat-row-user" : "chat-row chat-row-assistant"
+                  }
+                >
+                  <div
+                    className={
+                      m.role === "user"
+                        ? "chat-bubble chat-bubble-user"
+                        : "chat-bubble chat-bubble-assistant"
+                    }
+                  >
+                    {m.content}
+                  </div>
                 </div>
               ))
             )}
