@@ -1180,9 +1180,13 @@ export default function App() {
             padding: 16,
           }}
         >
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 28, fontWeight: 600 }}>Kinin - Interviewer</div>
-            <div style={{ fontSize: 14, opacity: 0.65 }}>{VERSION_LABEL}</div>
+          <div style={{ textAlign: "center", marginBottom: 20 }}>
+            <img
+              src={kininHomeIcon}
+              alt="Kinin"
+              style={{ width: 48, height: 48, objectFit: "contain", display: "block", margin: "0 auto 6px" }}
+            />
+            <div style={{ fontSize: 18, fontWeight: 600, color: "#111" }}>Kinin</div>
           </div>
 
       {error && (
@@ -1197,17 +1201,6 @@ export default function App() {
           <b>Error:</b> {error}
         </div>
       )}
-
-      {!IS_BETA_LITE ? (
-        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          <button onClick={() => setActivePage("interview")} disabled={activePage === "interview"}>
-            Interview
-          </button>
-          <button onClick={() => setActivePage("admin")} disabled={activePage === "admin"}>
-            Admin
-          </button>
-        </div>
-      ) : null}
 
       {activePage === "admin" && !IS_BETA_LITE ? (
         <div
@@ -1573,7 +1566,19 @@ export default function App() {
               rows={1}
               disabled={!isAuthed || busy}
             />
-            <button onClick={sendTurn} disabled={!isAuthed || busy}>
+            <button
+              onClick={sendTurn}
+              disabled={!isAuthed || busy}
+              style={{
+                background: "#e5e7eb",
+                color: "rgba(17, 17, 17, 0.75)",
+                border: "1px solid #d1d5db",
+                borderRadius: 6,
+                padding: "8px 16px",
+                cursor: "pointer",
+                fontSize: 14,
+              }}
+            >
               {busy ? "Sending..." : "Send"}
             </button>
           </div>
@@ -1591,6 +1596,20 @@ export default function App() {
               Interview Details
             </summary>
             <div style={{ marginTop: 12 }}>
+                <div style={{ marginBottom: 10, opacity: 0.8 }}>
+                  <div style={{ fontWeight: 600 }}>Kinin - Interviewer</div>
+                  <div style={{ fontSize: 12, opacity: 0.7 }}>{VERSION_LABEL}</div>
+                </div>
+                {!IS_BETA_LITE ? (
+                  <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                    <button onClick={() => setActivePage("interview")} disabled={activePage === "interview"}>
+                      Interview
+                    </button>
+                    <button onClick={() => setActivePage("admin")} disabled={activePage === "admin"}>
+                      Admin
+                    </button>
+                  </div>
+                ) : null}
                 <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                   <button onClick={updateInterviewDetails} disabled={!isAuthed || !sessionId || detailsBusy}>
                     {detailsBusy ? "Updating..." : "Update Details"}
