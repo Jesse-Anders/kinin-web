@@ -1556,6 +1556,7 @@ export default function App() {
               }}
               onInput={(e) => autoResizeMessageInput(e.target)}
               placeholder={isAuthed ? "Type a message..." : "Login to chat..."}
+              className="chat-input"
               style={{
                 flex: 1,
                 padding: 10,
@@ -1563,6 +1564,8 @@ export default function App() {
                 resize: "none",
                 overflow: "hidden",
                 borderRadius: 12,
+                border: "1px solid #e5e7eb",
+                color: "rgba(17, 17, 17, 0.7)",
               }}
               rows={1}
               disabled={!isAuthed || busy}
@@ -1571,9 +1574,9 @@ export default function App() {
               onClick={sendTurn}
               disabled={!isAuthed || busy}
               style={{
-                background: "#e5e7eb",
+                background: "#f0f0f0",
                 color: "rgba(17, 17, 17, 0.75)",
-                border: "1px solid #d1d5db",
+                border: "1px solid #e5e7eb",
                 borderRadius: 12,
                 padding: "8px 16px",
                 cursor: "pointer",
