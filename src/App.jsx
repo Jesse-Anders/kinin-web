@@ -1569,19 +1569,11 @@ export default function App() {
                 fontSize: 16,
                 resize: "none",
                 overflow: "hidden",
-                borderRadius: 12,
-                border: "1px solid #d1d5db",
               }}
               rows={1}
               disabled={!isAuthed || busy}
-              tabIndex={0}
             />
-            <button
-              onClick={sendTurn}
-              disabled={!isAuthed || busy}
-              style={{ borderRadius: 12 }}
-              tabIndex={0}
-            >
+            <button onClick={sendTurn} disabled={!isAuthed || busy}>
               {busy ? "Sending..." : "Send"}
             </button>
           </div>
