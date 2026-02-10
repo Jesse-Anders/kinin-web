@@ -1519,10 +1519,9 @@ export default function App() {
           }}
         />
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 120px)" }}>
+        <div>
           <div
             style={{
-              flex: 1,
               minHeight: 260,
               marginBottom: 12,
               padding: "8px 0",
@@ -1590,8 +1589,11 @@ export default function App() {
           <details
             style={{
               borderTop: "1px solid #e5e7eb",
-              padding: "12px 0 0",
-              marginTop: "auto",
+              padding: "12px 12px 8px",
+              position: "sticky",
+              bottom: 0,
+              background: "#fafafa",
+              zIndex: 5,
             }}
           >
             <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#999" }}>
