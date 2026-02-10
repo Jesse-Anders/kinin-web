@@ -1519,9 +1519,10 @@ export default function App() {
           }}
         />
       ) : (
-        <div>
+        <div style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 120px)" }}>
           <div
             style={{
+              flex: 1,
               minHeight: 260,
               marginBottom: 12,
               padding: "8px 0",
@@ -1566,28 +1567,36 @@ export default function App() {
               style={{
                 flex: 1,
                 padding: 10,
-                fontSize: 12,
+                fontSize: 16,
                 resize: "none",
                 overflow: "hidden",
+                borderRadius: 12,
+                border: "1px solid #d1d5db",
               }}
               rows={1}
               disabled={!isAuthed || busy}
+              tabIndex={0}
             />
-            <button onClick={sendTurn} disabled={!isAuthed || busy}>
+            <button
+              onClick={sendTurn}
+              disabled={!isAuthed || busy}
+              style={{ borderRadius: 12 }}
+              tabIndex={0}
+            >
               {busy ? "Sending..." : "Send"}
             </button>
           </div>
 
           <details
             style={{
-              border: "1px solid #ddd",
-              borderRadius: 10,
-              padding: 12,
-              marginBottom: 12,
-              background: "#fcfcfc",
+              borderTop: "1px solid #e5e7eb",
+              padding: "12px 0 0",
+              marginTop: "auto",
             }}
           >
-            <summary style={{ cursor: "pointer", fontWeight: 700 }}>Interview Details</summary>
+            <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#999" }}>
+              Interview Details
+            </summary>
             <div style={{ marginTop: 12 }}>
                 <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                   <button onClick={updateInterviewDetails} disabled={!isAuthed || !sessionId || detailsBusy}>
