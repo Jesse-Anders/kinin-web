@@ -14,6 +14,10 @@ import {
   signInWithRedirect,
   signOut,
 } from "aws-amplify/auth";
+import FaqPage from "./pages/FaqPage";
+import FeedbackPage from "./pages/FeedbackPage";
+import AccountPage from "./pages/AccountPage";
+import BioProfilePage from "./pages/BioProfilePage";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const RELEASE_CHANNEL = (import.meta.env.VITE_RELEASE_CHANNEL || "dev").toLowerCase();
@@ -1476,189 +1480,44 @@ export default function App() {
           </div>
         </div>
       ) : activePage === "faq" ? (
-        <div style={{ padding: 16 }}>
-          <div style={{ fontSize: 22, fontWeight: 600, marginBottom: 12 }}>
-            Kinin Frequently Asked Questions
-          </div>
-          <div style={{ minHeight: 240 }} />
-        </div>
+        <FaqPage />
       ) : activePage === "feedback" ? (
-        <div style={{ padding: 16, maxWidth: 720 }}>
-          <div style={{ fontSize: 22, fontWeight: 600, marginBottom: 12 }}>
-            Feedback: Please, let us know your thoughts.
-          </div>
-          <div style={{ display: "grid", gap: 10 }}>
-            <label>
-              <div style={{ fontSize: 12, opacity: 0.8 }}>Name (optional)</div>
-              <input
-                value={feedbackName}
-                onChange={(e) => setFeedbackName(e.target.value)}
-                style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
-                placeholder="Your name"
-              />
-            </label>
-            <label>
-              <div style={{ fontSize: 12, opacity: 0.8 }}>Email (optional)</div>
-              <input
-                value={feedbackEmail}
-                onChange={(e) => setFeedbackEmail(e.target.value)}
-                style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
-                placeholder="you@example.com"
-                inputMode="email"
-              />
-            </label>
-            <label>
-              <div style={{ fontSize: 12, opacity: 0.8 }}>Message *</div>
-              <textarea
-                value={feedbackMessage}
-                onChange={(e) => setFeedbackMessage(e.target.value)}
-                style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10, minHeight: 120 }}
-                placeholder="What should we improve?"
-              />
-            </label>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <button onClick={submitFeedback} disabled={feedbackBusy}>
-                {feedbackBusy ? "Sending..." : "Send Feedback"}
-              </button>
-              {feedbackStatus ? <div style={{ opacity: 0.7 }}>{feedbackStatus}</div> : null}
-            </div>
-          </div>
-          <div style={{ minHeight: 12 }} />
-        </div>
+        <FeedbackPage
+          feedbackName={feedbackName}
+          setFeedbackName={setFeedbackName}
+          feedbackEmail={feedbackEmail}
+          setFeedbackEmail={setFeedbackEmail}
+          feedbackMessage={feedbackMessage}
+          setFeedbackMessage={setFeedbackMessage}
+          feedbackBusy={feedbackBusy}
+          feedbackStatus={feedbackStatus}
+          submitFeedback={submitFeedback}
+        />
       ) : activePage === "account" ? (
-        <div style={{ padding: 16, maxWidth: 720 }}>
-          <div style={{ fontSize: 22, fontWeight: 600, marginBottom: 12 }}>My Account</div>
-          <div
-            style={{
-              border: "1px solid #f5c2c7",
-              background: "#fff5f5",
-              borderRadius: 10,
-              padding: 12,
-              marginBottom: 12,
-            }}
-          >
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>Delete account and all data</div>
-            <div style={{ fontSize: 13, opacity: 0.85 }}>
-              This permanently deletes your account and all associated DynamoDB and S3 data. This action
-              cannot be undone.
-            </div>
-          </div>
-          <div style={{ display: "grid", gap: 10 }}>
-            <label>
-              <div style={{ fontSize: 12, opacity: 0.8 }}>Cognito username</div>
-              <input
-                value={accountUsername}
-                readOnly
-                style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10, opacity: 0.7 }}
-                placeholder="username"
-              />
-            </label>
-            <label>
-              <div style={{ fontSize: 12, opacity: 0.8 }}>Password</div>
-              <input
-                type="password"
-                value={accountPassword}
-                onChange={(e) => setAccountPassword(e.target.value)}
-                style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
-                placeholder="Your password"
-                disabled={accountBusy}
-                autoComplete="current-password"
-              />
-            </label>
-            <label>
-              <div style={{ fontSize: 12, opacity: 0.8 }}>
-                Type "{ACCOUNT_CONFIRM_PHRASE}" to confirm
-              </div>
-              <input
-                value={accountConfirmText}
-                onChange={(e) => setAccountConfirmText(e.target.value)}
-                style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
-                placeholder={ACCOUNT_CONFIRM_PHRASE}
-                disabled={accountBusy}
-              />
-            </label>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <button
-                onClick={closeAccount}
-                disabled={
-                  accountBusy || !accountConfirmMatches || !isAuthed || !accountUsername || !accountPassword
-                }
-              >
-                {accountBusy ? "Deleting..." : "Delete My Account"}
-              </button>
-              {accountStatus ? <div style={{ opacity: 0.7 }}>{accountStatus}</div> : null}
-            </div>
-            {accountError ? <div style={{ color: "#b00020" }}>{accountError}</div> : null}
-            {!isAuthed ? (
-              <div style={{ opacity: 0.7, fontSize: 12 }}>Sign in to manage your account.</div>
-            ) : null}
-          </div>
-        </div>
+        <AccountPage
+          isAuthed={isAuthed}
+          accountUsername={accountUsername}
+          accountPassword={accountPassword}
+          setAccountPassword={setAccountPassword}
+          accountConfirmText={accountConfirmText}
+          setAccountConfirmText={setAccountConfirmText}
+          accountBusy={accountBusy}
+          accountStatus={accountStatus}
+          accountError={accountError}
+          closeAccount={closeAccount}
+        />
       ) : activePage === "bio" ? (
-        <div style={{ padding: 16 }}>
-          <div
-            style={{
-              border: "1px solid #ddd",
-              borderRadius: 10,
-              padding: 12,
-              marginBottom: 12,
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <b>Biography Profile</b>
-                <div style={{ opacity: 0.7, fontSize: 12 }}>
-                  {profileSchema?.title || "Profile"} (schema v{profileSchema?.version || "—"})
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  setShowProfile(false);
-                  setActivePage("interview");
-                }}
-                disabled={profileBusy}
-              >
-                Close
-              </button>
-            </div>
-
-            <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-              <label>
-                <div style={{ fontSize: 12, opacity: 0.8 }}>Preferred name *</div>
-                <input
-                  value={bioProfile.preferred_name}
-                  onChange={(e) => setBioProfile((p) => ({ ...p, preferred_name: e.target.value }))}
-                  disabled={profileBusy}
-                  style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
-                />
-              </label>
-              <label>
-                <div style={{ fontSize: 12, opacity: 0.8 }}>Age (optional)</div>
-                <input
-                  value={bioProfile.age}
-                  onChange={(e) => setBioProfile((p) => ({ ...p, age: e.target.value }))}
-                  disabled={profileBusy}
-                  style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
-                  inputMode="numeric"
-                />
-              </label>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={saveProfile} disabled={profileBusy}>
-                  {profileBusy ? "Saving..." : "Save"}
-                </button>
-                <button
-                  onClick={() => {
-                    setShowProfile(false);
-                    setActivePage("interview");
-                  }}
-                  disabled={profileBusy}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <BioProfilePage
+          profileSchema={profileSchema}
+          bioProfile={bioProfile}
+          setBioProfile={setBioProfile}
+          profileBusy={profileBusy}
+          saveProfile={saveProfile}
+          onClose={() => {
+            setShowProfile(false);
+            setActivePage("interview");
+          }}
+        />
       ) : (
         <div>
           <div
