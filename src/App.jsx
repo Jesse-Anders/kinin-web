@@ -1184,9 +1184,9 @@ export default function App() {
             <img
               src={kininHomeIcon}
               alt="Kinin"
-              style={{ width: 48, height: 48, objectFit: "contain", display: "block", margin: "0 auto 6px" }}
+              style={{ width: 48, height: 48, objectFit: "contain", display: "block", margin: "0 auto 6px", opacity: 0.8 }}
             />
-            <div style={{ fontSize: 18, fontWeight: 600, color: "#111" }}>Kinin</div>
+            <div style={{ fontSize: 18, fontWeight: 300, color: "rgba(17, 17, 17, 0.55)" }}>Kinin</div>
           </div>
 
       {error && (
@@ -1562,6 +1562,7 @@ export default function App() {
                 fontSize: 16,
                 resize: "none",
                 overflow: "hidden",
+                borderRadius: 12,
               }}
               rows={1}
               disabled={!isAuthed || busy}
@@ -1573,7 +1574,7 @@ export default function App() {
                 background: "#e5e7eb",
                 color: "rgba(17, 17, 17, 0.75)",
                 border: "1px solid #d1d5db",
-                borderRadius: 6,
+                borderRadius: 12,
                 padding: "8px 16px",
                 cursor: "pointer",
                 fontSize: 14,
