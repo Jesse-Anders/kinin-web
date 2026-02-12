@@ -18,6 +18,7 @@ import FaqPage from "./pages/FaqPage";
 import FeedbackPage from "./pages/FeedbackPage";
 import AccountPage from "./pages/AccountPage";
 import BioProfilePage from "./pages/BioProfilePage";
+import AdminCrmPage from "./pages/AdminCrmPage";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const RELEASE_CHANNEL = (import.meta.env.VITE_RELEASE_CHANNEL || "dev").toLowerCase();
@@ -113,6 +114,17 @@ export default function App() {
       requiresAuth: false,
       onClick: () => setActivePage("feedback"),
     },
+    ...(!IS_BETA_LITE
+      ? [
+          {
+            id: "admin-crm",
+            label: "Admin CRM",
+            icon: CirclePlus,
+            requiresAuth: true,
+            onClick: () => setActivePage("admin-crm"),
+          },
+        ]
+      : []),
     {
       id: "end-session",
       label: "End Session",
@@ -1486,6 +1498,12 @@ export default function App() {
           feedbackStatus={feedbackStatus}
           submitFeedback={submitFeedback}
         />
+      ) : activePage === "admin-crm" ? (
+        <AdminCrmPage
+          isAuthed={isAuthed}
+          getAccessToken={getAccessToken}
+          apiBase={API_BASE}
+        />
       ) : activePage === "account" ? (
         <AccountPage
           isAuthed={isAuthed}
@@ -1611,6 +1629,9 @@ export default function App() {
                     </button>
                     <button onClick={() => setActivePage("admin")} disabled={activePage === "admin"}>
                       Admin
+                    </button>
+                    <button onClick={() => setActivePage("admin-crm")} disabled={activePage === "admin-crm"}>
+                      Admin CRM
                     </button>
                   </div>
                 ) : null}
