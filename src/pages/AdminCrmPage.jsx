@@ -287,8 +287,8 @@ export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
           </button>
         </div>
 
-        <div style={{ border: "1px solid #eee", borderRadius: 10, overflow: "hidden" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+        <div style={{ border: "1px solid #eee", borderRadius: 10, overflowX: "auto", overflowY: "hidden" }}>
+          <table style={{ width: "100%", minWidth: 1150, borderCollapse: "collapse", fontSize: 14 }}>
             <thead>
               <tr style={{ textAlign: "left", background: "#fafafa" }}>
                 <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Email</th>
