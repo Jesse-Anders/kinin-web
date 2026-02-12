@@ -114,17 +114,6 @@ export default function App() {
       requiresAuth: false,
       onClick: () => setActivePage("feedback"),
     },
-    ...(!IS_BETA_LITE
-      ? [
-          {
-            id: "admin-crm",
-            label: "Admin CRM",
-            icon: CirclePlus,
-            requiresAuth: true,
-            onClick: () => setActivePage("admin-crm"),
-          },
-        ]
-      : []),
     {
       id: "end-session",
       label: "End Session",
