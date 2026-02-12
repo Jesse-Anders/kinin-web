@@ -46,10 +46,17 @@ export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
     if (!q) return invites;
     return invites.filter((item) => {
       const email = (item?.email || "").toLowerCase();
-      const status = (item?.status || "").toLowerCase();
+      const status = (item?.access_status || item?.status || "").toLowerCase();
+      const emailStatus = (item?.email_status || "").toLowerCase();
       const note = (item?.note || "").toLowerCase();
       const firstName = (item?.metadata?.first_name || "").toLowerCase();
-      return email.includes(q) || status.includes(q) || note.includes(q) || firstName.includes(q);
+      return (
+        email.includes(q) ||
+        status.includes(q) ||
+        emailStatus.includes(q) ||
+        note.includes(q) ||
+        firstName.includes(q)
+      );
     });
   }, [invites, searchFilter]);
 
@@ -177,8 +184,12 @@ export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
         const t = await res.text();
         throw new Error(`API error ${res.status}: ${t}`);
       }
-      setInvites((prev) => prev.map((x) => (x.email === email ? { ...x, status: "revoked" } : x)));
-      setStatusMessage(`Revoked ${email}`);
+      setInvites((prev) =>
+        prev.map((x) =>
+          x.email === email ? { ...x, status: "blocked", access_status: "blocked" } : x
+        )
+      );
+      setStatusMessage(`Blocked ${email} for new signups.`);
     } catch (e) {
       setErrorMessage(e?.message || String(e));
     } finally {
@@ -199,8 +210,8 @@ export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
       });
       setStatusMessage(
         response?.invite_existed
-          ? `Invite re-sent and existing record refreshed for ${invite.email}`
-          : `Invite sent for ${invite.email}`
+          ? `Invite re-sent for ${invite.email}.`
+          : `Invite sent for ${invite.email}.`
       );
       await listInvites({ append: false });
     } catch (e) {
@@ -258,9 +269,8 @@ export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
             disabled={!isAuthed || busy}
           >
             <option value="">All statuses</option>
-            <option value="invited">invited</option>
-            <option value="active">active</option>
-            <option value="revoked">revoked</option>
+            <option value="allowed">allowed</option>
+            <option value="blocked">blocked</option>
           </select>
           <input
             value={searchFilter}
@@ -283,8 +293,11 @@ export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
               <tr style={{ textAlign: "left", background: "#fafafa" }}>
                 <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Email</th>
                 <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>First name</th>
-                <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Status</th>
+                <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Allowed/Blocked</th>
+                <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Email status</th>
+                <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Last sent</th>
                 <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Updated</th>
+                <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Invite history</th>
                 <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Actions</th>
               </tr>
             </thead>
@@ -294,8 +307,29 @@ export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
                   <tr key={row.email}>
                     <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{row.email}</td>
                     <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{row?.metadata?.first_name || "-"}</td>
-                    <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{row.status || "-"}</td>
+                    <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{row.access_status || row.status || "-"}</td>
+                    <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{row.email_status || "-"}</td>
+                    <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{row.last_sent_at || "-"}</td>
                     <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{row.updated_at || "-"}</td>
+                    <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5", maxWidth: 260 }}>
+                      {Array.isArray(row.invite_history) && row.invite_history.length ? (
+                        <details>
+                          <summary style={{ cursor: "pointer" }}>{row.invite_history.length} send(s)</summary>
+                          <div style={{ marginTop: 6, maxHeight: 120, overflow: "auto", fontSize: 12 }}>
+                            {row.invite_history
+                              .slice()
+                              .reverse()
+                              .map((h, idx) => (
+                                <div key={`${row.email}-h-${idx}`}>
+                                  {h?.sent_at || "-"} {h?.source ? `(${h.source})` : ""}
+                                </div>
+                              ))}
+                          </div>
+                        </details>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
                     <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>
                       <div style={{ display: "flex", gap: 6 }}>
                         <button onClick={() => resendInvite(row)} disabled={!isAuthed || busy}>
@@ -310,7 +344,7 @@ export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} style={{ padding: 12, opacity: 0.7 }}>
+                  <td colSpan={8} style={{ padding: 12, opacity: 0.7 }}>
                     No invite records loaded.
                   </td>
                 </tr>
