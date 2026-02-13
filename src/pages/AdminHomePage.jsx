@@ -35,6 +35,28 @@ export default function AdminHomePage({ isAuthed, getAccessToken, apiBase, setAc
   const [feedbackRangeDays, setFeedbackRangeDays] = useState(7);
   const [feedbackUserFilter, setFeedbackUserFilter] = useState("");
 
+  // Entitlements
+  const [entUpsertEmail, setEntUpsertEmail] = useState("");
+  const [entUpsertAccess, setEntUpsertAccess] = useState("allowed");
+  const [entUpsertPlan, setEntUpsertPlan] = useState("none");
+  const [entUpsertBusy, setEntUpsertBusy] = useState(false);
+  const [entUpsertResult, setEntUpsertResult] = useState(null);
+  const [entUpsertError, setEntUpsertError] = useState("");
+
+  const [entGetBusy, setEntGetBusy] = useState(false);
+  const [entGetResult, setEntGetResult] = useState(null);
+  const [entGetError, setEntGetError] = useState("");
+
+  const [entSyncEmail, setEntSyncEmail] = useState("");
+  const [entSyncBusy, setEntSyncBusy] = useState(false);
+  const [entSyncResult, setEntSyncResult] = useState(null);
+  const [entSyncError, setEntSyncError] = useState("");
+
+  const [entListLimit, setEntListLimit] = useState(25);
+  const [entListBusy, setEntListBusy] = useState(false);
+  const [entListResult, setEntListResult] = useState(null);
+  const [entListError, setEntListError] = useState("");
+
   // ── Derived / memos ──
 
   const adminStatusCounts = useMemo(() => {
@@ -323,6 +345,76 @@ export default function AdminHomePage({ isAuthed, getAccessToken, apiBase, setAc
     }
   }
 
+  // ── Entitlement API helpers ──
+
+  async function entitlementCall(endpoint, body, { setBusy, setResult, setError }) {
+    setError("");
+    setResult(null);
+    setBusy(true);
+    try {
+      const accessToken = await getAccessToken();
+      const res = await fetch(`${apiBase}/admin/entitlements/${endpoint}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        let detail = t;
+        try {
+          const j = JSON.parse(t);
+          if (j && typeof j === "object") {
+            detail = typeof j.body === "string" ? j.body : JSON.stringify(j);
+          }
+        } catch { /* keep raw */ }
+        throw new Error(`API error ${res.status}: ${detail}`);
+      }
+      const data = await res.json();
+      const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
+      setResult(parsed);
+    } catch (e) {
+      setError(e.message || String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function runUpsert() {
+    const target = (adminUserId || "").trim();
+    if (!target) { setEntUpsertError("target_user_id required"); return; }
+    entitlementCall("upsert", {
+      target_user_id: target,
+      email: (entUpsertEmail || "").trim() || undefined,
+      access_state: entUpsertAccess,
+      plan_state: entUpsertPlan,
+    }, { setBusy: setEntUpsertBusy, setResult: setEntUpsertResult, setError: setEntUpsertError });
+  }
+
+  function runGet() {
+    const target = (adminUserId || "").trim();
+    if (!target) { setEntGetError("target_user_id required"); return; }
+    entitlementCall("get", { target_user_id: target }, {
+      setBusy: setEntGetBusy, setResult: setEntGetResult, setError: setEntGetError,
+    });
+  }
+
+  function runSyncInvite() {
+    const email = (entSyncEmail || "").trim();
+    if (!email) { setEntSyncError("email required"); return; }
+    entitlementCall("sync_invite", { email }, {
+      setBusy: setEntSyncBusy, setResult: setEntSyncResult, setError: setEntSyncError,
+    });
+  }
+
+  function runList() {
+    entitlementCall("list", { limit: Number(entListLimit) || 25 }, {
+      setBusy: setEntListBusy, setResult: setEntListResult, setError: setEntListError,
+    });
+  }
+
   // ── Render ──
 
   return (
@@ -609,6 +701,141 @@ export default function AdminHomePage({ isAuthed, getAccessToken, apiBase, setAc
         ) : (
           <div style={{ opacity: 0.7 }}>No feedback loaded yet.</div>
         )}
+      </div>
+
+      {/* ── User Entitlements ── */}
+      <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, marginTop: 12 }}>
+        <div style={{ fontWeight: 600, marginBottom: 10 }}>User Entitlements</div>
+
+        {/* Upsert */}
+        <details style={{ marginBottom: 10 }}>
+          <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: 13 }}>Upsert Entitlement</summary>
+          <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
+            <input
+              value={adminUserId}
+              readOnly
+              style={{ padding: 8, opacity: 0.7 }}
+              placeholder="target_user_id (set above)"
+            />
+            <input
+              value={entUpsertEmail}
+              onChange={(e) => setEntUpsertEmail(e.target.value)}
+              placeholder="email"
+              style={{ padding: 8 }}
+              disabled={entUpsertBusy}
+            />
+            <div style={{ display: "flex", gap: 8 }}>
+              <label style={{ flex: 1 }}>
+                <div style={{ fontSize: 11, opacity: 0.7 }}>access_state</div>
+                <select
+                  value={entUpsertAccess}
+                  onChange={(e) => setEntUpsertAccess(e.target.value)}
+                  disabled={entUpsertBusy}
+                  style={{ width: "100%", padding: 6 }}
+                >
+                  <option value="allowed">allowed</option>
+                  <option value="blocked">blocked</option>
+                </select>
+              </label>
+              <label style={{ flex: 1 }}>
+                <div style={{ fontSize: 11, opacity: 0.7 }}>plan_state</div>
+                <select
+                  value={entUpsertPlan}
+                  onChange={(e) => setEntUpsertPlan(e.target.value)}
+                  disabled={entUpsertBusy}
+                  style={{ width: "100%", padding: 6 }}
+                >
+                  <option value="none">none</option>
+                  <option value="beta_invited">beta_invited</option>
+                  <option value="trialing">trialing</option>
+                  <option value="active">active</option>
+                  <option value="past_due">past_due</option>
+                  <option value="canceled">canceled</option>
+                </select>
+              </label>
+            </div>
+            <button onClick={runUpsert} disabled={!isAuthed || entUpsertBusy}>
+              {entUpsertBusy ? "Saving..." : "Upsert"}
+            </button>
+            {entUpsertError ? <div style={{ color: "#b00020" }}>{entUpsertError}</div> : null}
+            {entUpsertResult ? (
+              <pre style={{ whiteSpace: "pre-wrap", margin: 0, background: "#fafafa", padding: 8, borderRadius: 6, border: "1px solid #eee", fontSize: 12 }}>
+                {JSON.stringify(entUpsertResult, null, 2)}
+              </pre>
+            ) : null}
+          </div>
+        </details>
+
+        {/* Get */}
+        <details style={{ marginBottom: 10 }}>
+          <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: 13 }}>Get Entitlement</summary>
+          <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
+            <input
+              value={adminUserId}
+              readOnly
+              style={{ padding: 8, opacity: 0.7 }}
+              placeholder="target_user_id (set above)"
+            />
+            <button onClick={runGet} disabled={!isAuthed || entGetBusy}>
+              {entGetBusy ? "Loading..." : "Get"}
+            </button>
+            {entGetError ? <div style={{ color: "#b00020" }}>{entGetError}</div> : null}
+            {entGetResult ? (
+              <pre style={{ whiteSpace: "pre-wrap", margin: 0, background: "#fafafa", padding: 8, borderRadius: 6, border: "1px solid #eee", fontSize: 12 }}>
+                {JSON.stringify(entGetResult, null, 2)}
+              </pre>
+            ) : null}
+          </div>
+        </details>
+
+        {/* Sync from Invite */}
+        <details style={{ marginBottom: 10 }}>
+          <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: 13 }}>Sync from Invite</summary>
+          <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
+            <input
+              value={entSyncEmail}
+              onChange={(e) => setEntSyncEmail(e.target.value)}
+              placeholder="email"
+              style={{ padding: 8 }}
+              disabled={entSyncBusy}
+            />
+            <button onClick={runSyncInvite} disabled={!isAuthed || entSyncBusy}>
+              {entSyncBusy ? "Syncing..." : "Sync Invite"}
+            </button>
+            {entSyncError ? <div style={{ color: "#b00020" }}>{entSyncError}</div> : null}
+            {entSyncResult ? (
+              <pre style={{ whiteSpace: "pre-wrap", margin: 0, background: "#fafafa", padding: 8, borderRadius: 6, border: "1px solid #eee", fontSize: 12 }}>
+                {JSON.stringify(entSyncResult, null, 2)}
+              </pre>
+            ) : null}
+          </div>
+        </details>
+
+        {/* List */}
+        <details style={{ marginBottom: 10 }}>
+          <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: 13 }}>List Entitlements</summary>
+          <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <label style={{ fontSize: 11, opacity: 0.7 }}>Limit:</label>
+              <input
+                type="number"
+                value={entListLimit}
+                onChange={(e) => setEntListLimit(e.target.value)}
+                style={{ padding: 6, width: 80 }}
+                disabled={entListBusy}
+              />
+              <button onClick={runList} disabled={!isAuthed || entListBusy}>
+                {entListBusy ? "Loading..." : "List"}
+              </button>
+            </div>
+            {entListError ? <div style={{ color: "#b00020" }}>{entListError}</div> : null}
+            {entListResult ? (
+              <pre style={{ whiteSpace: "pre-wrap", margin: 0, background: "#fafafa", padding: 8, borderRadius: 6, border: "1px solid #eee", fontSize: 12, maxHeight: 300, overflow: "auto" }}>
+                {JSON.stringify(entListResult, null, 2)}
+              </pre>
+            ) : null}
+          </div>
+        </details>
       </div>
     </div>
   );
