@@ -890,6 +890,7 @@ export default function App() {
           isAuthed={isAuthed}
           getAccessToken={getAccessToken}
           apiBase={API_BASE}
+          setActivePage={setActivePage}
         />
       ) : activePage === "faq" ? (
         <FaqPage />

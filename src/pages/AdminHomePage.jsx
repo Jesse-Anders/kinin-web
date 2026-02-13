@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchAuthSession } from "aws-amplify/auth";
 
-export default function AdminHomePage({ isAuthed, getAccessToken, apiBase }) {
+export default function AdminHomePage({ isAuthed, getAccessToken, apiBase, setActivePage }) {
   // ── Admin state ──
   const [adminUserId, setAdminUserId] = useState(
     () => localStorage.getItem("admin_user_id") || ""
@@ -334,6 +334,22 @@ export default function AdminHomePage({ isAuthed, getAccessToken, apiBase }) {
         marginBottom: 12,
       }}
     >
+      <div style={{ marginBottom: 12 }}>
+        <button
+          onClick={() => setActivePage("admin-crm")}
+          style={{
+            background: "transparent",
+            border: "none",
+            color: "#2563eb",
+            cursor: "pointer",
+            fontSize: 13,
+            padding: 0,
+            textDecoration: "underline",
+          }}
+        >
+          Admin CRM &rarr;
+        </button>
+      </div>
       <div style={{ marginBottom: 12 }}>
         <b>Admin Lookup</b>
         <div style={{ opacity: 0.7, fontSize: 12 }}>
