@@ -57,6 +57,9 @@ export default function AdminHomePage({ isAuthed, getAccessToken, apiBase, setAc
   const [entListResult, setEntListResult] = useState(null);
   const [entListError, setEntListError] = useState("");
 
+  const [entToggleBusy, setEntToggleBusy] = useState(false);
+  const [entToggleError, setEntToggleError] = useState("");
+
   // ── Derived / memos ──
 
   const adminStatusCounts = useMemo(() => {
@@ -406,6 +409,24 @@ export default function AdminHomePage({ isAuthed, getAccessToken, apiBase, setAc
     if (!email) { setEntSyncError("email required"); return; }
     entitlementCall("sync_invite", { email }, {
       setBusy: setEntSyncBusy, setResult: setEntSyncResult, setError: setEntSyncError,
+    });
+  }
+
+  function runToggleAccess(newState) {
+    const target = (adminUserId || "").trim();
+    if (!target) { setEntToggleError("target_user_id required"); return; }
+    setEntToggleError("");
+    setEntToggleBusy(true);
+    entitlementCall("upsert", {
+      target_user_id: target,
+      access_state: newState,
+    }, {
+      setBusy: setEntToggleBusy,
+      setResult: (result) => {
+        // Refresh the Get result so the displayed state updates
+        setEntGetResult(result);
+      },
+      setError: setEntToggleError,
     });
   }
 
@@ -781,9 +802,48 @@ export default function AdminHomePage({ isAuthed, getAccessToken, apiBase, setAc
             </button>
             {entGetError ? <div style={{ color: "#b00020" }}>{entGetError}</div> : null}
             {entGetResult ? (
-              <pre style={{ whiteSpace: "pre-wrap", margin: 0, background: "#fafafa", padding: 8, borderRadius: 6, border: "1px solid #eee", fontSize: 12 }}>
-                {JSON.stringify(entGetResult, null, 2)}
-              </pre>
+              <>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "8px 10px",
+                    background: entGetResult.access_state === "allowed" ? "#f0fdf4" : "#fef2f2",
+                    border: `1px solid ${entGetResult.access_state === "allowed" ? "#bbf7d0" : "#fecaca"}`,
+                    borderRadius: 6,
+                  }}
+                >
+                  <span style={{ fontWeight: 600, fontSize: 13 }}>
+                    Access: {entGetResult.access_state || "—"}
+                  </span>
+                  <span style={{ opacity: 0.6, fontSize: 12 }}>
+                    Plan: {entGetResult.plan_state || "—"}
+                  </span>
+                  <span style={{ flex: 1 }} />
+                  {entGetResult.access_state === "blocked" ? (
+                    <button
+                      onClick={() => runToggleAccess("allowed")}
+                      disabled={entToggleBusy}
+                      style={{ background: "#22c55e", color: "#fff", border: "none", borderRadius: 6, padding: "4px 12px", cursor: "pointer", fontSize: 12 }}
+                    >
+                      {entToggleBusy ? "..." : "Allow"}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => runToggleAccess("blocked")}
+                      disabled={entToggleBusy}
+                      style={{ background: "#ef4444", color: "#fff", border: "none", borderRadius: 6, padding: "4px 12px", cursor: "pointer", fontSize: 12 }}
+                    >
+                      {entToggleBusy ? "..." : "Block"}
+                    </button>
+                  )}
+                </div>
+                {entToggleError ? <div style={{ color: "#b00020", fontSize: 12 }}>{entToggleError}</div> : null}
+                <pre style={{ whiteSpace: "pre-wrap", margin: 0, background: "#fafafa", padding: 8, borderRadius: 6, border: "1px solid #eee", fontSize: 12 }}>
+                  {JSON.stringify(entGetResult, null, 2)}
+                </pre>
+              </>
             ) : null}
           </div>
         </details>
