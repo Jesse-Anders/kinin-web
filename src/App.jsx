@@ -62,6 +62,7 @@ export default function App() {
   const [chat, setChat] = useState([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [accessBlocked, setAccessBlocked] = useState(null);
   const [didStart, setDidStart] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [profileSchema, setProfileSchema] = useState(null);
@@ -205,6 +206,34 @@ export default function App() {
     return token;
   }
 
+  async function getApiErrorPayload(res) {
+    const text = await res.text();
+    let parsed = null;
+    try {
+      const outer = JSON.parse(text);
+      parsed = typeof outer?.body === "string" ? JSON.parse(outer.body) : outer;
+    } catch {
+      parsed = null;
+    }
+    return { text, parsed };
+  }
+
+  async function ensureApiOk(res) {
+    if (res.ok) return;
+    const { text, parsed } = await getApiErrorPayload(res);
+    if (res.status === 403 && parsed?.error === "access_blocked") {
+      setAccessBlocked({
+        reason: parsed.reason || "blocked",
+        access_state: parsed.access_state || "blocked",
+        plan_state: parsed.plan_state || "none",
+      });
+      setActivePage("interview");
+      throw new Error("Access is currently blocked for this account.");
+    }
+    const detail = parsed ? JSON.stringify(parsed) : text;
+    throw new Error(`API error ${res.status}: ${detail}`);
+  }
+
   async function updateInterviewDetails() {
     if (!sessionId || !isAuthed) return;
     setDetailsBusy(true);
@@ -215,10 +244,7 @@ export default function App() {
         method: "GET",
         headers: { Authorization: `Bearer ${idToken}` },
       });
-      if (!res.ok) {
-        const t = await res.text();
-        throw new Error(`API error ${res.status}: ${t}`);
-      }
+      await ensureApiOk(res);
       const data = await res.json();
       const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
       if (parsed?.ui_state) {
@@ -283,6 +309,7 @@ export default function App() {
 
   async function onLogin() {
     setError("");
+    setAccessBlocked(null);
     try {
       await signInWithRedirect(); // Hosted UI
     } catch (e) {
@@ -293,6 +320,7 @@ export default function App() {
 
   async function onLogout() {
     setError("");
+    setAccessBlocked(null);
     await signOut({ global: true });
     setUser(null);
     setChat([]);
@@ -328,10 +356,7 @@ export default function App() {
         }),
       });
 
-      if (!res.ok) {
-        const t = await res.text();
-        throw new Error(`API error ${res.status}: ${t}`);
-      }
+      await ensureApiOk(res);
 
       setAccountStatus("Account deleted. Signing you out...");
       try {
@@ -385,13 +410,11 @@ export default function App() {
         body: JSON.stringify(body),
       });
 
-      if (!res.ok) {
-        const t = await res.text();
-        throw new Error(`API error ${res.status}: ${t}`);
-      }
+      await ensureApiOk(res);
 
       const data = await res.json();
       const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
+      setAccessBlocked(null);
 
       const newSessionId = parsed.session_id || sessionId;
       if (newSessionId && newSessionId !== sessionId) {
@@ -450,33 +473,12 @@ export default function App() {
         body: JSON.stringify(body),
       });
 
-      if (!res.ok) {
-        const t = await res.text();
-        // Try to parse structured error bodies (Lambda proxy / API Gateway)
-        let detail = t;
-        try {
-          const j = JSON.parse(t);
-          if (j && typeof j === "object") {
-            if (typeof j.body === "string") {
-              try {
-                const inner = JSON.parse(j.body);
-                detail = JSON.stringify(inner);
-              } catch {
-                detail = j.body;
-              }
-            } else {
-              detail = JSON.stringify(j);
-            }
-          }
-        } catch {
-          // keep raw text
-        }
-        throw new Error(`API error ${res.status}: ${detail}`);
-      }
+      await ensureApiOk(res);
 
       const data = await res.json();
       const parsed =
         typeof data.body === "string" ? JSON.parse(data.body) : data;
+      setAccessBlocked(null);
 
       const newSessionId = parsed.session_id || sessionId;
       if (newSessionId && newSessionId !== sessionId) {
@@ -536,14 +538,12 @@ export default function App() {
         body: JSON.stringify(body),
       });
 
-      if (!res.ok) {
-        const t = await res.text();
-        throw new Error(`API error ${res.status}: ${t}`);
-      }
+      await ensureApiOk(res);
 
       const data = await res.json();
       const parsed =
         typeof data.body === "string" ? JSON.parse(data.body) : data;
+      setAccessBlocked(null);
 
       const newSessionId = parsed.session_id || "";
       setSessionId(newSessionId);
@@ -587,9 +587,9 @@ export default function App() {
           headers: { Authorization: `Bearer ${idToken}` },
         }),
       ]);
-
-      if (!schemaRes.ok) throw new Error(`API error ${schemaRes.status}: ${await schemaRes.text()}`);
-      if (!profileRes.ok) throw new Error(`API error ${profileRes.status}: ${await profileRes.text()}`);
+      await ensureApiOk(schemaRes);
+      await ensureApiOk(profileRes);
+      setAccessBlocked(null);
 
       const schemaData = await schemaRes.json();
       const schemaParsed =
@@ -640,12 +640,10 @@ export default function App() {
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) {
-        const t = await res.text();
-        throw new Error(`API error ${res.status}: ${t}`);
-      }
+      await ensureApiOk(res);
       const data = await res.json();
       const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
+      setAccessBlocked(null);
       const bp = parsed.biography_user_profile || {};
       setBioProfile({
         preferred_name: bp.preferred_name || preferred,
@@ -885,6 +883,25 @@ export default function App() {
         </div>
       )}
 
+      {accessBlocked ? (
+        <div
+          style={{
+            background: "#fff4e5",
+            padding: 12,
+            borderRadius: 8,
+            marginBottom: 16,
+            border: "1px solid #f5d7a1",
+          }}
+        >
+          <b>Access blocked.</b>{" "}
+          This account is currently blocked from app use.
+          <div style={{ fontSize: 12, opacity: 0.75, marginTop: 6 }}>
+            reason: {accessBlocked.reason || "blocked"} · access_state: {accessBlocked.access_state || "blocked"} ·
+            plan_state: {accessBlocked.plan_state || "none"}
+          </div>
+        </div>
+      ) : null}
+
       {activePage === "admin" && !IS_BETA_LITE ? (
         <AdminHomePage
           isAuthed={isAuthed}
@@ -994,11 +1011,11 @@ export default function App() {
                 color: "rgba(17, 17, 17, 0.7)",
               }}
               rows={1}
-              disabled={!isAuthed || busy}
+              disabled={!isAuthed || busy || !!accessBlocked}
             />
             <button
               onClick={sendTurn}
-              disabled={!isAuthed || busy}
+              disabled={!isAuthed || busy || !!accessBlocked}
               style={{
                 background: "#f0f0f0",
                 color: "rgba(17, 17, 17, 0.75)",
