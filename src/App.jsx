@@ -228,10 +228,17 @@ export default function App() {
         plan_state: parsed.plan_state || "none",
       });
       setActivePage("interview");
-      throw new Error("Access is currently blocked for this account.");
+      const blockedErr = new Error("access_blocked");
+      blockedErr.name = "AccessBlockedError";
+      throw blockedErr;
     }
     const detail = parsed ? JSON.stringify(parsed) : text;
     throw new Error(`API error ${res.status}: ${detail}`);
+  }
+
+  function setTopErrorFromException(e) {
+    if (e?.name === "AccessBlockedError") return;
+    setError(e?.message || String(e));
   }
 
   async function updateInterviewDetails() {
@@ -257,7 +264,7 @@ export default function App() {
       }
       syncLabelGroupsFromParsed(parsed);
     } catch (e) {
-      setError(e.message || String(e));
+      setTopErrorFromException(e);
     } finally {
       setDetailsBusy(false);
     }
@@ -314,7 +321,7 @@ export default function App() {
       await signInWithRedirect(); // Hosted UI
     } catch (e) {
       console.error("Login redirect failed:", e);
-      setError(e?.message || JSON.stringify(e));
+      setTopErrorFromException(e);
     }
   }
 
@@ -437,7 +444,7 @@ export default function App() {
       }
 
     } catch (e) {
-      setError(e.message || String(e));
+      setTopErrorFromException(e);
     } finally {
       setBusy(false);
     }
@@ -504,7 +511,7 @@ export default function App() {
       setMessage("");
 
     } catch (e) {
-      setError(e.message || String(e));
+      setTopErrorFromException(e);
     } finally {
       setBusy(false);
     }
@@ -557,7 +564,7 @@ export default function App() {
       setChat([]);
       setUiState(null);
     } catch (e) {
-      setError(e.message || String(e));
+      setTopErrorFromException(e);
     } finally {
       setBusy(false);
     }
@@ -605,7 +612,7 @@ export default function App() {
         age: bp.age === undefined || bp.age === null ? "" : String(bp.age),
       });
     } catch (e) {
-      setError(e.message || String(e));
+      setTopErrorFromException(e);
     } finally {
       setProfileBusy(false);
     }
@@ -652,7 +659,7 @@ export default function App() {
       setShowProfile(false);
       setActivePage("interview");
     } catch (e) {
-      setError(e.message || String(e));
+      setTopErrorFromException(e);
     } finally {
       setProfileBusy(false);
     }
@@ -893,11 +900,10 @@ export default function App() {
             border: "1px solid #f5d7a1",
           }}
         >
-          <b>Access blocked.</b>{" "}
-          This account is currently blocked from app use.
-          <div style={{ fontSize: 12, opacity: 0.75, marginTop: 6 }}>
-            reason: {accessBlocked.reason || "blocked"} · access_state: {accessBlocked.access_state || "blocked"} ·
-            plan_state: {accessBlocked.plan_state || "none"}
+          <div><b>Sorry, Kinin app use is by invite only at this time.</b></div>
+          <div style={{ marginTop: 6 }}>
+            If you believe you are receiving this message in error, or you would like to be considered for early
+            access, please email team@kinin.ai.
           </div>
         </div>
       ) : null}
