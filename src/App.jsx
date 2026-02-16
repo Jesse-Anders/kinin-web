@@ -7,6 +7,7 @@ import {
   Menu,
   CirclePlus,
   Shield,
+  Glasses,
 } from "lucide-react";
 import kininHomeIcon from "./assets/icons/kinin-icon-390sq.png";
 import {
@@ -21,6 +22,7 @@ import AccountPage from "./pages/AccountPage";
 import BioProfilePage from "./pages/BioProfilePage";
 import AdminCrmPage from "./pages/AdminCrmPage";
 import AdminHomePage from "./pages/AdminHomePage";
+import AboutKininPage from "./pages/AboutKininPage";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const RELEASE_CHANNEL = (import.meta.env.VITE_RELEASE_CHANNEL || "dev").toLowerCase();
@@ -97,6 +99,13 @@ export default function App() {
       icon: Megaphone,
       requiresAuth: false,
       onClick: () => setActivePage("feedback"),
+    },
+    {
+      id: "about",
+      label: "About",
+      icon: Glasses,
+      requiresAuth: false,
+      onClick: () => setActivePage("about"),
     },
     {
       id: "admin",
@@ -929,6 +938,8 @@ export default function App() {
           feedbackStatus={feedbackStatus}
           submitFeedback={submitFeedback}
         />
+      ) : activePage === "about" ? (
+        <AboutKininPage />
       ) : activePage === "admin-crm" ? (
         <AdminCrmPage
           isAuthed={isAuthed}
