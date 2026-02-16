@@ -172,7 +172,7 @@ def bedrock_chat(message: str, context_pack_json: str) -> str:
 #         raise RuntimeError(f"Bedrock invoke_model failed: {e}") from e
 
 
-def query_recent_turns(user_id: str, limit: int = 12) -> list[dict]:
+def query_recent_turns(user_id: str, limit: int = 20) -> list[dict]:
     """
     Requires ConversationTurns table schema:
       PK: user_id
@@ -267,7 +267,7 @@ def lambda_handler(event, context):
             user_state["profile_snapshot"] = profile
 
         # 2) Pull recent turns
-        recent_turns = query_recent_turns(user_id, limit=12)
+        recent_turns = query_recent_turns(user_id, limit=20)
 
         # 3) Build context pack
         context_pack = build_context_pack(user_state, recent_turns)
