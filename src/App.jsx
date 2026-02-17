@@ -912,7 +912,7 @@ export default function App() {
           <div><b>Sorry, Kinin app use is by invite only at this time.</b></div>
           <div style={{ marginTop: 6 }}>
             If you believe you are receiving this message in error, or you would like to be considered for early
-            access, please email team@kinin.ai.
+            access, please email Jesse@greenongreen.com.
           </div>
         </div>
       ) : null}
