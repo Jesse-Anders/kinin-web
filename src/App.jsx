@@ -376,7 +376,9 @@ export default function App() {
 
       setAccountStatus("Account deleted. Signing you out...");
       try {
-        await signOut({ global: true });
+        // Local sign-out only — account is already deleted, so global token
+        // revocation is unnecessary and would fail without the admin scope.
+        await signOut({ global: false });
       } catch {
         // Ignore sign-out errors after account deletion.
       }
