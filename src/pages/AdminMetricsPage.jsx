@@ -164,6 +164,42 @@ export default function AdminMetricsPage({ isAuthed, getAccessToken, apiBase, se
             </div>
           </div>
 
+          <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, marginBottom: 12 }}>
+            <div style={{ fontWeight: 600, marginBottom: 8 }}>Per-agent token breakdown</div>
+            {(metrics?.agent_breakdown || []).length ? (
+              <div style={{ border: "1px solid #eee", borderRadius: 8, overflow: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ textAlign: "left", background: "#fafafa" }}>
+                      <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Agent role</th>
+                      <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Input</th>
+                      <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Output</th>
+                      <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Total</th>
+                      <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Calls</th>
+                      <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Provider calls</th>
+                      <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Estimated calls</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(metrics?.agent_breakdown || []).map((row) => (
+                      <tr key={row.agent_role}>
+                        <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{row.agent_role}</td>
+                        <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{fmtInt(row.input_tokens)}</td>
+                        <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{fmtInt(row.output_tokens)}</td>
+                        <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{fmtInt(row.total_tokens)}</td>
+                        <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{fmtInt(row.llm_call_count)}</td>
+                        <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{fmtInt(row.provider_token_calls)}</td>
+                        <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{fmtInt(row.estimated_token_calls)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div style={{ opacity: 0.7 }}>No per-agent call records in this range yet.</div>
+            )}
+          </div>
+
           <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 12 }}>
             <div style={{ fontWeight: 600, marginBottom: 8 }}>Daily token series (UTC)</div>
             <div style={{ maxHeight: 360, overflow: "auto", border: "1px solid #eee", borderRadius: 8 }}>
