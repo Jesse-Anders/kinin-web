@@ -462,6 +462,21 @@ export default function AdminHomePage({ isAuthed, getAccessToken, apiBase, setAc
         >
           Admin CRM &rarr;
         </button>
+        <div style={{ height: 6 }} />
+        <button
+          onClick={() => setActivePage("admin-metrics")}
+          style={{
+            background: "transparent",
+            border: "none",
+            color: "#2563eb",
+            cursor: "pointer",
+            fontSize: 13,
+            padding: 0,
+            textDecoration: "underline",
+          }}
+        >
+          Admin Metrics &rarr;
+        </button>
       </div>
       <div style={{ marginBottom: 12 }}>
         <b>Admin Lookup</b>
