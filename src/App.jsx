@@ -80,11 +80,11 @@ export default function App() {
   const sidebarBottomRef = useRef(null);
   const menuItems = [
     {
-      id: "bio",
-      label: "Bio Profile",
-      icon: Footprints,
-      requiresAuth: true,
-      onClick: () => openProfile(),
+      id: "about",
+      label: "About",
+      icon: Glasses,
+      requiresAuth: false,
+      onClick: () => setActivePage("about"),
     },
     {
       id: "faq",
@@ -101,11 +101,11 @@ export default function App() {
       onClick: () => setActivePage("feedback"),
     },
     {
-      id: "about",
-      label: "About",
-      icon: Glasses,
-      requiresAuth: false,
-      onClick: () => setActivePage("about"),
+      id: "bio",
+      label: "Bio Profile",
+      icon: Footprints,
+      requiresAuth: true,
+      onClick: () => openProfile(),
     },
     {
       id: "admin",
