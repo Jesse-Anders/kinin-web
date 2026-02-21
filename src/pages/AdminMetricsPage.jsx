@@ -201,9 +201,11 @@ export default function AdminMetricsPage({ isAuthed, getAccessToken, apiBase, se
             <div>Total input tokens: <b>{fmtInt(globalMetrics?.totals?.input_tokens)}</b></div>
             <div>Total output tokens: <b>{fmtInt(globalMetrics?.totals?.output_tokens)}</b></div>
             <div>Total tokens: <b>{fmtInt(globalMetrics?.totals?.total_tokens)}</b></div>
+            <div>Total user words: <b>{fmtInt(globalMetrics?.totals?.user_word_count)}</b></div>
             <div>LLM calls: <b>{fmtInt(globalMetrics?.totals?.llm_call_count)}</b></div>
             <div>Avg tokens/day: <b>{fmtInt(globalMetrics?.avg_tokens_per_day)}</b></div>
             <div>Avg tokens/active day: <b>{fmtInt(globalMetrics?.avg_tokens_per_active_day)}</b></div>
+            <div>Avg user words/day: <b>{fmtInt(globalMetrics?.avg_user_words_per_day)}</b></div>
           </div>
           <div style={{ marginTop: 8, fontSize: 12, opacity: 0.75, marginBottom: 8 }}>
             Provider token calls: {fmtInt(globalMetrics?.totals?.provider_token_calls)} | Estimated token calls: {fmtInt(globalMetrics?.totals?.estimated_token_calls)}
@@ -216,6 +218,7 @@ export default function AdminMetricsPage({ isAuthed, getAccessToken, apiBase, se
                   <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Input</th>
                   <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Output</th>
                   <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Total</th>
+                  <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>User words</th>
                   <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Calls</th>
                   <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Running avg/day</th>
                 </tr>
@@ -227,6 +230,7 @@ export default function AdminMetricsPage({ isAuthed, getAccessToken, apiBase, se
                     <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{fmtInt(row.input_tokens)}</td>
                     <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{fmtInt(row.output_tokens)}</td>
                     <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{fmtInt(row.total_tokens)}</td>
+                    <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{fmtInt(row.user_word_count)}</td>
                     <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{fmtInt(row.llm_call_count)}</td>
                     <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{fmtInt(row.running_avg_tokens_per_day)}</td>
                   </tr>
@@ -251,9 +255,11 @@ export default function AdminMetricsPage({ isAuthed, getAccessToken, apiBase, se
               <div>Total input tokens: <b>{fmtInt(metrics?.totals?.input_tokens)}</b></div>
               <div>Total output tokens: <b>{fmtInt(metrics?.totals?.output_tokens)}</b></div>
               <div>Total tokens: <b>{fmtInt(metrics?.totals?.total_tokens)}</b></div>
+              <div>Total user words: <b>{fmtInt(metrics?.totals?.user_word_count)}</b></div>
               <div>LLM calls: <b>{fmtInt(metrics?.totals?.llm_call_count)}</b></div>
               <div>Avg tokens/day: <b>{fmtInt(metrics?.avg_tokens_per_day)}</b></div>
               <div>Avg tokens/active day: <b>{fmtInt(metrics?.avg_tokens_per_active_day)}</b></div>
+              <div>Avg user words/day: <b>{fmtInt(metrics?.avg_user_words_per_day)}</b></div>
             </div>
             <div style={{ marginTop: 8, fontSize: 12, opacity: 0.75 }}>
               Provider token calls: {fmtInt(metrics?.totals?.provider_token_calls)} | Estimated token calls: {fmtInt(metrics?.totals?.estimated_token_calls)}
@@ -342,6 +348,7 @@ export default function AdminMetricsPage({ isAuthed, getAccessToken, apiBase, se
                     <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Input</th>
                     <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Output</th>
                     <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Total</th>
+                    <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>User words</th>
                     <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Calls</th>
                     <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Running avg/day</th>
                     <th style={{ padding: 8, borderBottom: "1px solid #eee", width: 180 }}>Volume</th>
@@ -357,6 +364,7 @@ export default function AdminMetricsPage({ isAuthed, getAccessToken, apiBase, se
                         <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{fmtInt(row.input_tokens)}</td>
                         <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{fmtInt(row.output_tokens)}</td>
                         <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{fmtInt(total)}</td>
+                        <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{fmtInt(row.user_word_count)}</td>
                         <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{fmtInt(row.llm_call_count)}</td>
                         <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{fmtInt(row.running_avg_tokens_per_day)}</td>
                         <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>
