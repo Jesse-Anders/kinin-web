@@ -29,8 +29,10 @@ export default function AccountPage({
       >
         <div style={{ fontWeight: 600, marginBottom: 6 }}>Delete account and all data</div>
         <div style={{ fontSize: 13, opacity: 0.85 }}>
-          This permanently deletes your account and all associated DynamoDB and S3 data. This action
-          cannot be undone.
+          This permanently deletes your account, Cognito auth user, S3 archive objects, and data from:
+          ConversationTurns, UserState, UserStepState, kinin-user-idempotency,
+          kinin-user-lifecycle-crm, kinin-user-entitlement-records, and user_relationships.
+          (kinin-email-send-log-dev is intentionally not purged.) This action cannot be undone.
         </div>
       </div>
       <div style={{ display: "grid", gap: 10 }}>

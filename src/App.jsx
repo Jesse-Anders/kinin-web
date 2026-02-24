@@ -23,6 +23,7 @@ import BioProfilePage from "./pages/BioProfilePage";
 import AdminCrmPage from "./pages/AdminCrmPage";
 import AdminHomePage from "./pages/AdminHomePage";
 import AdminMetricsPage from "./pages/AdminMetricsPage";
+import AdminUserPurgePage from "./pages/AdminUserPurgePage";
 import AboutKininPage from "./pages/AboutKininPage";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
@@ -951,6 +952,13 @@ export default function App() {
         />
       ) : activePage === "admin-metrics" ? (
         <AdminMetricsPage
+          isAuthed={isAuthed}
+          getAccessToken={getAccessToken}
+          apiBase={API_BASE}
+          setActivePage={setActivePage}
+        />
+      ) : activePage === "admin-user-purge" ? (
+        <AdminUserPurgePage
           isAuthed={isAuthed}
           getAccessToken={getAccessToken}
           apiBase={API_BASE}

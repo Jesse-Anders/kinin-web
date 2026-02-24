@@ -477,6 +477,21 @@ export default function AdminHomePage({ isAuthed, getAccessToken, apiBase, setAc
         >
           Admin Metrics &rarr;
         </button>
+        <div style={{ height: 6 }} />
+        <button
+          onClick={() => setActivePage("admin-user-purge")}
+          style={{
+            background: "transparent",
+            border: "none",
+            color: "#2563eb",
+            cursor: "pointer",
+            fontSize: 13,
+            padding: 0,
+            textDecoration: "underline",
+          }}
+        >
+          Admin User Purge &rarr;
+        </button>
       </div>
       <div style={{ marginBottom: 12 }}>
         <b>Admin Lookup</b>
