@@ -481,6 +481,7 @@ export default function App() {
         session_id: sessionId || undefined,
         message: message.trim(),
         client_request_id: clientRequestId,
+        stream: true,
       };
 
       const res = await fetch(`${API_BASE}/turn`, {
@@ -494,33 +495,88 @@ export default function App() {
 
       await ensureApiOk(res);
 
-      const data = await res.json();
-      const parsed =
-        typeof data.body === "string" ? JSON.parse(data.body) : data;
-      setAccessBlocked(null);
+      if (!res.body) {
+        throw new Error("Streaming response body is not available.");
+      }
 
-      const newSessionId = parsed.session_id || sessionId;
+      setAccessBlocked(null);
+      setChat((prev) => [
+        ...prev,
+        { role: "user", content: message.trim() },
+        { role: "assistant", content: "" },
+      ]);
+      setMessage("");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let donePayload = null;
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() || "";
+        for (const part of parts) {
+          const lines = part.split("\n");
+          let eventName = "message";
+          let dataLine = "";
+          for (const line of lines) {
+            if (line.startsWith("event:")) {
+              eventName = line.slice(6).trim();
+            } else if (line.startsWith("data:")) {
+              dataLine += line.slice(5).trim();
+            }
+          }
+          if (!dataLine) continue;
+          let parsedData = null;
+          try {
+            parsedData = JSON.parse(dataLine);
+          } catch {
+            parsedData = null;
+          }
+          if (!parsedData) continue;
+          if (eventName === "delta") {
+            const delta = parsedData.delta || "";
+            if (delta) {
+              setChat((prev) => {
+                const next = [...prev];
+                const lastIdx = next.length - 1;
+                if (lastIdx >= 0 && next[lastIdx].role === "assistant") {
+                  next[lastIdx] = {
+                    ...next[lastIdx],
+                    content: (next[lastIdx].content || "") + delta,
+                  };
+                }
+                return next;
+              });
+            }
+          } else if (eventName === "done") {
+            donePayload = parsedData;
+          }
+        }
+      }
+
+      if (!donePayload) {
+        throw new Error("Streaming ended without a final payload.");
+      }
+
+      const newSessionId = donePayload.session_id || sessionId;
       if (newSessionId && newSessionId !== sessionId) {
         setSessionId(newSessionId);
         localStorage.setItem("session_id", newSessionId);
       }
-      if ((parsed.journey_version_display !== undefined && parsed.journey_version_display !== null) || (parsed.journey_version !== undefined && parsed.journey_version !== null)) {
-        const v = String(parsed.journey_version_display ?? parsed.journey_version);
+      if ((donePayload.journey_version_display !== undefined && donePayload.journey_version_display !== null) || (donePayload.journey_version !== undefined && donePayload.journey_version !== null)) {
+        const v = String(donePayload.journey_version_display ?? donePayload.journey_version);
         setJourneyVersion(v);
         localStorage.setItem("journey_version", v);
       }
-      syncLabelGroupsFromParsed(parsed);
+      syncLabelGroupsFromParsed(donePayload);
 
-      if (parsed.ui_state) {
-        setUiState(parsed.ui_state);
+      if (donePayload.ui_state) {
+        setUiState(donePayload.ui_state);
       }
-
-      setChat((prev) => [
-        ...prev,
-        { role: "user", content: message.trim() },
-        { role: "assistant", content: parsed.assistant },
-      ]);
-      setMessage("");
 
     } catch (e) {
       setTopErrorFromException(e);
