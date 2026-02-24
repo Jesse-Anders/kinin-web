@@ -31,6 +31,16 @@ const RELEASE_CHANNEL = (import.meta.env.VITE_RELEASE_CHANNEL || "dev").toLowerC
 const IS_BETA_LITE = RELEASE_CHANNEL === "beta-lite";
 const VERSION_LABEL = IS_BETA_LITE ? "Beta-lite Version 1.0" : "Dev Version 1.0";
 const ACCOUNT_CONFIRM_PHRASE = "delete my account and all data";
+const PUBLIC_HASH_TO_PAGE = {
+  "#/about": "about",
+  "#/faq": "faq",
+  "#/feedback": "feedback",
+};
+const PUBLIC_PAGE_TO_HASH = {
+  about: "#/about",
+  faq: "#/faq",
+  feedback: "#/feedback",
+};
 
 
 export default function App() {
@@ -195,6 +205,25 @@ export default function App() {
       setLastProgress(uiState.progress);
     }
   }, [uiState]);
+  useEffect(() => {
+    function syncPageFromHash() {
+      const page = PUBLIC_HASH_TO_PAGE[window.location.hash || ""];
+      if (page && page !== activePage) {
+        setActivePage(page);
+      }
+    }
+    syncPageFromHash();
+    window.addEventListener("hashchange", syncPageFromHash);
+    return () => window.removeEventListener("hashchange", syncPageFromHash);
+  }, [activePage]);
+
+  useEffect(() => {
+    const targetHash = PUBLIC_PAGE_TO_HASH[activePage];
+    if (!targetHash) return;
+    if (window.location.hash !== targetHash) {
+      window.location.hash = targetHash;
+    }
+  }, [activePage]);
   useEffect(() => {
     function recompute() {
       if (!sidebarRef.current || !sidebarMeasureRef.current || !sidebarBottomRef.current) {
