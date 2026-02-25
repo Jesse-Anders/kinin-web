@@ -8,6 +8,7 @@ import {
   CirclePlus,
   Shield,
   Glasses,
+  Mail,
 } from "lucide-react";
 import kininHomeIcon from "./assets/icons/kinin-icon-390sq.png";
 import {
@@ -18,6 +19,7 @@ import {
 } from "aws-amplify/auth";
 import FaqPage from "./pages/FaqPage";
 import FeedbackPage from "./pages/FeedbackPage";
+import ContactPage from "./pages/ContactPage";
 import AccountPage from "./pages/AccountPage";
 import BioProfilePage from "./pages/BioProfilePage";
 import AdminCrmPage from "./pages/AdminCrmPage";
@@ -31,6 +33,18 @@ const RELEASE_CHANNEL = (import.meta.env.VITE_RELEASE_CHANNEL || "dev").toLowerC
 const IS_BETA_LITE = RELEASE_CHANNEL === "beta-lite";
 const VERSION_LABEL = IS_BETA_LITE ? "Beta-lite Version 1.0" : "Dev Version 1.0";
 const ACCOUNT_CONFIRM_PHRASE = "delete my account and all data";
+const PUBLIC_HASH_TO_PAGE = {
+  "#/about": "about",
+  "#/faq": "faq",
+  "#/feedback": "feedback",
+  "#/contact": "contact",
+};
+const PUBLIC_PAGE_TO_HASH = {
+  about: "#/about",
+  faq: "#/faq",
+  feedback: "#/feedback",
+  contact: "#/contact",
+};
 
 
 export default function App() {
@@ -131,6 +145,11 @@ export default function App() {
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackStatus, setFeedbackStatus] = useState("");
   const [feedbackBusy, setFeedbackBusy] = useState(false);
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactMessage, setContactMessage] = useState("");
+  const [contactStatus, setContactStatus] = useState("");
+  const [contactBusy, setContactBusy] = useState(false);
   const [detailsBusy, setDetailsBusy] = useState(false);
   const [accountConfirmText, setAccountConfirmText] = useState("");
   const [accountUsername, setAccountUsername] = useState("");
@@ -187,6 +206,18 @@ export default function App() {
   const visibleTopItems = menuItems.filter(
     (item) => item.section !== "bottom" && (isAuthed || !item.requiresAuth) && !(item.hideForBetaLite && IS_BETA_LITE)
   );
+  const extraMenuItems = [
+    {
+      id: "contact",
+      label: "Contact",
+      icon: Mail,
+      requiresAuth: false,
+      onClick: () => setActivePage("contact"),
+    },
+  ];
+  const visibleExtraMenuItems = extraMenuItems.filter((item) => isAuthed || !item.requiresAuth);
+  const primaryTopItems = visibleTopItems.filter((item) => item.id !== "admin");
+  const adminTopItems = visibleTopItems.filter((item) => item.id === "admin");
   const visibleBottomItems = menuItems.filter(
     (item) => item.section === "bottom" && (isAuthed || !item.requiresAuth) && !(item.hideForBetaLite && IS_BETA_LITE)
   );
@@ -195,6 +226,25 @@ export default function App() {
       setLastProgress(uiState.progress);
     }
   }, [uiState]);
+  useEffect(() => {
+    function syncPageFromHash() {
+      const page = PUBLIC_HASH_TO_PAGE[window.location.hash || ""];
+      if (page && page !== activePage) {
+        setActivePage(page);
+      }
+    }
+    syncPageFromHash();
+    window.addEventListener("hashchange", syncPageFromHash);
+    return () => window.removeEventListener("hashchange", syncPageFromHash);
+  }, [activePage]);
+
+  useEffect(() => {
+    const targetHash = PUBLIC_PAGE_TO_HASH[activePage];
+    if (!targetHash) return;
+    if (window.location.hash !== targetHash) {
+      window.location.hash = targetHash;
+    }
+  }, [activePage]);
   useEffect(() => {
     function recompute() {
       if (!sidebarRef.current || !sidebarMeasureRef.current || !sidebarBottomRef.current) {
@@ -714,6 +764,47 @@ export default function App() {
     }
   }
 
+  async function submitContact() {
+    setContactStatus("");
+    setContactBusy(true);
+    try {
+      const email = (contactEmail || "").trim();
+      const messageText = (contactMessage || "").trim();
+      if (!email) {
+        throw new Error("Please enter your email.");
+      }
+      if (!messageText) {
+        throw new Error("Please enter a message.");
+      }
+      const session = await fetchAuthSession();
+      const idToken = session?.tokens?.idToken?.toString();
+      const payload = {
+        name: (contactName || "").trim() || undefined,
+        email,
+        message: messageText,
+      };
+      const headers = { "Content-Type": "application/json" };
+      if (idToken) {
+        headers.Authorization = `Bearer ${idToken}`;
+      }
+      const res = await fetch(`${API_BASE}/contact`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(`API error ${res.status}: ${t}`);
+      }
+      setContactMessage("");
+      setContactStatus("Thanks - we received your message.");
+    } catch (e) {
+      setContactStatus(e.message || String(e));
+    } finally {
+      setContactBusy(false);
+    }
+  }
+
   return (
     <div className="app-shell">
       <aside className={`sidebar ${menuOpen ? "sidebar-open" : ""}`} ref={sidebarRef}>
@@ -737,7 +828,56 @@ export default function App() {
         <div className="sidebar-divider" />
         {!menuCollapsed ? (
           <>
-            {visibleTopItems.map((item) => {
+            {primaryTopItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className="sidebar-home sidebar-home-secondary"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setMenuOverflowOpen(false);
+                    item.onClick();
+                  }}
+                >
+                  {Icon ? <Icon className="sidebar-home-icon" size={20} strokeWidth={1.5} /> : null}
+                  {item.label}
+                </button>
+              );
+            })}
+            <div className="sidebar-overflow-toggle">
+              <button
+                type="button"
+                className="sidebar-home sidebar-home-secondary"
+                onClick={() => setMenuOverflowOpen((prev) => !prev)}
+              >
+                <CirclePlus className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+              </button>
+              {menuOverflowOpen ? (
+                <div className="sidebar-popover">
+                  {visibleExtraMenuItems.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className="sidebar-home sidebar-home-secondary"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          setMenuOverflowOpen(false);
+                          item.onClick();
+                        }}
+                      >
+                        {Icon ? <Icon className="sidebar-home-icon" size={20} strokeWidth={1.5} /> : null}
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
+            {adminTopItems.map((item) => {
               const Icon = item.icon;
               return (
                 <button
@@ -767,7 +907,43 @@ export default function App() {
             </button>
             {menuOverflowOpen ? (
               <div className="sidebar-popover">
-                {visibleTopItems.map((item) => {
+                {primaryTopItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className="sidebar-home sidebar-home-secondary"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setMenuOverflowOpen(false);
+                        item.onClick();
+                      }}
+                    >
+                      {Icon ? <Icon className="sidebar-home-icon" size={20} strokeWidth={1.5} /> : null}
+                      {item.label}
+                    </button>
+                  );
+                })}
+                {visibleExtraMenuItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className="sidebar-home sidebar-home-secondary"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setMenuOverflowOpen(false);
+                        item.onClick();
+                      }}
+                    >
+                      {Icon ? <Icon className="sidebar-home-icon" size={20} strokeWidth={1.5} /> : null}
+                      {item.label}
+                    </button>
+                  );
+                })}
+                {adminTopItems.map((item) => {
                   const Icon = item.icon;
                   return (
                     <button
@@ -859,7 +1035,19 @@ export default function App() {
           Kinin
         </button>
         <div className="sidebar-divider" />
-        {visibleTopItems.map((item) => {
+        {primaryTopItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button key={item.id} type="button" className="sidebar-home sidebar-home-secondary">
+              {Icon ? <Icon className="sidebar-home-icon" size={20} strokeWidth={1.5} /> : null}
+              {item.label}
+            </button>
+          );
+        })}
+        <button type="button" className="sidebar-home sidebar-home-secondary">
+          <CirclePlus className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+        </button>
+        {adminTopItems.map((item) => {
           const Icon = item.icon;
           return (
             <button key={item.id} type="button" className="sidebar-home sidebar-home-secondary">
@@ -941,6 +1129,18 @@ export default function App() {
           feedbackBusy={feedbackBusy}
           feedbackStatus={feedbackStatus}
           submitFeedback={submitFeedback}
+        />
+      ) : activePage === "contact" ? (
+        <ContactPage
+          contactName={contactName}
+          setContactName={setContactName}
+          contactEmail={contactEmail}
+          setContactEmail={setContactEmail}
+          contactMessage={contactMessage}
+          setContactMessage={setContactMessage}
+          contactBusy={contactBusy}
+          contactStatus={contactStatus}
+          submitContact={submitContact}
         />
       ) : activePage === "about" ? (
         <AboutKininPage />
