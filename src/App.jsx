@@ -45,6 +45,7 @@ const PUBLIC_PAGE_TO_HASH = {
   feedback: "#/feedback",
   contact: "#/contact",
 };
+const PUBLIC_HASHES = new Set(Object.keys(PUBLIC_HASH_TO_PAGE));
 
 
 export default function App() {
@@ -229,20 +230,25 @@ export default function App() {
   useEffect(() => {
     function syncPageFromHash() {
       const page = PUBLIC_HASH_TO_PAGE[window.location.hash || ""];
-      if (page && page !== activePage) {
-        setActivePage(page);
-      }
+      if (!page) return;
+      setActivePage((prev) => (prev === page ? prev : page));
     }
     syncPageFromHash();
     window.addEventListener("hashchange", syncPageFromHash);
     return () => window.removeEventListener("hashchange", syncPageFromHash);
-  }, [activePage]);
+  }, []);
 
   useEffect(() => {
     const targetHash = PUBLIC_PAGE_TO_HASH[activePage];
-    if (!targetHash) return;
-    if (window.location.hash !== targetHash) {
-      window.location.hash = targetHash;
+    const currentHash = window.location.hash || "";
+    if (targetHash) {
+      if (currentHash !== targetHash) {
+        window.location.hash = targetHash;
+      }
+      return;
+    }
+    if (PUBLIC_HASHES.has(currentHash)) {
+      window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
     }
   }, [activePage]);
   useEffect(() => {
