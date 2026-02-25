@@ -258,10 +258,15 @@ export default function App() {
     const targetHash = PUBLIC_PAGE_TO_HASH[activePage];
     const currentHash = window.location.hash || "";
     const currentHashPath = getHashPath(currentHash);
+    const currentPublicPage = PUBLIC_HASH_TO_PAGE[currentHashPath];
     if (targetHash) {
       if (currentHashPath !== targetHash) {
         window.location.hash = targetHash;
       }
+      return;
+    }
+    // On initial load, allow hash->page sync to complete before clearing public hashes.
+    if (currentPublicPage && currentPublicPage !== activePage) {
       return;
     }
     if (PUBLIC_HASHES.has(currentHashPath)) {
