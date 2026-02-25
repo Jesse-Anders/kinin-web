@@ -8,7 +8,6 @@ import {
   CirclePlus,
   Shield,
   Glasses,
-  Mail,
 } from "lucide-react";
 import kininHomeIcon from "./assets/icons/kinin-icon-390sq.png";
 import {
@@ -27,6 +26,7 @@ import AdminHomePage from "./pages/AdminHomePage";
 import AdminMetricsPage from "./pages/AdminMetricsPage";
 import AdminUserPurgePage from "./pages/AdminUserPurgePage";
 import AboutKininPage from "./pages/AboutKininPage";
+import PrivacyPage from "./pages/PrivacyPage";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const RELEASE_CHANNEL = (import.meta.env.VITE_RELEASE_CHANNEL || "dev").toLowerCase();
@@ -38,12 +38,14 @@ const PUBLIC_HASH_TO_PAGE = {
   "#/faq": "faq",
   "#/feedback": "feedback",
   "#/contact": "contact",
+  "#/privacy": "privacy",
 };
 const PUBLIC_PAGE_TO_HASH = {
   about: "#/about",
   faq: "#/faq",
   feedback: "#/feedback",
   contact: "#/contact",
+  privacy: "#/privacy",
 };
 const PUBLIC_HASHES = new Set(Object.keys(PUBLIC_HASH_TO_PAGE));
 
@@ -211,9 +213,14 @@ export default function App() {
     {
       id: "contact",
       label: "Contact",
-      icon: Mail,
       requiresAuth: false,
       onClick: () => setActivePage("contact"),
+    },
+    {
+      id: "privacy",
+      label: "Privacy",
+      requiresAuth: false,
+      onClick: () => setActivePage("privacy"),
     },
   ];
   const visibleExtraMenuItems = extraMenuItems.filter((item) => isAuthed || !item.requiresAuth);
@@ -863,7 +870,6 @@ export default function App() {
               {menuOverflowOpen ? (
                 <div className="sidebar-popover">
                   {visibleExtraMenuItems.map((item) => {
-                    const Icon = item.icon;
                     return (
                       <button
                         key={item.id}
@@ -875,7 +881,6 @@ export default function App() {
                           item.onClick();
                         }}
                       >
-                        {Icon ? <Icon className="sidebar-home-icon" size={20} strokeWidth={1.5} /> : null}
                         {item.label}
                       </button>
                     );
@@ -932,7 +937,6 @@ export default function App() {
                   );
                 })}
                 {visibleExtraMenuItems.map((item) => {
-                  const Icon = item.icon;
                   return (
                     <button
                       key={item.id}
@@ -944,7 +948,6 @@ export default function App() {
                         item.onClick();
                       }}
                     >
-                      {Icon ? <Icon className="sidebar-home-icon" size={20} strokeWidth={1.5} /> : null}
                       {item.label}
                     </button>
                   );
@@ -1150,6 +1153,8 @@ export default function App() {
         />
       ) : activePage === "about" ? (
         <AboutKininPage />
+      ) : activePage === "privacy" ? (
+        <PrivacyPage />
       ) : activePage === "admin-crm" ? (
         <AdminCrmPage
           isAuthed={isAuthed}
@@ -1429,7 +1434,15 @@ export default function App() {
           )}
         </div>
       </main>
-      {menuOpen ? <div className="menu-backdrop" onClick={() => setMenuOpen(false)} /> : null}
+      {menuOpen ? (
+        <div
+          className="menu-backdrop"
+          onClick={() => {
+            setMenuOpen(false);
+            setMenuOverflowOpen(false);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
