@@ -27,6 +27,7 @@ import AdminMetricsPage from "./pages/AdminMetricsPage";
 import AdminUserPurgePage from "./pages/AdminUserPurgePage";
 import AboutKininPage from "./pages/AboutKininPage";
 import PrivacyPage from "./pages/PrivacyPage";
+import UnsubscribePage from "./pages/UnsubscribePage";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const RELEASE_CHANNEL = (import.meta.env.VITE_RELEASE_CHANNEL || "dev").toLowerCase();
@@ -39,6 +40,7 @@ const PUBLIC_HASH_TO_PAGE = {
   "#/feedback": "feedback",
   "#/contact": "contact",
   "#/privacy": "privacy",
+  "#/unsubscribe": "unsubscribe",
 };
 const PUBLIC_PAGE_TO_HASH = {
   about: "#/about",
@@ -46,6 +48,7 @@ const PUBLIC_PAGE_TO_HASH = {
   feedback: "#/feedback",
   contact: "#/contact",
   privacy: "#/privacy",
+  unsubscribe: "#/unsubscribe",
 };
 const PUBLIC_HASHES = new Set(Object.keys(PUBLIC_HASH_TO_PAGE));
 
@@ -1155,6 +1158,8 @@ export default function App() {
         <AboutKininPage />
       ) : activePage === "privacy" ? (
         <PrivacyPage />
+      ) : activePage === "unsubscribe" ? (
+        <UnsubscribePage apiBase={API_BASE} />
       ) : activePage === "admin-crm" ? (
         <AdminCrmPage
           isAuthed={isAuthed}
