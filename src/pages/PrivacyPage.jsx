@@ -20,7 +20,7 @@ export default function PrivacyPage() {
         </div>
 
         <div style={{ fontSize: 13, opacity: 0.75 }}>
-          Questions about this standard can be sent to team@kinin.ai.
+          Questions about this standard can be sent to jesse@kinin.ai.
         </div>
       </div>
     </div>

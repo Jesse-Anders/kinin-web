@@ -52,6 +52,12 @@ const PUBLIC_PAGE_TO_HASH = {
 };
 const PUBLIC_HASHES = new Set(Object.keys(PUBLIC_HASH_TO_PAGE));
 
+function getHashPath(hash) {
+  const raw = hash || "";
+  const qIdx = raw.indexOf("?");
+  return qIdx >= 0 ? raw.slice(0, qIdx) : raw;
+}
+
 
 export default function App() {
   const LABEL_GROUPS = [
@@ -239,7 +245,7 @@ export default function App() {
   }, [uiState]);
   useEffect(() => {
     function syncPageFromHash() {
-      const page = PUBLIC_HASH_TO_PAGE[window.location.hash || ""];
+      const page = PUBLIC_HASH_TO_PAGE[getHashPath(window.location.hash || "")];
       if (!page) return;
       setActivePage((prev) => (prev === page ? prev : page));
     }
@@ -251,13 +257,14 @@ export default function App() {
   useEffect(() => {
     const targetHash = PUBLIC_PAGE_TO_HASH[activePage];
     const currentHash = window.location.hash || "";
+    const currentHashPath = getHashPath(currentHash);
     if (targetHash) {
-      if (currentHash !== targetHash) {
+      if (currentHashPath !== targetHash) {
         window.location.hash = targetHash;
       }
       return;
     }
-    if (PUBLIC_HASHES.has(currentHash)) {
+    if (PUBLIC_HASHES.has(currentHashPath)) {
       window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
     }
   }, [activePage]);
