@@ -29,6 +29,23 @@ function parseBulkLines(raw) {
   return { items: out, invalid };
 }
 
+function csvCell(value) {
+  const text = String(value ?? "");
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function downloadTextFile(filename, content, mimeType = "text/plain;charset=utf-8") {
+  const blob = new Blob([content], { type: mimeType });
+  const href = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = href;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(href);
+}
+
 export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
   const [bulkInput, setBulkInput] = useState("");
   const [bulkNote, setBulkNote] = useState("");
@@ -38,8 +55,12 @@ export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
   const [invites, setInvites] = useState([]);
   const [nextKey, setNextKey] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [emailPrefsEmail, setEmailPrefsEmail] = useState("");
+  const [emailPrefsNote, setEmailPrefsNote] = useState("");
+  const [emailPrefsRecord, setEmailPrefsRecord] = useState(null);
 
   const filteredInvites = useMemo(() => {
     const q = (searchFilter || "").trim().toLowerCase();
@@ -117,6 +138,163 @@ export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
     }
     const data = await res.json();
     return typeof data.body === "string" ? JSON.parse(data.body) : data;
+  }
+
+  async function adminPost(endpoint, payload) {
+    const accessToken = await getAccessToken();
+    const res = await fetch(`${apiBase}${endpoint}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(payload || {}),
+    });
+    const text = await res.text();
+    let parsed = null;
+    try {
+      const outer = JSON.parse(text);
+      parsed = typeof outer?.body === "string" ? JSON.parse(outer.body) : outer;
+    } catch {
+      parsed = null;
+    }
+    if (!res.ok) {
+      const detail = parsed ? JSON.stringify(parsed) : text;
+      throw new Error(`API error ${res.status}: ${detail}`);
+    }
+    return parsed || {};
+  }
+
+  async function loadEmailPrefs() {
+    const email = normalizeEmail(emailPrefsEmail);
+    if (!email || !email.includes("@")) {
+      setErrorMessage("Enter a valid email for preferences lookup.");
+      return;
+    }
+    setErrorMessage("");
+    setStatusMessage("");
+    setBusy(true);
+    try {
+      const out = await adminPost("/admin/email_prefs/get", { email });
+      setEmailPrefsRecord(out?.email_preferences || null);
+      setStatusMessage(`Loaded email preferences for ${email}.`);
+    } catch (e) {
+      setErrorMessage(e?.message || String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function setEmailPrefs(globalUnsubscribed) {
+    const email = normalizeEmail(emailPrefsEmail);
+    if (!email || !email.includes("@")) {
+      setErrorMessage("Enter a valid email before updating preferences.");
+      return;
+    }
+    setErrorMessage("");
+    setStatusMessage("");
+    setBusy(true);
+    try {
+      const out = await adminPost("/admin/email_prefs/set", {
+        email,
+        global_unsubscribed: Boolean(globalUnsubscribed),
+        note: emailPrefsNote || undefined,
+        source: "admin_crm_ui",
+      });
+      const rec = out?.email_preferences || null;
+      setEmailPrefsRecord(rec);
+      setStatusMessage(
+        rec?.global_unsubscribed
+          ? `Set ${email} to unsubscribed for non-essential emails.`
+          : `Set ${email} to subscribed for non-essential emails.`
+      );
+    } catch (e) {
+      setErrorMessage(e?.message || String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function exportAllInvitesCsv() {
+    setErrorMessage("");
+    setStatusMessage("");
+    setExportBusy(true);
+    try {
+      const allInvites = [];
+      let startKey = undefined;
+      while (true) {
+        const out = await adminPost("/admin/invites/list", {
+          limit: 200,
+          status: listStatusFilter || undefined,
+          start_key: startKey,
+        });
+        const batch = Array.isArray(out?.items) ? out.items : [];
+        allInvites.push(...batch);
+        startKey = out?.next_start_key || null;
+        if (!startKey) break;
+      }
+
+      const prefsByEmail = {};
+      for (const row of allInvites) {
+        const email = normalizeEmail(row?.email);
+        if (!email || prefsByEmail[email]) continue;
+        try {
+          const out = await adminPost("/admin/email_prefs/get", { email });
+          prefsByEmail[email] = out?.email_preferences || null;
+        } catch {
+          prefsByEmail[email] = null;
+        }
+      }
+
+      const headers = [
+        "email",
+        "first_name",
+        "access_status",
+        "email_status",
+        "global_unsubscribed",
+        "prefs_updated_at",
+        "prefs_source",
+        "prefs_note",
+        "invite_note",
+        "invite_source",
+        "invited_at",
+        "last_sent_at",
+        "updated_at",
+        "invite_send_count",
+        "invite_history_count",
+      ];
+      const lines = [headers.map(csvCell).join(",")];
+      for (const row of allInvites) {
+        const email = normalizeEmail(row?.email);
+        const prefs = prefsByEmail[email] || {};
+        const values = [
+          email,
+          row?.metadata?.first_name || "",
+          row?.access_status || row?.status || "",
+          row?.email_status || "",
+          typeof prefs?.global_unsubscribed === "boolean" ? String(prefs.global_unsubscribed) : "",
+          prefs?.updated_at || "",
+          prefs?.source || "",
+          prefs?.note || "",
+          row?.note || "",
+          row?.source || "",
+          row?.invited_at || "",
+          row?.last_sent_at || "",
+          row?.updated_at || "",
+          row?.invite_send_count || 0,
+          Array.isArray(row?.invite_history) ? row.invite_history.length : 0,
+        ];
+        lines.push(values.map(csvCell).join(","));
+      }
+
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      downloadTextFile(`kinin-admin-invites-${stamp}.csv`, `${lines.join("\n")}\n`, "text/csv;charset=utf-8");
+      setStatusMessage(`Exported ${allInvites.length} records to CSV.`);
+    } catch (e) {
+      setErrorMessage(e?.message || String(e));
+    } finally {
+      setExportBusy(false);
+    }
   }
 
   async function runBulkAdd() {
@@ -285,6 +463,9 @@ export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
           <button onClick={() => listInvites({ append: true })} disabled={!isAuthed || busy || !nextKey}>
             Load More
           </button>
+          <button onClick={exportAllInvitesCsv} disabled={!isAuthed || busy || exportBusy}>
+            {exportBusy ? "Exporting..." : "Export All CSV"}
+          </button>
         </div>
 
         <div style={{ border: "1px solid #eee", borderRadius: 10, overflowX: "auto", overflowY: "hidden" }}>
@@ -351,6 +532,48 @@ export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, marginBottom: 12 }}>
+        <div style={{ fontWeight: 600, marginBottom: 8 }}>E) Email preferences (exact email)</div>
+        <div style={{ display: "grid", gap: 8 }}>
+          <input
+            value={emailPrefsEmail}
+            onChange={(e) => setEmailPrefsEmail(e.target.value)}
+            placeholder="Email address"
+            style={{ width: "100%", padding: 8 }}
+            disabled={!isAuthed || busy}
+          />
+          <input
+            value={emailPrefsNote}
+            onChange={(e) => setEmailPrefsNote(e.target.value)}
+            placeholder="Optional admin note (saved with update)"
+            style={{ width: "100%", padding: 8 }}
+            disabled={!isAuthed || busy}
+          />
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button onClick={loadEmailPrefs} disabled={!isAuthed || busy}>
+              Load Status
+            </button>
+            <button onClick={() => setEmailPrefs(true)} disabled={!isAuthed || busy}>
+              Unsubscribe
+            </button>
+            <button onClick={() => setEmailPrefs(false)} disabled={!isAuthed || busy}>
+              Resubscribe
+            </button>
+          </div>
+          <div style={{ fontSize: 13, opacity: 0.85 }}>
+            {emailPrefsRecord ? (
+              <>
+                Status: {emailPrefsRecord.global_unsubscribed ? "unsubscribed" : "subscribed"} | Updated:{" "}
+                {emailPrefsRecord.updated_at || "-"} | Source: {emailPrefsRecord.source || "-"}
+                {emailPrefsRecord.note ? ` | Note: ${emailPrefsRecord.note}` : ""}
+              </>
+            ) : (
+              "Load an email to view current non-essential email preference."
+            )}
+          </div>
         </div>
       </div>
 
