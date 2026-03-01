@@ -76,7 +76,7 @@ export default function AdminUserPurgePage({ isAuthed, getAccessToken, apiBase, 
         <div style={{ fontSize: 13, opacity: 0.85 }}>
           Permanently deletes S3 archive objects and DynamoDB rows for: ConversationTurns, UserState,
           UserStepState, kinin-user-idempotency, kinin-user-lifecycle-crm,
-          kinin-user-entitlement-records, and user_relationships.
+          kinin-user-entitlement-records, user_relationships, and Zep memory.
         </div>
         <div style={{ fontSize: 13, opacity: 0.85, marginTop: 6 }}>
           Cognito auth user is <b>not</b> deleted by this action. Delete the auth user manually in Cognito.

@@ -31,7 +31,7 @@ export default function AccountPage({
         <div style={{ fontSize: 13, opacity: 0.85 }}>
           This permanently deletes your account, Cognito auth user, S3 archive objects, and data from:
           ConversationTurns, UserState, UserStepState, kinin-user-idempotency,
-          kinin-user-lifecycle-crm, kinin-user-entitlement-records, and user_relationships.
+          kinin-user-lifecycle-crm, kinin-user-entitlement-records, user_relationships, and Zep memory.
           (kinin-email-send-log-dev is intentionally not purged.) This action cannot be undone.
         </div>
       </div>
