@@ -10,7 +10,7 @@ export default function PrivacyPage() {
         </div>
 
         <div>
-          We do not sell, rent, trade, broker, or otherwise disclose personal data to third-party
+          We don't sell, rent, trade, broker, or otherwise disclose personal data to third-party
           companies, advertisers, data brokers, or affiliates.
         </div>
 
