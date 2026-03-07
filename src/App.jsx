@@ -16,6 +16,7 @@ import {
   signInWithRedirect,
   signOut,
 } from "aws-amplify/auth";
+import { useLocation, useNavigate } from "react-router-dom";
 import FaqPage from "./pages/FaqPage";
 import FeedbackPage from "./pages/FeedbackPage";
 import ContactPage from "./pages/ContactPage";
@@ -34,30 +35,29 @@ const RELEASE_CHANNEL = (import.meta.env.VITE_RELEASE_CHANNEL || "dev").toLowerC
 const IS_BETA_LITE = RELEASE_CHANNEL === "beta-lite";
 const VERSION_LABEL = IS_BETA_LITE ? "Beta-lite Version 1.0" : "Dev Version 1.0";
 const ACCOUNT_CONFIRM_PHRASE = "delete my account and all data";
-const PUBLIC_HASH_TO_PAGE = {
-  "#/about": "about",
-  "#/faq": "faq",
-  "#/feedback": "feedback",
-  "#/biography-profile": "bio",
-  "#/contact": "contact",
-  "#/privacy": "privacy",
-  "#/unsubscribe": "unsubscribe",
+const PAGE_TO_PATH = {
+  interview: "/",
+  about: "/about",
+  faq: "/faq",
+  feedback: "/feedback",
+  bio: "/bio",
+  contact: "/contact",
+  privacy: "/privacy",
+  unsubscribe: "/unsubscribe",
+  admin: "/admin",
+  "admin-crm": "/admin/crm",
+  "admin-metrics": "/admin/metrics",
+  "admin-user-purge": "/admin/user-purge",
+  account: "/account",
 };
-const PUBLIC_PAGE_TO_HASH = {
-  about: "#/about",
-  faq: "#/faq",
-  feedback: "#/feedback",
-  bio: "#/biography-profile",
-  contact: "#/contact",
-  privacy: "#/privacy",
-  unsubscribe: "#/unsubscribe",
-};
-const PUBLIC_HASHES = new Set(Object.keys(PUBLIC_HASH_TO_PAGE));
+const PATH_TO_PAGE = Object.fromEntries(
+  Object.entries(PAGE_TO_PATH).map(([page, path]) => [path, page])
+);
 
-function getHashPath(hash) {
-  const raw = hash || "";
-  const qIdx = raw.indexOf("?");
-  return qIdx >= 0 ? raw.slice(0, qIdx) : raw;
+function normalizePath(pathname) {
+  if (!pathname) return "/";
+  if (pathname === "/") return pathname;
+  return pathname.replace(/\/+$/, "") || "/";
 }
 
 
@@ -96,7 +96,7 @@ export default function App() {
   const [error, setError] = useState("");
   const [accessBlocked, setAccessBlocked] = useState(null);
   const [didStart, setDidStart] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
+  const [_showProfile, setShowProfile] = useState(false);
   const [profileSchema, setProfileSchema] = useState(null);
   const [bioProfile, setBioProfile] = useState({ preferred_name: "", age: "" });
   const [profileBusy, setProfileBusy] = useState(false);
@@ -108,27 +108,29 @@ export default function App() {
   const sidebarRef = useRef(null);
   const sidebarMeasureRef = useRef(null);
   const sidebarBottomRef = useRef(null);
+  const navigate = useNavigate();
+  const location = useLocation();
   const menuItems = [
     {
       id: "about",
       label: "About",
       icon: Glasses,
       requiresAuth: false,
-      onClick: () => setActivePage("about"),
+      onClick: () => navigateToPage("about"),
     },
     {
       id: "faq",
       label: "FAQ",
       icon: Grid2X2Check,
       requiresAuth: false,
-      onClick: () => setActivePage("faq"),
+      onClick: () => navigateToPage("faq"),
     },
     {
       id: "feedback",
       label: "Feedback",
       icon: Megaphone,
       requiresAuth: false,
-      onClick: () => setActivePage("feedback"),
+      onClick: () => navigateToPage("feedback"),
     },
     {
       id: "bio",
@@ -143,7 +145,7 @@ export default function App() {
       icon: Shield,
       requiresAuth: true,
       hideForBetaLite: true,
-      onClick: () => setActivePage("admin"),
+      onClick: () => navigateToPage("admin"),
     },
     {
       id: "end-session",
@@ -171,6 +173,13 @@ export default function App() {
   const [accountBusy, setAccountBusy] = useState(false);
   const [accountError, setAccountError] = useState("");
   const [accountStatus, setAccountStatus] = useState("");
+
+  function navigateToPage(page, options = {}) {
+    const targetPath = PAGE_TO_PATH[page] || "/";
+    const currentPath = normalizePath(location.pathname || "/");
+    if (targetPath === currentPath) return;
+    navigate(targetPath, options);
+  }
 
   const isAuthed = useMemo(() => !!user, [user]);
   function normalizeLabelArray(values) {
@@ -225,13 +234,13 @@ export default function App() {
       id: "contact",
       label: "Contact",
       requiresAuth: false,
-      onClick: () => setActivePage("contact"),
+      onClick: () => navigateToPage("contact"),
     },
     {
       id: "privacy",
       label: "Privacy",
       requiresAuth: false,
-      onClick: () => setActivePage("privacy"),
+      onClick: () => navigateToPage("privacy"),
     },
   ];
   const visibleExtraMenuItems = extraMenuItems.filter((item) => isAuthed || !item.requiresAuth);
@@ -246,35 +255,39 @@ export default function App() {
     }
   }, [uiState]);
   useEffect(() => {
-    function syncPageFromHash() {
-      const page = PUBLIC_HASH_TO_PAGE[getHashPath(window.location.hash || "")];
-      if (!page) return;
-      setActivePage((prev) => (prev === page ? prev : page));
+    const normalizedPath = normalizePath(location.pathname || "/");
+    const page = PATH_TO_PAGE[normalizedPath];
+    if (!page) {
+      navigate("/", { replace: true });
+      return;
     }
-    syncPageFromHash();
-    window.addEventListener("hashchange", syncPageFromHash);
-    return () => window.removeEventListener("hashchange", syncPageFromHash);
-  }, []);
+    setActivePage((prev) => (prev === page ? prev : page));
+  }, [location.pathname, navigate]);
 
   useEffect(() => {
-    const targetHash = PUBLIC_PAGE_TO_HASH[activePage];
-    const currentHash = window.location.hash || "";
-    const currentHashPath = getHashPath(currentHash);
-    const currentPublicPage = PUBLIC_HASH_TO_PAGE[currentHashPath];
-    if (targetHash) {
-      if (currentHashPath !== targetHash) {
-        window.location.hash = targetHash;
-      }
+    const targetPath = PAGE_TO_PATH[activePage] || "/";
+    const currentPath = normalizePath(location.pathname || "/");
+    if (currentPath !== targetPath) {
+      navigate(targetPath, { replace: true });
+    }
+  }, [activePage, location.pathname, navigate]);
+
+  useEffect(() => {
+    const isRestrictedAuthPage = activePage === "bio" || activePage === "account";
+    const isAdminPage =
+      activePage === "admin" ||
+      activePage === "admin-crm" ||
+      activePage === "admin-metrics" ||
+      activePage === "admin-user-purge";
+
+    if (isRestrictedAuthPage && !isAuthed) {
+      navigate("/", { replace: true });
       return;
     }
-    // On initial load, allow hash->page sync to complete before clearing public hashes.
-    if (currentPublicPage && currentPublicPage !== activePage) {
-      return;
+    if (isAdminPage && (!isAuthed || IS_BETA_LITE)) {
+      navigate("/", { replace: true });
     }
-    if (PUBLIC_HASHES.has(currentHashPath)) {
-      window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-    }
-  }, [activePage]);
+  }, [activePage, isAuthed, navigate]);
   useEffect(() => {
     function recompute() {
       if (!sidebarRef.current || !sidebarMeasureRef.current || !sidebarBottomRef.current) {
@@ -464,7 +477,6 @@ export default function App() {
       } catch {
         // Ignore sign-out errors after account deletion.
       }
-      stopStatusPoll();
       setUser(null);
       setChat([]);
       setSessionId("");
@@ -845,7 +857,7 @@ export default function App() {
             setMenuOpen(false);
             setShowProfile(false);
             setMenuOverflowOpen(false);
-            setActivePage("interview");
+            navigateToPage("interview");
           }}
         >
           <img
@@ -1029,7 +1041,7 @@ export default function App() {
               className="sidebar-home sidebar-home-secondary sidebar-home-bottom"
               onClick={() => {
                 setMenuOpen(false);
-                setActivePage("account");
+                navigateToPage("account");
               }}
             >
               My Account
@@ -1130,7 +1142,7 @@ export default function App() {
           <div><b>Sorry, Kinin app use is by invite only at this time.</b></div>
           <div style={{ marginTop: 6 }}>
             If you believe you are receiving this message in error, or you would like to be considered for early
-            access, please email Jesse@greenongreen.com.
+            access, please email Jesse@kinin.ai
           </div>
         </div>
       ) : null}

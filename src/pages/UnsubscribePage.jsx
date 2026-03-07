@@ -1,17 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
 function parseUnsubscribeParams() {
-  const hash = window.location.hash || "";
-  const hashQueryIdx = hash.indexOf("?");
-  if (hashQueryIdx >= 0) {
-    const search = hash.slice(hashQueryIdx + 1);
-    const p = new URLSearchParams(search);
-    return {
-      email: (p.get("email") || "").trim().toLowerCase(),
-      exp: (p.get("exp") || "").trim(),
-      token: (p.get("token") || "").trim(),
-    };
-  }
   const p = new URLSearchParams(window.location.search || "");
   return {
     email: (p.get("email") || "").trim().toLowerCase(),
