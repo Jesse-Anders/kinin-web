@@ -108,6 +108,7 @@ export default function App() {
   const sidebarRef = useRef(null);
   const sidebarMeasureRef = useRef(null);
   const sidebarBottomRef = useRef(null);
+  const hasSyncedPathRef = useRef(false);
   const navigate = useNavigate();
   const location = useLocation();
   const menuItems = [
@@ -261,14 +262,18 @@ export default function App() {
       navigate("/", { replace: true });
       return;
     }
+    hasSyncedPathRef.current = true;
     setActivePage((prev) => (prev === page ? prev : page));
   }, [location.pathname, navigate]);
 
   useEffect(() => {
-    const targetPath = PAGE_TO_PATH[activePage] || "/";
+    if (!hasSyncedPathRef.current) return;
     const currentPath = normalizePath(location.pathname || "/");
+    const currentPage = PATH_TO_PAGE[currentPath];
+    if (currentPage && currentPage !== activePage) return;
+    const targetPath = PAGE_TO_PATH[activePage] || "/";
     if (currentPath !== targetPath) {
-      navigate(targetPath, { replace: true });
+      navigate(targetPath);
     }
   }, [activePage, location.pathname, navigate]);
 
@@ -331,7 +336,7 @@ export default function App() {
         access_state: parsed.access_state || "blocked",
         plan_state: parsed.plan_state || "none",
       });
-      setActivePage("interview");
+      navigateToPage("interview", { replace: true });
       const blockedErr = new Error("access_blocked");
       blockedErr.name = "AccessBlockedError";
       throw blockedErr;
@@ -490,7 +495,7 @@ export default function App() {
           return acc;
         }, {})
       );
-      setActivePage("interview");
+      navigateToPage("interview");
       window.location.assign(window.location.origin + window.location.pathname);
     } catch (e) {
       setAccountError(e?.message || String(e));
@@ -678,7 +683,7 @@ export default function App() {
   async function openProfile() {
     setError("");
     setShowProfile(true);
-    setActivePage("bio");
+    navigateToPage("bio");
     if (!isAuthed) {
       setError("Please sign in to view your profile.");
       return;
@@ -762,7 +767,7 @@ export default function App() {
         age: bp.age === undefined || bp.age === null ? "" : String(bp.age),
       });
       setShowProfile(false);
-      setActivePage("interview");
+      navigateToPage("interview");
     } catch (e) {
       setTopErrorFromException(e);
     } finally {
@@ -1152,7 +1157,7 @@ export default function App() {
           isAuthed={isAuthed}
           getAccessToken={getAccessToken}
           apiBase={API_BASE}
-          setActivePage={setActivePage}
+          setActivePage={navigateToPage}
         />
       ) : activePage === "faq" ? (
         <FaqPage />
@@ -1197,14 +1202,14 @@ export default function App() {
           isAuthed={isAuthed}
           getAccessToken={getAccessToken}
           apiBase={API_BASE}
-          setActivePage={setActivePage}
+          setActivePage={navigateToPage}
         />
       ) : activePage === "admin-user-purge" ? (
         <AdminUserPurgePage
           isAuthed={isAuthed}
           getAccessToken={getAccessToken}
           apiBase={API_BASE}
-          setActivePage={setActivePage}
+          setActivePage={navigateToPage}
         />
       ) : activePage === "account" ? (
         <AccountPage
@@ -1228,7 +1233,7 @@ export default function App() {
           saveProfile={saveProfile}
           onClose={() => {
             setShowProfile(false);
-            setActivePage("interview");
+            navigateToPage("interview");
           }}
         />
       ) : (
