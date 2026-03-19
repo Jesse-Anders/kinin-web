@@ -60,6 +60,12 @@ export default function AdminHomePage({ isAuthed, getAccessToken, apiBase, setAc
   const [entToggleBusy, setEntToggleBusy] = useState(false);
   const [entToggleError, setEntToggleError] = useState("");
 
+  // Force journey location
+  const [forceStepId, setForceStepId] = useState("");
+  const [forceBusy, setForceBusy] = useState(false);
+  const [forceResult, setForceResult] = useState(null);
+  const [forceError, setForceError] = useState("");
+
   // ── Derived / memos ──
 
   const adminStatusCounts = useMemo(() => {
@@ -434,6 +440,47 @@ export default function AdminHomePage({ isAuthed, getAccessToken, apiBase, setAc
     entitlementCall("list", { limit: Number(entListLimit) || 25 }, {
       setBusy: setEntListBusy, setResult: setEntListResult, setError: setEntListError,
     });
+  }
+
+  async function runForceJourneyLocation() {
+    setForceError("");
+    setForceResult(null);
+    setForceBusy(true);
+    try {
+      const target = (adminUserId || "").trim();
+      const stepId = (forceStepId || "").trim();
+      if (!target) throw new Error("target_user_id required");
+      if (!stepId) throw new Error("step_id required");
+
+      const accessToken = await getAccessToken();
+      const res = await fetch(`${apiBase}/admin/force_user_journey_location`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ target_user_id: target, step_id: stepId }),
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        let detail = t;
+        try {
+          const j = JSON.parse(t);
+          if (j && typeof j === "object") {
+            detail = typeof j.body === "string" ? j.body : JSON.stringify(j);
+          }
+        } catch { /* keep raw */ }
+        throw new Error(`API error ${res.status}: ${detail}`);
+      }
+      const data = await res.json();
+      const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
+      setForceResult(parsed);
+      await fetchAdminOverview();
+    } catch (e) {
+      setForceError(e.message || String(e));
+    } finally {
+      setForceBusy(false);
+    }
   }
 
   // ── Render ──
@@ -926,6 +973,46 @@ export default function AdminHomePage({ isAuthed, getAccessToken, apiBase, setAc
             ) : null}
           </div>
         </details>
+      </div>
+
+      <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, marginTop: 12 }}>
+        <div style={{ fontWeight: 600, marginBottom: 8 }}>Force User Journey Location</div>
+        <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 8 }}>
+          Uses the currently loaded Journey Overview step list.
+        </div>
+        <div style={{ display: "grid", gap: 8 }}>
+          <input
+            value={adminUserId}
+            readOnly
+            style={{ padding: 8, opacity: 0.7 }}
+            placeholder="target_user_id (set above)"
+          />
+          <select
+            value={forceStepId}
+            onChange={(e) => setForceStepId(e.target.value)}
+            disabled={!isAuthed || forceBusy || !adminOverview?.steps?.length}
+            style={{ padding: 8 }}
+          >
+            <option value="">Select step_id</option>
+            {(adminOverview?.steps || []).map((s) => (
+              <option key={s.step_id} value={s.step_id}>
+                {s.step_id} ({s.status || "unknown"})
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={runForceJourneyLocation}
+            disabled={!isAuthed || forceBusy || !(adminOverview?.steps || []).length || !forceStepId}
+          >
+            {forceBusy ? "Forcing..." : "Force Step"}
+          </button>
+          {forceError ? <div style={{ color: "#b00020" }}>{forceError}</div> : null}
+          {forceResult ? (
+            <pre style={{ whiteSpace: "pre-wrap", margin: 0, background: "#fafafa", padding: 8, borderRadius: 6, border: "1px solid #eee", fontSize: 12 }}>
+              {JSON.stringify(forceResult, null, 2)}
+            </pre>
+          ) : null}
+        </div>
       </div>
     </div>
   );
