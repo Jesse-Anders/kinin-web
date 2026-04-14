@@ -1319,10 +1319,6 @@ export default function App() {
               {busy ? "Sending..." : "Send"}
             </button>
           </div>
-          <div style={{ fontSize: 12, opacity: 0.65, textAlign: "right", marginBottom: 12 }}>
-            {message.length}/{CHAT_MESSAGE_MAX_CHARS}
-          </div>
-
           <details
             style={{
               border: "1px solid #ddd",
