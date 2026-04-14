@@ -35,6 +35,7 @@ const RELEASE_CHANNEL = (import.meta.env.VITE_RELEASE_CHANNEL || "dev").toLowerC
 const IS_BETA_LITE = RELEASE_CHANNEL === "beta-lite";
 const VERSION_LABEL = IS_BETA_LITE ? "Beta-lite Version 1.0" : "Dev Version 1.0";
 const ACCOUNT_CONFIRM_PHRASE = "delete my account and all data";
+const CHAT_MESSAGE_MAX_CHARS = 4000;
 const PAGE_TO_PATH = {
   interview: "/",
   about: "/about",
@@ -562,7 +563,12 @@ export default function App() {
 
   async function sendTurn() {
     setError("");
-    if (!message.trim()) return;
+    const trimmedMessage = message.trim();
+    if (!trimmedMessage) return;
+    if (trimmedMessage.length > CHAT_MESSAGE_MAX_CHARS) {
+      setError(`Message too long. Maximum is ${CHAT_MESSAGE_MAX_CHARS} characters.`);
+      return;
+    }
 
     setBusy(true);
     try {
@@ -577,7 +583,7 @@ export default function App() {
 
       const body = {
         session_id: sessionId || undefined,
-        message: message.trim(),
+        message: trimmedMessage,
         client_request_id: clientRequestId,
       };
 
@@ -615,7 +621,7 @@ export default function App() {
 
       setChat((prev) => [
         ...prev,
-        { role: "user", content: message.trim() },
+        { role: "user", content: trimmedMessage },
         { role: "assistant", content: parsed.assistant },
       ]);
       setMessage("");
@@ -1276,12 +1282,14 @@ export default function App() {
               ref={messageInputRef}
               value={message}
               onChange={(e) => {
-                setMessage(e.target.value);
+                const nextMessage = e.target.value.slice(0, CHAT_MESSAGE_MAX_CHARS);
+                setMessage(nextMessage);
                 autoResizeMessageInput(e.target);
               }}
               onInput={(e) => autoResizeMessageInput(e.target)}
               placeholder={isAuthed ? "Type a message..." : "Login to chat..."}
               className="chat-input"
+              maxLength={CHAT_MESSAGE_MAX_CHARS}
               style={{
                 flex: 1,
                 padding: 10,
@@ -1310,6 +1318,9 @@ export default function App() {
             >
               {busy ? "Sending..." : "Send"}
             </button>
+          </div>
+          <div style={{ fontSize: 12, opacity: 0.65, textAlign: "right", marginBottom: 12 }}>
+            {message.length}/{CHAT_MESSAGE_MAX_CHARS}
           </div>
 
           <details
