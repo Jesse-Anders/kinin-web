@@ -29,8 +29,10 @@ import AdminUserPurgePage from "./pages/AdminUserPurgePage";
 import AboutKininPage from "./pages/AboutKininPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import UnsubscribePage from "./pages/UnsubscribePage";
+import { streamTurn } from "./services/turnStreamClient";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const STREAM_WS_URL = import.meta.env.VITE_STREAM_WS_URL || "";
 const RELEASE_CHANNEL = (import.meta.env.VITE_RELEASE_CHANNEL || "dev").toLowerCase();
 const IS_BETA_LITE = RELEASE_CHANNEL === "beta-lite";
 const VERSION_LABEL = IS_BETA_LITE ? "Beta-lite Version 1.0" : "Dev Version 1.0";
@@ -351,6 +353,49 @@ export default function App() {
     setError(e?.message || String(e));
   }
 
+  function applyTurnResponse(parsed, fallbackSessionId) {
+    setAccessBlocked(null);
+    const newSessionId = parsed.session_id || fallbackSessionId || "";
+    if (newSessionId && newSessionId !== sessionId) {
+      setSessionId(newSessionId);
+      localStorage.setItem("session_id", newSessionId);
+    }
+    if (
+      (parsed.journey_version_display !== undefined && parsed.journey_version_display !== null) ||
+      (parsed.journey_version !== undefined && parsed.journey_version !== null)
+    ) {
+      const v = String(parsed.journey_version_display ?? parsed.journey_version);
+      setJourneyVersion(v);
+      localStorage.setItem("journey_version", v);
+    }
+    syncLabelGroupsFromParsed(parsed);
+    if (parsed.ui_state) {
+      setUiState(parsed.ui_state);
+    }
+    return newSessionId;
+  }
+
+  async function sendTurnBuffered({ idToken, trimmedMessage, clientRequestId }) {
+    const body = {
+      session_id: sessionId || undefined,
+      message: trimmedMessage,
+      client_request_id: clientRequestId,
+    };
+    const res = await fetch(`${API_BASE}/turn`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${idToken}`,
+      },
+      body: JSON.stringify(body),
+    });
+    await ensureApiOk(res);
+    const data = await res.json();
+    const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
+    applyTurnResponse(parsed, sessionId);
+    return parsed;
+  }
+
   async function updateInterviewDetails() {
     if (!sessionId || !isAuthed) return;
     setDetailsBusy(true);
@@ -574,57 +619,79 @@ export default function App() {
     try {
       const session = await fetchAuthSession();
       const idToken = session.tokens?.idToken?.toString();
+      const accessToken = session.tokens?.accessToken?.toString();
       if (!idToken) throw new Error("Missing idToken. Are you logged in?");
 
       const clientRequestId =
         globalThis.crypto && typeof globalThis.crypto.randomUUID === "function"
           ? globalThis.crypto.randomUUID()
           : `req-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-
-      const body = {
-        session_id: sessionId || undefined,
-        message: trimmedMessage,
-        client_request_id: clientRequestId,
-      };
-
-      const res = await fetch(`${API_BASE}/turn`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${idToken}`,
-        },
-        body: JSON.stringify(body),
-      });
-
-      await ensureApiOk(res);
-
-      const data = await res.json();
-      const parsed =
-        typeof data.body === "string" ? JSON.parse(data.body) : data;
-      setAccessBlocked(null);
-
-      const newSessionId = parsed.session_id || sessionId;
-      if (newSessionId && newSessionId !== sessionId) {
-        setSessionId(newSessionId);
-        localStorage.setItem("session_id", newSessionId);
-      }
-      if ((parsed.journey_version_display !== undefined && parsed.journey_version_display !== null) || (parsed.journey_version !== undefined && parsed.journey_version !== null)) {
-        const v = String(parsed.journey_version_display ?? parsed.journey_version);
-        setJourneyVersion(v);
-        localStorage.setItem("journey_version", v);
-      }
-      syncLabelGroupsFromParsed(parsed);
-
-      if (parsed.ui_state) {
-        setUiState(parsed.ui_state);
-      }
-
+      const userMessageId = `user-${clientRequestId}`;
+      const assistantMessageId = `assistant-${clientRequestId}`;
       setChat((prev) => [
         ...prev,
-        { role: "user", content: trimmedMessage },
-        { role: "assistant", content: parsed.assistant },
+        { id: userMessageId, role: "user", content: trimmedMessage },
+        { id: assistantMessageId, role: "assistant", content: "" },
       ]);
-      setMessage("");
+
+      const appendAssistantDelta = (delta) => {
+        setChat((prev) =>
+          prev.map((m) =>
+            m.id === assistantMessageId
+              ? { ...m, content: `${m.content || ""}${delta}` }
+              : m
+          )
+        );
+      };
+      const setAssistantFinal = (text) => {
+        setChat((prev) =>
+          prev.map((m) =>
+            m.id === assistantMessageId
+              ? { ...m, content: text ?? m.content ?? "" }
+              : m
+          )
+        );
+      };
+
+      let completed = false;
+      if (STREAM_WS_URL && accessToken) {
+        try {
+          const streamed = await streamTurn({
+            wsUrl: STREAM_WS_URL,
+            accessToken,
+            message: trimmedMessage,
+            sessionId: sessionId || undefined,
+            clientRequestId,
+            mode: uiState?.mode,
+            onDelta: appendAssistantDelta,
+          });
+          applyTurnResponse(streamed, sessionId);
+          if (typeof streamed.assistant === "string") {
+            setAssistantFinal(streamed.assistant);
+          }
+          setMessage("");
+          completed = true;
+        } catch {
+          completed = false;
+        }
+      }
+
+      if (!completed) {
+        try {
+          const parsed = await sendTurnBuffered({
+            idToken,
+            trimmedMessage,
+            clientRequestId,
+          });
+          setAssistantFinal(typeof parsed.assistant === "string" ? parsed.assistant : "");
+          setMessage("");
+        } catch (e) {
+          setChat((prev) =>
+            prev.filter((m) => m.id !== userMessageId && m.id !== assistantMessageId)
+          );
+          throw e;
+        }
+      }
 
     } catch (e) {
       setTopErrorFromException(e);
