@@ -21,9 +21,9 @@ export default function PrivacyPage() {
       </div>
 
       <div style={{ fontSize: 13, opacity: 0.75, marginBottom: 16 }}>
-        Effective Date: [Insert Date]
+        Effective Date: 3/1/2026
         <br />
-        Last Updated: [Insert Date]
+        Last Updated: 4/18/2026
       </div>
 
       <div style={{ display: "grid", gap: 16, lineHeight: 1.55 }}>
@@ -134,13 +134,13 @@ export default function PrivacyPage() {
         <div>
           <div style={sectionTitleStyle}>6. AI and Model Use</div>
           <div style={paragraphStyle}>
-            Kinin AI Biographer is designed to protect personal memory data.
+            Kinin Does not use customer data for training or fine-tuning AI models. 
           </div>
           <div>
-            Personal story content is not sold or shared for external model training.
-          </div>
-          <div>
-            Antry may use limited, privacy-protected data internally to improve system performance.
+            Kinin may use your content to improve Kinin’s own Services, such as improving interview quality, 
+            safety systems, summarization quality, memory organization, and related product performance. 
+            Where feasible, we may use de-identified, minimized, aggregated, or otherwise privacy-protected 
+            forms of data for these purposes.
           </div>
         </div>
 
@@ -148,18 +148,54 @@ export default function PrivacyPage() {
         <div>
           <div style={sectionTitleStyle}>7. Data Disclosure</div>
           <div style={paragraphStyle}>
-            Antry does not disclose personal data to unrelated third parties for marketing or
-            advertising.
+            Antry does not disclose personal information to unrelated third parties for their own
+            advertising, profiling, data brokerage, or resale purposes.
+          </div>
+          <div style={paragraphStyle}>
+            We may disclose personal information only in the following limited circumstances:
           </div>
 
-          <div style={{ fontWeight: 600 }}>Permitted disclosures:</div>
+          <div style={{ fontWeight: 600 }}>A. Service Providers and Processors</div>
+          <div style={paragraphStyle}>
+            We may disclose information to vendors and service providers that perform services for us,
+            such as cloud hosting, database hosting, authentication, payment processing, customer
+            support, analytics, security monitoring, email delivery, storage, transcription, or AI
+            infrastructure, subject to contractual restrictions.
+          </div>
+
+          <div style={{ fontWeight: 600 }}>B. At Your Direction</div>
+          <div style={paragraphStyle}>
+            We may disclose information when you instruct us to do so, such as when you export
+            content, invite another person to access content, share a story, connect a third-party
+            integration, or request a transfer.
+          </div>
+
+          <div style={{ fontWeight: 600 }}>C. Legal Compliance and Protection</div>
+          <div style={paragraphStyle}>
+            We may disclose information if we believe in good faith that disclosure is reasonably
+            necessary to:
+          </div>
           <ul style={listStyle}>
-            <li>Service providers (hosting, infrastructure, etc.)</li>
-            <li>User-directed sharing</li>
-            <li>Legal compliance</li>
-            <li>Security protection</li>
-            <li>Business transfers</li>
+            <li>
+              comply with applicable law, regulation, legal process, or governmental request;
+            </li>
+            <li>enforce our terms, policies, or contracts;</li>
+            <li>
+              detect, investigate, prevent, or address fraud, abuse, security incidents, or technical
+              issues; or
+            </li>
+            <li>
+              protect the rights, property, safety, or security of Antry, our users, or others.
+            </li>
           </ul>
+
+          <div style={{ fontWeight: 600 }}>D. Business Transfers</div>
+          <div>
+            If Antry is involved in a merger, acquisition, financing due diligence, reorganization,
+            asset sale, bankruptcy, or similar transaction, personal information may be disclosed as
+            part of that transaction, subject to standard confidentiality protections and applicable
+            law.
+          </div>
         </div>
 
         {/* 8 */}
@@ -174,16 +210,59 @@ export default function PrivacyPage() {
         <div>
           <div style={sectionTitleStyle}>9. Cookies and Tracking</div>
           <div style={paragraphStyle}>
-            We use cookies and similar technologies to operate the service and improve performance.
+            Kinin may use cookies, local storage, pixels, SDKs, or similar technologies to:
           </div>
-          <div>No advertising tracking is based on personal story content.</div>
+          <ul style={listStyle}>
+            <li>keep you signed in;</li>
+            <li>remember settings and preferences;</li>
+            <li>analyze traffic and feature usage;</li>
+            <li>improve performance and reliability; and</li>
+            <li>measure the effectiveness of our own communications.</li>
+          </ul>
+          <div style={paragraphStyle}>
+            Kinin does not use your private story content for advertising targeting.
+          </div>
+          <div>
+            If Kinin uses non-essential analytics or advertising-related cookies in the future, we
+            will provide any notices and choices required by applicable law.
+          </div>
         </div>
 
         {/* 10 */}
         <div>
           <div style={sectionTitleStyle}>10. Data Retention</div>
+          <div style={paragraphStyle}>
+            We retain personal information for as long as reasonably necessary to provide the
+            Services, fulfill the purposes described in this Privacy Policy, comply with legal
+            obligations, resolve disputes, enforce agreements, and protect the integrity and security
+            of the Services.
+          </div>
+          <div style={paragraphStyle}>
+            Retention periods may vary depending on the category of information and the reason it was
+            collected. For example:
+          </div>
+          <ul style={listStyle}>
+            <li>
+              account information may be retained while your account is active and for a reasonable
+              period thereafter;
+            </li>
+            <li>
+              story, interview, and biography content may be retained until you delete it or close your
+              account, subject to backup cycles and legal exceptions;
+            </li>
+            <li>
+              transaction records may be retained as required for accounting, tax, audit, or
+              regulatory compliance; and
+            </li>
+            <li>
+              security logs may be retained for fraud prevention, abuse detection, and system
+              integrity.
+            </li>
+          </ul>
           <div>
-            Data is retained as long as necessary to provide the service and meet legal obligations.
+            If you request deletion, we will delete or de-identify relevant personal information
+            within a commercially reasonable timeframe, except where retention is required or
+            permitted by law.
           </div>
         </div>
 
@@ -193,8 +272,8 @@ export default function PrivacyPage() {
           <ul style={listStyle}>
             <li>Access your data</li>
             <li>Correct inaccuracies</li>
-            <li>Delete data</li>
-            <li>Export content</li>
+            <li>Delete data (Delete all stored biographical content (including stories, interviews, and biographies) at user's request via the 'My Account' page.)</li>
+            <li>Export content by request.</li>
           </ul>
         </div>
 
@@ -202,7 +281,9 @@ export default function PrivacyPage() {
         <div>
           <div style={sectionTitleStyle}>12. California Privacy Rights</div>
           <div>
-            California residents may request access, deletion, or correction of personal data.
+            If you are a California resident, you may have rights under the California Consumer Privacy Act, 
+            as amended by the California Privacy Rights Act, including the right to know, delete, correct, 
+            and opt out of sale or sharing, subject to statutory exceptions.
           </div>
         </div>
 
@@ -210,7 +291,8 @@ export default function PrivacyPage() {
         <div>
           <div style={sectionTitleStyle}>13. Other U.S. State Rights</div>
           <div>
-            Additional rights may apply depending on your state of residence.
+            Residents of certain U.S. states may have similar rights to access, correct, delete, 
+            obtain a copy of their data, and opt out of certain processing activities.
           </div>
         </div>
 
@@ -218,7 +300,10 @@ export default function PrivacyPage() {
         <div>
           <div style={sectionTitleStyle}>14. International Users</div>
           <div>
-            Data may be processed in the United States or other jurisdictions.
+            If you access the Services from outside the United States, your information may be transferred to, 
+            stored in, and processed in the United States or other jurisdictions where Kinin or its 
+            service providers operate. Where required by law, Kinin will use appropriate safeguards for 
+            international transfers of personal information.
           </div>
         </div>
 
@@ -226,7 +311,12 @@ export default function PrivacyPage() {
         <div>
           <div style={sectionTitleStyle}>15. Security</div>
           <div>
-            We implement safeguards to protect personal data but cannot guarantee absolute security.
+          We use reasonable administrative, technical, and organizational safeguards designed to protect personal information 
+          against unauthorized access, loss, misuse, alteration, or disclosure. These measures may include encryption in transit, 
+          encryption at rest, access controls, logging, authentication controls, vendor management, and security monitoring.
+          </div>
+          <div>
+          No method of transmission or storage is completely secure, and we cannot guarantee absolute security.
           </div>
         </div>
 
@@ -234,7 +324,9 @@ export default function PrivacyPage() {
         <div>
           <div style={sectionTitleStyle}>16. Access Controls</div>
           <div>
-            Access to data is limited to authorized personnel and service providers.
+          Access to personal information is limited to personnel, contractors, and service providers who need that access for legitimate business purposes, 
+          such as operating the Services, maintaining security, providing support, or complying with legal obligations, 
+          and who are subject to confidentiality and security obligations.
           </div>
         </div>
 
@@ -242,7 +334,8 @@ export default function PrivacyPage() {
         <div>
           <div style={sectionTitleStyle}>17. Children’s Privacy</div>
           <div>
-            Kinin AI Biographer is intended for adults. We do not knowingly collect data from children.
+          Services are not directed to children under 13, and we do not knowingly collect personal information from 
+          children under 13 without legally sufficient authorization.
           </div>
         </div>
 
@@ -250,7 +343,9 @@ export default function PrivacyPage() {
         <div>
           <div style={sectionTitleStyle}>18. Third-Party Services</div>
           <div>
-            Third-party services integrated with Kinin are governed by their own policies.
+            The Services may contain links to or integrations with third-party products or services. 
+            This Privacy Policy does not apply to third-party services that Kinin does not control. 
+            We encourage you to review their privacy policies separately.
           </div>
         </div>
 
@@ -258,14 +353,22 @@ export default function PrivacyPage() {
         <div>
           <div style={sectionTitleStyle}>19. Policy Changes</div>
           <div>
-            We may update this policy. Continued use indicates acceptance of changes.
+          We may update this Privacy Policy from time to time. If we make material changes, 
+          we will provide notice by updating the effective date, posting the updated policy, 
+          and, where appropriate, providing additional notice through the Services or by email.
+          </div>
+          <div>
+            Your continued use of the Services after the updated Privacy Policy becomes effective means the updated Policy will apply to your use of the Services, to the extent permitted by law.
           </div>
         </div>
 
         {/* 20 */}
         <div>
           <div style={sectionTitleStyle}>20. Contact</div>
+          <div>If you have questions, concerns, or privacy requests, contact us at:
+          </div>
           <div>Email: jesse@kinin.ai</div>
+          <div>Website: https://kinin.ai</div>
           <div>Company: Antry, Inc.</div>
         </div>
 
