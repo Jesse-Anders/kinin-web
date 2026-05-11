@@ -272,7 +272,7 @@ export default function PrivacyPage() {
           <ul style={listStyle}>
             <li>Access your data</li>
             <li>Correct inaccuracies</li>
-            <li>Delete data (Delete all stored biographical content (including stories, interviews, and biographies) at user's request via the 'My Account' page.)</li>
+            <li>Delete data (Delete all stored biographical content (including stories, interviews, and biographies) at user's 'My Account' page.)</li>
             <li>Export content by request.</li>
           </ul>
         </div>

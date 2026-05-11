@@ -28,8 +28,8 @@ const FAQ_ITEMS = [
     a: "Yes. When logged in, click the \"My Account\" link in the sidebar menu and follow the instructions to permanently delete your account and all associated data. The process requires authentication and a confirmation step to protect against unauthorized deletion. You can do this at any time — your data is yours to keep or remove.",
   },
   {
-    q: "What is a Bio Profile?",
-    a: "Your Bio Profile stores basic context — like your preferred name and age — so Kinin can address you naturally and tailor the interview. It is optional, and you can update it anytime from the sidebar menu.",
+    q: "What are Kinin Settings?",
+    a: "Kinin Settings let you manage your preferred name, age, and continuity settings — including how often Kinin should gently remind you if you have been away for a while. You can update these anytime from the sidebar menu.",
   },
   {
     q: "Can I edit or remove something I said in the interview?",

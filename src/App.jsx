@@ -43,7 +43,7 @@ const PAGE_TO_PATH = {
   about: "/about",
   faq: "/faq",
   feedback: "/feedback",
-  bio: "/bio",
+  settings: "/settings",
   contact: "/contact",
   privacy: "/privacy",
   unsubscribe: "/unsubscribe",
@@ -53,9 +53,10 @@ const PAGE_TO_PATH = {
   "admin-user-purge": "/admin/user-purge",
   account: "/account",
 };
-const PATH_TO_PAGE = Object.fromEntries(
-  Object.entries(PAGE_TO_PATH).map(([page, path]) => [path, page])
-);
+const PATH_TO_PAGE = {
+  ...Object.fromEntries(Object.entries(PAGE_TO_PATH).map(([page, path]) => [path, page])),
+  "/bio": "settings",
+};
 
 function normalizePath(pathname) {
   if (!pathname) return "/";
@@ -102,6 +103,10 @@ export default function App() {
   const [_showProfile, setShowProfile] = useState(false);
   const [profileSchema, setProfileSchema] = useState(null);
   const [bioProfile, setBioProfile] = useState({ preferred_name: "", age: "" });
+  const [continuitySettings, setContinuitySettings] = useState({
+    reminder_cadence_weeks: 2,
+    reminder_channel: "email",
+  });
   const [profileBusy, setProfileBusy] = useState(false);
   const [activePage, setActivePage] = useState("interview");
   const messageInputRef = useRef(null);
@@ -137,8 +142,8 @@ export default function App() {
       onClick: () => navigateToPage("feedback"),
     },
     {
-      id: "bio",
-      label: "Bio Profile",
+      id: "settings",
+      label: "Kinin Settings",
       icon: Footprints,
       requiresAuth: true,
       onClick: () => openProfile(),
@@ -281,7 +286,7 @@ export default function App() {
   }, [activePage, location.pathname, navigate]);
 
   useEffect(() => {
-    const isRestrictedAuthPage = activePage === "bio" || activePage === "account";
+    const isRestrictedAuthPage = activePage === "settings" || activePage === "account";
     const isAdminPage =
       activePage === "admin" ||
       activePage === "admin-crm" ||
@@ -756,7 +761,7 @@ export default function App() {
   async function openProfile() {
     setError("");
     setShowProfile(true);
-    navigateToPage("bio");
+    navigateToPage("settings");
     if (!isAuthed) {
       setError("Please sign in to view your profile.");
       return;
@@ -790,9 +795,17 @@ export default function App() {
       const profParsed =
         typeof profData.body === "string" ? JSON.parse(profData.body) : profData;
       const bp = profParsed.biography_user_profile || {};
+      const continuity = profParsed.continuity_settings || {};
       setBioProfile({
         preferred_name: bp.preferred_name || "",
         age: bp.age === undefined || bp.age === null ? "" : String(bp.age),
+      });
+      setContinuitySettings({
+        reminder_cadence_weeks:
+          continuity.reminder_cadence_weeks === undefined || continuity.reminder_cadence_weeks === null
+            ? 2
+            : Number(continuity.reminder_cadence_weeks),
+        reminder_channel: continuity.reminder_channel || "email",
       });
     } catch (e) {
       setTopErrorFromException(e);
@@ -819,6 +832,10 @@ export default function App() {
           preferred_name: preferred,
           age: ageVal ? Number(ageVal) : null,
         },
+        continuity_settings: {
+          reminder_cadence_weeks: Number(continuitySettings?.reminder_cadence_weeks ?? 2),
+          reminder_channel: "email",
+        },
       };
 
       const res = await fetch(`${API_BASE}/profile`, {
@@ -835,9 +852,17 @@ export default function App() {
       const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
       setAccessBlocked(null);
       const bp = parsed.biography_user_profile || {};
+      const continuity = parsed.continuity_settings || {};
       setBioProfile({
         preferred_name: bp.preferred_name || preferred,
         age: bp.age === undefined || bp.age === null ? "" : String(bp.age),
+      });
+      setContinuitySettings({
+        reminder_cadence_weeks:
+          continuity.reminder_cadence_weeks === undefined || continuity.reminder_cadence_weeks === null
+            ? 2
+            : Number(continuity.reminder_cadence_weeks),
+        reminder_channel: continuity.reminder_channel || "email",
       });
       setShowProfile(false);
       navigateToPage("interview");
@@ -1297,11 +1322,13 @@ export default function App() {
           accountError={accountError}
           closeAccount={closeAccount}
         />
-      ) : activePage === "bio" ? (
+      ) : activePage === "settings" ? (
         <BioProfilePage
           profileSchema={profileSchema}
           bioProfile={bioProfile}
           setBioProfile={setBioProfile}
+          continuitySettings={continuitySettings}
+          setContinuitySettings={setContinuitySettings}
           profileBusy={profileBusy}
           saveProfile={saveProfile}
           onClose={() => {
