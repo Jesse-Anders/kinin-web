@@ -64,7 +64,7 @@ export default function BioProfilePage({
           >
             <div style={{ fontWeight: 600, fontSize: 14 }}>Continuity settings</div>
             <div style={{ fontSize: 12, opacity: 0.85 }}>
-              The user is choosing how Kinin stays gently present in their life.
+              Set up how reminders from Kinin when you've been away for a while.
             </div>
             <div>
               <div style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}>
