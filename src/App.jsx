@@ -30,6 +30,7 @@ import AboutKininPage from "./pages/AboutKininPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import UnsubscribePage from "./pages/UnsubscribePage";
 import OnboardingPage from "./pages/OnboardingPage";
+import ExecutorAcceptPage from "./pages/ExecutorAcceptPage";
 import { streamTurn } from "./services/turnStreamClient";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
@@ -48,6 +49,7 @@ const PAGE_TO_PATH = {
   contact: "/contact",
   privacy: "/privacy",
   unsubscribe: "/unsubscribe",
+  "executor-accept": "/executor/accept",
   onboarding: "/onboarding",
   admin: "/admin",
   "admin-onboarding-preview": "/admin/onboarding-preview",
@@ -105,6 +107,7 @@ export default function App() {
   const [isEndingSession, setIsEndingSession] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [error, setError] = useState("");
+  const [profileNotice, setProfileNotice] = useState("");
   const [accessBlocked, setAccessBlocked] = useState(null);
   const [didStart, setDidStart] = useState(false);
   const [_showProfile, setShowProfile] = useState(false);
@@ -113,6 +116,13 @@ export default function App() {
   const [continuitySettings, setContinuitySettings] = useState({
     reminder_cadence_weeks: 2,
     reminder_channel: "email",
+  });
+  const [accountExecutor, setAccountExecutor] = useState({
+    name: "",
+    email: "",
+    status: "",
+    confirmed_at: null,
+    last_invite_sent_at: null,
   });
   const [profileBusy, setProfileBusy] = useState(false);
   const [activePage, setActivePage] = useState("interview");
@@ -126,6 +136,7 @@ export default function App() {
   const [onboardingPreview, setOnboardingPreview] = useState({
     step: 1,
     bioProfile: { preferred_name: "", age: "" },
+    accountExecutor: { name: "", email: "" },
     continuitySettings: { reminder_cadence_weeks: 2, reminder_channel: "email" },
   });
   const messageInputRef = useRef(null);
@@ -344,9 +355,10 @@ export default function App() {
     setOnboardingPreview({
       step: 1,
       bioProfile: { ...bioProfile },
+      accountExecutor: { name: accountExecutor?.name || "", email: accountExecutor?.email || "" },
       continuitySettings: { ...continuitySettings },
     });
-  }, [activePage, bioProfile, continuitySettings]);
+  }, [activePage, bioProfile, accountExecutor, continuitySettings]);
   useEffect(() => {
     function recompute() {
       if (!sidebarRef.current || !sidebarMeasureRef.current || !sidebarBottomRef.current) {
@@ -419,6 +431,7 @@ export default function App() {
     const bp = parsed?.biography_user_profile || {};
     const continuity = parsed?.continuity_settings || {};
     const onboarding = parsed?.onboarding || {};
+    const executor = parsed?.account_executor || {};
     setBioProfile({
       preferred_name: bp.preferred_name || "",
       age: bp.age === undefined || bp.age === null ? "" : String(bp.age),
@@ -434,6 +447,13 @@ export default function App() {
       required: onboarding.required === true,
       completed_at: onboarding.completed_at || null,
       current_step: Number(onboarding.current_step || 1),
+    });
+    setAccountExecutor({
+      name: executor.name || "",
+      email: executor.email || "",
+      status: executor.status || "",
+      confirmed_at: executor.confirmed_at || null,
+      last_invite_sent_at: executor.last_invite_sent_at || null,
     });
   }
 
@@ -903,6 +923,7 @@ export default function App() {
 
   async function openProfile() {
     setError("");
+    setProfileNotice("");
     setShowProfile(true);
     navigateToPage("settings");
     if (!isAuthed) {
@@ -926,6 +947,8 @@ export default function App() {
       navigateAfterSave = true,
       onboardingStep = null,
       markOnboardingCompleted = false,
+      executorNotice = "",
+      executorSendInvite = true,
     } = options;
     setError("");
     if (!isAuthed) return;
@@ -960,7 +983,18 @@ export default function App() {
                 ...(markOnboardingCompleted ? { mark_completed: true } : {}),
               }
             : undefined,
+        account_executor:
+          accountExecutor?.name || accountExecutor?.email
+            ? {
+                name: (accountExecutor?.name || "").trim(),
+                email: (accountExecutor?.email || "").trim().toLowerCase(),
+                send_invite: !!executorSendInvite,
+              }
+            : null,
       };
+      if ((payload.account_executor && (!payload.account_executor.name || !payload.account_executor.email))) {
+        throw new Error("Account executor requires both name and email, or leave both blank.");
+      }
 
       const res = await fetch(`${API_BASE}/profile`, {
         method: "PUT",
@@ -981,6 +1015,11 @@ export default function App() {
       }
       if (navigateAfterSave) {
         navigateToPage("interview");
+      }
+      if (executorNotice) {
+        setProfileNotice(executorNotice);
+      } else if (payload.account_executor && !markOnboardingCompleted) {
+        setProfileNotice("Account executor invitation email sent.");
       }
       return true;
     } catch (e) {
@@ -1018,6 +1057,54 @@ export default function App() {
       return false;
     } finally {
       setOnboardingBusy(false);
+    }
+  }
+
+  async function resendAccountExecutorInvite() {
+    const name = (accountExecutor?.name || "").trim();
+    const email = (accountExecutor?.email || "").trim().toLowerCase();
+    const firstSend = (accountExecutor?.status || "").trim().toLowerCase() === "saved_not_invited";
+    if (!name || !email) {
+      setError("Enter both account executor name and email before resending.");
+      return;
+    }
+    const ok = await saveProfile({
+      closeAfterSave: false,
+      navigateAfterSave: false,
+      executorNotice: firstSend
+        ? "Account executor confirmation email sent."
+        : "Account executor confirmation email resent.",
+    });
+    if (ok) {
+      setError("");
+    }
+  }
+
+  async function removeAccountExecutor() {
+    setError("");
+    if (!isAuthed) return;
+    setProfileBusy(true);
+    try {
+      const session = await fetchAuthSession();
+      const idToken = session.tokens?.idToken?.toString();
+      if (!idToken) throw new Error("Missing idToken. Are you logged in?");
+      const res = await fetch(`${API_BASE}/profile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ account_executor: null }),
+      });
+      await ensureApiOk(res);
+      const data = await res.json();
+      const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
+      applyProfilePayload(parsed);
+      setProfileNotice("Account executor removed.");
+    } catch (e) {
+      setTopErrorFromException(e);
+    } finally {
+      setProfileBusy(false);
     }
   }
 
@@ -1117,6 +1204,16 @@ export default function App() {
         onboardingStep: 3,
       });
       if (!ok) return;
+      return;
+    }
+    if (step === 3) {
+      const name = (accountExecutor?.name || "").trim();
+      const email = (accountExecutor?.email || "").trim().toLowerCase();
+      if ((name && !email) || (!name && email)) {
+        setError("Trusted contact requires both name and email, or leave both blank.");
+        return;
+      }
+      await updateOnboardingStep(4);
     }
   }
 
@@ -1124,11 +1221,17 @@ export default function App() {
     const ok = await saveProfile({
       closeAfterSave: false,
       navigateAfterSave: false,
-      onboardingStep: 3,
+      onboardingStep: 4,
       markOnboardingCompleted: true,
+      executorSendInvite: false,
     });
     if (!ok) return;
     navigateToPage("interview");
+  }
+
+  async function onOnboardingSkip() {
+    setAccountExecutor({ name: "", email: "", status: "", confirmed_at: null, last_invite_sent_at: null });
+    await updateOnboardingStep(4);
   }
 
   function onOnboardingPreviewBack() {
@@ -1141,7 +1244,15 @@ export default function App() {
   function onOnboardingPreviewContinue() {
     setOnboardingPreview((prev) => ({
       ...prev,
-      step: Math.min(3, Number(prev.step || 1) + 1),
+      step: Math.min(4, Number(prev.step || 1) + 1),
+    }));
+  }
+
+  function onOnboardingPreviewSkip() {
+    setOnboardingPreview((prev) => ({
+      ...prev,
+      accountExecutor: { name: "", email: "" },
+      step: 4,
     }));
   }
 
@@ -1501,6 +1612,8 @@ export default function App() {
         <PrivacyPage />
       ) : activePage === "unsubscribe" ? (
         <UnsubscribePage apiBase={API_BASE} />
+      ) : activePage === "executor-accept" ? (
+        <ExecutorAcceptPage apiBase={API_BASE} />
       ) : activePage === "admin-crm" ? (
         <AdminCrmPage
           isAuthed={isAuthed}
@@ -1526,12 +1639,15 @@ export default function App() {
           onboardingStep={Number(onboardingStatus?.current_step || 1)}
           bioProfile={bioProfile}
           setBioProfile={setBioProfile}
+          accountExecutor={accountExecutor}
+          setAccountExecutor={setAccountExecutor}
           continuitySettings={continuitySettings}
           setContinuitySettings={setContinuitySettings}
           busy={profileBusy || onboardingBusy}
           onBack={onOnboardingBack}
           onContinue={onOnboardingContinue}
           onBegin={onOnboardingBegin}
+          onSkip={onOnboardingSkip}
         />
       ) : activePage === "admin-onboarding-preview" ? (
         <OnboardingPage
@@ -1541,6 +1657,13 @@ export default function App() {
             setOnboardingPreview((prev) => ({
               ...prev,
               bioProfile: typeof next === "function" ? next(prev.bioProfile) : next,
+            }))
+          }
+          accountExecutor={onboardingPreview.accountExecutor}
+          setAccountExecutor={(next) =>
+            setOnboardingPreview((prev) => ({
+              ...prev,
+              accountExecutor: typeof next === "function" ? next(prev.accountExecutor) : next,
             }))
           }
           continuitySettings={onboardingPreview.continuitySettings}
@@ -1555,6 +1678,7 @@ export default function App() {
           onBack={onOnboardingPreviewBack}
           onContinue={onOnboardingPreviewContinue}
           onBegin={onOnboardingPreviewBegin}
+          onSkip={onOnboardingPreviewSkip}
           previewMode
           beginLabel="Back to Admin"
         />
@@ -1578,8 +1702,13 @@ export default function App() {
           setBioProfile={setBioProfile}
           continuitySettings={continuitySettings}
           setContinuitySettings={setContinuitySettings}
+          accountExecutor={accountExecutor}
+          setAccountExecutor={setAccountExecutor}
           profileBusy={profileBusy}
+          profileNotice={profileNotice}
           saveProfile={saveProfile}
+          resendAccountExecutorInvite={resendAccountExecutorInvite}
+          removeAccountExecutor={removeAccountExecutor}
           onClose={() => {
             setShowProfile(false);
             navigateToPage("interview");

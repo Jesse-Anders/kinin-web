@@ -4,12 +4,24 @@ export default function BioProfilePage({
   setBioProfile,
   continuitySettings,
   setContinuitySettings,
+  accountExecutor,
+  setAccountExecutor,
   profileBusy,
+  profileNotice,
   saveProfile,
+  resendAccountExecutorInvite,
+  removeAccountExecutor,
   onClose,
 }) {
   const cadenceValue = String(continuitySettings?.reminder_cadence_weeks ?? 2);
   const showInitialLoader = profileBusy && !profileSchema;
+  const executorStatus = accountExecutor?.status || "";
+  const executorStatusLabel =
+    executorStatus === "saved_not_invited"
+      ? "Saved (not invited yet)"
+      : executorStatus;
+  const resendButtonLabel =
+    executorStatus === "saved_not_invited" ? "Send confirmation" : "Resend confirmation";
 
   return (
     <div style={{ padding: 16 }}>
@@ -34,6 +46,11 @@ export default function BioProfilePage({
         </div>
 
         <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+          {profileNotice ? (
+            <div style={{ background: "#e8f6ee", color: "#0a6a3b", padding: 10, borderRadius: 8 }}>
+              {profileNotice}
+            </div>
+          ) : null}
           {showInitialLoader ? (
             <div style={{ display: "grid", gap: 10 }}>
               <div className="loading-skeleton loading-skeleton-line" />
@@ -122,6 +139,58 @@ export default function BioProfilePage({
                   <span>Text (coming soon)</span>
                 </label>
               </div>
+            </div>
+          </div>
+          <div
+            style={{
+              borderTop: "1px solid #eee",
+              marginTop: 6,
+              paddingTop: 10,
+              display: "grid",
+              gap: 10,
+            }}
+          >
+            <div style={{ fontWeight: 600, fontSize: 14 }}>Account executor</div>
+            <div style={{ fontSize: 12, opacity: 0.85 }}>
+              Optional but strongly encouraged. Add a family member or close friend who can be designated as your
+              account executor.
+            </div>
+            <label>
+              <div style={{ fontSize: 12, opacity: 0.8 }}>Executor name</div>
+              <input
+                value={accountExecutor?.name || ""}
+                onChange={(e) => setAccountExecutor((p) => ({ ...p, name: e.target.value }))}
+                disabled={profileBusy}
+                style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
+              />
+            </label>
+            <label>
+              <div style={{ fontSize: 12, opacity: 0.8 }}>Executor email</div>
+              <input
+                value={accountExecutor?.email || ""}
+                onChange={(e) =>
+                  setAccountExecutor((p) => ({
+                    ...p,
+                    email: e.target.value,
+                  }))
+                }
+                disabled={profileBusy}
+                style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
+                inputMode="email"
+              />
+            </label>
+            {executorStatus ? (
+              <div style={{ fontSize: 12, opacity: 0.75 }}>
+                Status: <b>{executorStatusLabel}</b>
+              </div>
+            ) : null}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={resendAccountExecutorInvite} disabled={profileBusy}>
+                {resendButtonLabel}
+              </button>
+              <button onClick={removeAccountExecutor} disabled={profileBusy}>
+                Remove executor
+              </button>
             </div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
