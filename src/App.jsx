@@ -1065,15 +1065,15 @@ export default function App() {
     const email = (accountExecutor?.email || "").trim().toLowerCase();
     const firstSend = (accountExecutor?.status || "").trim().toLowerCase() === "saved_not_invited";
     if (!name || !email) {
-      setError("Enter both account executor name and email before resending.");
+      setError("Enter both account executor name and email before sending an invite.");
       return;
     }
     const ok = await saveProfile({
       closeAfterSave: false,
       navigateAfterSave: false,
       executorNotice: firstSend
-        ? "Account executor confirmation email sent."
-        : "Account executor confirmation email resent.",
+        ? "Account executor invitation email sent."
+        : "Account executor invitation email resent.",
     });
     if (ok) {
       setError("");

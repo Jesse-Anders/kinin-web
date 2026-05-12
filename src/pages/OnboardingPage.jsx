@@ -46,6 +46,11 @@ export default function OnboardingPage({
                 Kinin helps you tell the story of your life, one conversation at a time.
               </div>
               <div style={{ opacity: 0.85, lineHeight: 1.45, marginTop: 8 }}>
+                Your memories, experiences, and reflections come together as a living, interactive biography&mdash;one
+                your family and friends can engage with conversationally to better understand your story, your
+                memories, and the moments that mattered most.
+              </div>
+              <div style={{ opacity: 0.85, lineHeight: 1.45, marginTop: 8 }}>
                 Before we begin, we&apos;ll ask a few quick questions to personalize your experience and help Kinin
                 support you over time.
               </div>
@@ -116,7 +121,7 @@ export default function OnboardingPage({
                 />
               </label>
               <div style={{ fontSize: 12, opacity: 0.75 }}>
-                We won&apos;t contact this person now. You can review or change your trusted contact later.
+                We will send an an email for this person to accept the invite to your Kinin account and to verify their email. You can add, review or change your trusted contact in the settings as well.
               </div>
             </div>
           ) : null}

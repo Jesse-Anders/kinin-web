@@ -16,12 +16,13 @@ export default function BioProfilePage({
   const cadenceValue = String(continuitySettings?.reminder_cadence_weeks ?? 2);
   const showInitialLoader = profileBusy && !profileSchema;
   const executorStatus = accountExecutor?.status || "";
+  const hasExecutorDetails = !!((accountExecutor?.name || "").trim() || (accountExecutor?.email || "").trim());
   const executorStatusLabel =
     executorStatus === "saved_not_invited"
       ? "Saved (not invited yet)"
       : executorStatus;
   const resendButtonLabel =
-    executorStatus === "saved_not_invited" ? "Send confirmation" : "Resend confirmation";
+    executorStatus === "saved_not_invited" ? "Send invite" : "Resend invite";
 
   return (
     <div style={{ padding: 16 }}>
@@ -184,14 +185,16 @@ export default function BioProfilePage({
                 Status: <b>{executorStatusLabel}</b>
               </div>
             ) : null}
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={resendAccountExecutorInvite} disabled={profileBusy}>
-                {resendButtonLabel}
-              </button>
-              <button onClick={removeAccountExecutor} disabled={profileBusy}>
-                Remove executor
-              </button>
-            </div>
+            {hasExecutorDetails ? (
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={resendAccountExecutorInvite} disabled={profileBusy}>
+                  {resendButtonLabel}
+                </button>
+                <button onClick={removeAccountExecutor} disabled={profileBusy}>
+                  Remove executor
+                </button>
+              </div>
+            ) : null}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={saveProfile} disabled={profileBusy}>
