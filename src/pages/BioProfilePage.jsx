@@ -44,7 +44,7 @@ export default function BioProfilePage({
             />
           </label>
           <label>
-            <div style={{ fontSize: 12, opacity: 0.8 }}>Age (optional)</div>
+            <div style={{ fontSize: 12, opacity: 0.8 }}>Age *</div>
             <input
               value={bioProfile.age}
               onChange={(e) => setBioProfile((p) => ({ ...p, age: e.target.value }))}
@@ -52,6 +52,9 @@ export default function BioProfilePage({
               style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
               inputMode="numeric"
             />
+            <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>
+              Your age helps Kinin place life events naturally on your timeline.
+            </div>
           </label>
           <div
             style={{
@@ -64,7 +67,7 @@ export default function BioProfilePage({
           >
             <div style={{ fontWeight: 600, fontSize: 14 }}>Continuity settings</div>
             <div style={{ fontSize: 12, opacity: 0.85 }}>
-              Set up how reminders from Kinin when you've been away for a while.
+              The user is choosing how Kinin stays gently present in their life.
             </div>
             <div>
               <div style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}>

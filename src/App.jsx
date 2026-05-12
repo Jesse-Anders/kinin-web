@@ -29,6 +29,7 @@ import AdminUserPurgePage from "./pages/AdminUserPurgePage";
 import AboutKininPage from "./pages/AboutKininPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import UnsubscribePage from "./pages/UnsubscribePage";
+import OnboardingPage from "./pages/OnboardingPage";
 import { streamTurn } from "./services/turnStreamClient";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
@@ -47,6 +48,7 @@ const PAGE_TO_PATH = {
   contact: "/contact",
   privacy: "/privacy",
   unsubscribe: "/unsubscribe",
+  onboarding: "/onboarding",
   admin: "/admin",
   "admin-crm": "/admin/crm",
   "admin-metrics": "/admin/metrics",
@@ -97,6 +99,7 @@ export default function App() {
   const [message, setMessage] = useState("");
   const [chat, setChat] = useState([]);
   const [busy, setBusy] = useState(false);
+  const [isSendingTurn, setIsSendingTurn] = useState(false);
   const [error, setError] = useState("");
   const [accessBlocked, setAccessBlocked] = useState(null);
   const [didStart, setDidStart] = useState(false);
@@ -109,6 +112,13 @@ export default function App() {
   });
   const [profileBusy, setProfileBusy] = useState(false);
   const [activePage, setActivePage] = useState("interview");
+  const [onboardingStatus, setOnboardingStatus] = useState({
+    required: false,
+    completed_at: null,
+    current_step: 1,
+  });
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
+  const [onboardingBusy, setOnboardingBusy] = useState(false);
   const messageInputRef = useRef(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuOverflowOpen, setMenuOverflowOpen] = useState(false);
@@ -191,6 +201,10 @@ export default function App() {
   }
 
   const isAuthed = useMemo(() => !!user, [user]);
+  const onboardingRequired =
+    isAuthed &&
+    onboardingStatus?.required === true &&
+    !onboardingStatus?.completed_at;
   function normalizeLabelArray(values) {
     if (!Array.isArray(values)) return [];
     return values
@@ -258,6 +272,7 @@ export default function App() {
   const visibleBottomItems = menuItems.filter(
     (item) => item.section === "bottom" && (isAuthed || !item.requiresAuth) && !(item.hideForBetaLite && IS_BETA_LITE)
   );
+  const showNavigation = !onboardingRequired;
   useEffect(() => {
     if (uiState?.progress && typeof uiState.progress.percent === "number") {
       setLastProgress(uiState.progress);
@@ -286,7 +301,8 @@ export default function App() {
   }, [activePage, location.pathname, navigate]);
 
   useEffect(() => {
-    const isRestrictedAuthPage = activePage === "settings" || activePage === "account";
+    const isRestrictedAuthPage =
+      activePage === "settings" || activePage === "account" || activePage === "onboarding";
     const isAdminPage =
       activePage === "admin" ||
       activePage === "admin-crm" ||
@@ -301,6 +317,17 @@ export default function App() {
       navigate("/", { replace: true });
     }
   }, [activePage, isAuthed, navigate]);
+
+  useEffect(() => {
+    if (!isAuthed || !onboardingChecked) return;
+    if (onboardingRequired && activePage !== "onboarding") {
+      navigateToPage("onboarding", { replace: true });
+      return;
+    }
+    if (!onboardingRequired && activePage === "onboarding") {
+      navigateToPage("interview", { replace: true });
+    }
+  }, [activePage, isAuthed, onboardingChecked, onboardingRequired]);
   useEffect(() => {
     function recompute() {
       if (!sidebarRef.current || !sidebarMeasureRef.current || !sidebarBottomRef.current) {
@@ -338,6 +365,17 @@ export default function App() {
   async function ensureApiOk(res) {
     if (res.ok) return;
     const { text, parsed } = await getApiErrorPayload(res);
+    if (res.status === 403 && parsed?.error === "onboarding_required") {
+      setOnboardingStatus((prev) => ({
+        ...prev,
+        required: true,
+        current_step: Number(parsed.current_step || prev?.current_step || 1),
+      }));
+      navigateToPage("onboarding", { replace: true });
+      const onboardingErr = new Error("onboarding_required");
+      onboardingErr.name = "OnboardingRequiredError";
+      throw onboardingErr;
+    }
     if (res.status === 403 && parsed?.error === "access_blocked") {
       setAccessBlocked({
         reason: parsed.reason || "blocked",
@@ -354,8 +392,63 @@ export default function App() {
   }
 
   function setTopErrorFromException(e) {
-    if (e?.name === "AccessBlockedError") return;
+    if (e?.name === "AccessBlockedError" || e?.name === "OnboardingRequiredError") return;
     setError(e?.message || String(e));
+  }
+
+  function applyProfilePayload(parsed) {
+    const bp = parsed?.biography_user_profile || {};
+    const continuity = parsed?.continuity_settings || {};
+    const onboarding = parsed?.onboarding || {};
+    setBioProfile({
+      preferred_name: bp.preferred_name || "",
+      age: bp.age === undefined || bp.age === null ? "" : String(bp.age),
+    });
+    setContinuitySettings({
+      reminder_cadence_weeks:
+        continuity.reminder_cadence_weeks === undefined || continuity.reminder_cadence_weeks === null
+          ? 2
+          : Number(continuity.reminder_cadence_weeks),
+      reminder_channel: continuity.reminder_channel || "email",
+    });
+    setOnboardingStatus({
+      required: onboarding.required === true,
+      completed_at: onboarding.completed_at || null,
+      current_step: Number(onboarding.current_step || 1),
+    });
+  }
+
+  async function loadProfileState({ includeSchema = false } = {}) {
+    const session = await fetchAuthSession();
+    const idToken = session.tokens?.idToken?.toString();
+    if (!idToken) throw new Error("Missing idToken. Are you logged in?");
+    const requests = [
+      fetch(`${API_BASE}/profile`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${idToken}` },
+      }),
+    ];
+    if (includeSchema) {
+      requests.unshift(
+        fetch(`${API_BASE}/profile/schema`, {
+          method: "GET",
+          headers: { Authorization: `Bearer ${idToken}` },
+        })
+      );
+    }
+    const results = await Promise.all(requests);
+    for (const res of results) {
+      await ensureApiOk(res);
+    }
+    if (includeSchema) {
+      const schemaData = await results[0].json();
+      const schemaParsed = typeof schemaData.body === "string" ? JSON.parse(schemaData.body) : schemaData;
+      setProfileSchema(schemaParsed.schema || null);
+    }
+    const profileRes = includeSchema ? results[1] : results[0];
+    const profileData = await profileRes.json();
+    const profileParsed = typeof profileData.body === "string" ? JSON.parse(profileData.body) : profileData;
+    applyProfilePayload(profileParsed);
   }
 
   function applyTurnResponse(parsed, fallbackSessionId) {
@@ -460,14 +553,33 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!isAuthed) {
+      setOnboardingChecked(false);
+      return;
+    }
+    (async () => {
+      try {
+        await loadProfileState();
+      } catch (e) {
+        setTopErrorFromException(e);
+      } finally {
+        setOnboardingChecked(true);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthed]);
+
+  useEffect(() => {
     if (!isAuthed) return;
+    if (!onboardingChecked) return;
+    if (onboardingRequired) return;
     if (busy) return;
     if (didStart) return;
     // Auto-start session on login to get intro + session_id without requiring a user message.
     startSession();
     setDidStart(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthed]);
+  }, [isAuthed, onboardingChecked, onboardingRequired]);
 
   useEffect(() => {
     if (!user?.username) return;
@@ -490,7 +602,10 @@ export default function App() {
     setAccessBlocked(null);
     await signOut({ global: true });
     setUser(null);
+    setDidStart(false);
     setChat([]);
+    setOnboardingStatus({ required: false, completed_at: null, current_step: 1 });
+    setOnboardingChecked(false);
   }
 
   async function closeAccount() {
@@ -621,6 +736,7 @@ export default function App() {
     }
 
     setBusy(true);
+    setIsSendingTurn(true);
     try {
       const session = await fetchAuthSession();
       const idToken = session.tokens?.idToken?.toString();
@@ -701,6 +817,7 @@ export default function App() {
     } catch (e) {
       setTopErrorFromException(e);
     } finally {
+      setIsSendingTurn(false);
       setBusy(false);
     }
   }
@@ -768,45 +885,8 @@ export default function App() {
     }
     setProfileBusy(true);
     try {
-      const session = await fetchAuthSession();
-      const idToken = session.tokens?.idToken?.toString();
-      if (!idToken) throw new Error("Missing idToken. Are you logged in?");
-
-      const [schemaRes, profileRes] = await Promise.all([
-        fetch(`${API_BASE}/profile/schema`, {
-          method: "GET",
-          headers: { Authorization: `Bearer ${idToken}` },
-        }),
-        fetch(`${API_BASE}/profile`, {
-          method: "GET",
-          headers: { Authorization: `Bearer ${idToken}` },
-        }),
-      ]);
-      await ensureApiOk(schemaRes);
-      await ensureApiOk(profileRes);
+      await loadProfileState({ includeSchema: true });
       setAccessBlocked(null);
-
-      const schemaData = await schemaRes.json();
-      const schemaParsed =
-        typeof schemaData.body === "string" ? JSON.parse(schemaData.body) : schemaData;
-      setProfileSchema(schemaParsed.schema || null);
-
-      const profData = await profileRes.json();
-      const profParsed =
-        typeof profData.body === "string" ? JSON.parse(profData.body) : profData;
-      const bp = profParsed.biography_user_profile || {};
-      const continuity = profParsed.continuity_settings || {};
-      setBioProfile({
-        preferred_name: bp.preferred_name || "",
-        age: bp.age === undefined || bp.age === null ? "" : String(bp.age),
-      });
-      setContinuitySettings({
-        reminder_cadence_weeks:
-          continuity.reminder_cadence_weeks === undefined || continuity.reminder_cadence_weeks === null
-            ? 2
-            : Number(continuity.reminder_cadence_weeks),
-        reminder_channel: continuity.reminder_channel || "email",
-      });
     } catch (e) {
       setTopErrorFromException(e);
     } finally {
@@ -814,7 +894,13 @@ export default function App() {
     }
   }
 
-  async function saveProfile() {
+  async function saveProfile(options = {}) {
+    const {
+      closeAfterSave = true,
+      navigateAfterSave = true,
+      onboardingStep = null,
+      markOnboardingCompleted = false,
+    } = options;
     setError("");
     if (!isAuthed) return;
     setProfileBusy(true);
@@ -825,17 +911,29 @@ export default function App() {
 
       const preferred = (bioProfile.preferred_name || "").trim();
       if (!preferred) throw new Error("Preferred name is required.");
-
       const ageVal = (bioProfile.age || "").trim();
+      if (!ageVal) throw new Error("Age is required.");
+      const ageNum = Number(ageVal);
+      if (!Number.isInteger(ageNum) || ageNum < 0 || ageNum > 120) {
+        throw new Error("Age must be a whole number between 0 and 120.");
+      }
+
       const payload = {
         biography_user_profile: {
           preferred_name: preferred,
-          age: ageVal ? Number(ageVal) : null,
+          age: ageNum,
         },
         continuity_settings: {
           reminder_cadence_weeks: Number(continuitySettings?.reminder_cadence_weeks ?? 2),
           reminder_channel: "email",
         },
+        onboarding:
+          onboardingStep || markOnboardingCompleted
+            ? {
+                ...(onboardingStep ? { current_step: Number(onboardingStep) } : {}),
+                ...(markOnboardingCompleted ? { mark_completed: true } : {}),
+              }
+            : undefined,
       };
 
       const res = await fetch(`${API_BASE}/profile`, {
@@ -851,25 +949,49 @@ export default function App() {
       const data = await res.json();
       const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
       setAccessBlocked(null);
-      const bp = parsed.biography_user_profile || {};
-      const continuity = parsed.continuity_settings || {};
-      setBioProfile({
-        preferred_name: bp.preferred_name || preferred,
-        age: bp.age === undefined || bp.age === null ? "" : String(bp.age),
-      });
-      setContinuitySettings({
-        reminder_cadence_weeks:
-          continuity.reminder_cadence_weeks === undefined || continuity.reminder_cadence_weeks === null
-            ? 2
-            : Number(continuity.reminder_cadence_weeks),
-        reminder_channel: continuity.reminder_channel || "email",
-      });
-      setShowProfile(false);
-      navigateToPage("interview");
+      applyProfilePayload(parsed);
+      if (closeAfterSave) {
+        setShowProfile(false);
+      }
+      if (navigateAfterSave) {
+        navigateToPage("interview");
+      }
+      return true;
     } catch (e) {
       setTopErrorFromException(e);
+      return false;
     } finally {
       setProfileBusy(false);
+    }
+  }
+
+  async function updateOnboardingStep(step) {
+    if (!isAuthed) return false;
+    setOnboardingBusy(true);
+    try {
+      const session = await fetchAuthSession();
+      const idToken = session.tokens?.idToken?.toString();
+      if (!idToken) throw new Error("Missing idToken. Are you logged in?");
+      const res = await fetch(`${API_BASE}/profile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          onboarding: { current_step: Number(step) },
+        }),
+      });
+      await ensureApiOk(res);
+      const data = await res.json();
+      const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
+      applyProfilePayload(parsed);
+      return true;
+    } catch (e) {
+      setTopErrorFromException(e);
+      return false;
+    } finally {
+      setOnboardingBusy(false);
     }
   }
 
@@ -950,8 +1072,42 @@ export default function App() {
     }
   }
 
+  async function onOnboardingBack() {
+    const step = Number(onboardingStatus?.current_step || 1);
+    if (step <= 1) return;
+    await updateOnboardingStep(step - 1);
+  }
+
+  async function onOnboardingContinue() {
+    const step = Number(onboardingStatus?.current_step || 1);
+    if (step === 1) {
+      await updateOnboardingStep(2);
+      return;
+    }
+    if (step === 2) {
+      const ok = await saveProfile({
+        closeAfterSave: false,
+        navigateAfterSave: false,
+        onboardingStep: 3,
+      });
+      if (!ok) return;
+    }
+  }
+
+  async function onOnboardingBegin() {
+    const ok = await saveProfile({
+      closeAfterSave: false,
+      navigateAfterSave: false,
+      onboardingStep: 3,
+      markOnboardingCompleted: true,
+    });
+    if (!ok) return;
+    navigateToPage("interview");
+  }
+
   return (
     <div className="app-shell">
+      {showNavigation ? (
       <aside className={`sidebar ${menuOpen ? "sidebar-open" : ""}`} ref={sidebarRef}>
         <button
           type="button"
@@ -1166,6 +1322,8 @@ export default function App() {
         ))}
         </div>
       </aside>
+      ) : null}
+      {showNavigation ? (
       <div className="sidebar-measure" ref={sidebarMeasureRef}>
         <button type="button" className="sidebar-home sidebar-home-primary">
           <img
@@ -1198,11 +1356,14 @@ export default function App() {
           );
         })}
       </div>
-      <main className="main-content">
+      ) : null}
+      <main className={`main-content ${showNavigation ? "" : "main-content-no-sidebar"}`}>
+        {showNavigation ? (
         <button type="button" className="menu-toggle" onClick={() => setMenuOpen(true)}>
           <Menu className="menu-toggle-icon" size={22} strokeWidth={1.5} />
           Kinin
         </button>
+        ) : null}
         <div
           style={{
             maxWidth: 900,
@@ -1309,6 +1470,18 @@ export default function App() {
           apiBase={API_BASE}
           setActivePage={navigateToPage}
         />
+      ) : activePage === "onboarding" ? (
+        <OnboardingPage
+          onboardingStep={Number(onboardingStatus?.current_step || 1)}
+          bioProfile={bioProfile}
+          setBioProfile={setBioProfile}
+          continuitySettings={continuitySettings}
+          setContinuitySettings={setContinuitySettings}
+          busy={profileBusy || onboardingBusy}
+          onBack={onOnboardingBack}
+          onContinue={onOnboardingContinue}
+          onBegin={onOnboardingBegin}
+        />
       ) : activePage === "account" ? (
         <AccountPage
           isAuthed={isAuthed}
@@ -1352,7 +1525,7 @@ export default function App() {
             ) : (
               chat.map((m, idx) => (
                 <div
-                  key={idx}
+                  key={m.id ?? idx}
                   className={
                     m.role === "user" ? "chat-row chat-row-user" : "chat-row chat-row-assistant"
                   }
@@ -1364,7 +1537,15 @@ export default function App() {
                         : "chat-bubble chat-bubble-assistant"
                     }
                   >
-                    {m.content}
+                    {m.role === "assistant" && isSendingTurn && !m.content ? (
+                      <span className="typing-dots" aria-label="Kinin is typing" role="status">
+                        <span className="typing-dot" />
+                        <span className="typing-dot" />
+                        <span className="typing-dot" />
+                      </span>
+                    ) : (
+                      m.content
+                    )}
                   </div>
                 </div>
               ))
@@ -1560,7 +1741,7 @@ export default function App() {
           )}
         </div>
       </main>
-      {menuOpen ? (
+      {showNavigation && menuOpen ? (
         <div
           className="menu-backdrop"
           onClick={() => {

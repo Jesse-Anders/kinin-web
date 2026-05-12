@@ -136,6 +136,10 @@
   margin-left: 80px;
 }
 
+.main-content-no-sidebar {
+  margin-left: 0;
+}
+
 .main-inner {
   max-width: 900px;
   margin: 0 auto;
@@ -265,6 +269,42 @@
   background: transparent;
   padding: 4px 0;
   color: #111;
+}
+
+.typing-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 16px;
+}
+
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(17, 17, 17, 0.55);
+  animation: typing-dot-bounce 1s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes typing-dot-bounce {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  40% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
 }
 
 .sidebar-measure {
