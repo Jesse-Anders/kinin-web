@@ -8,6 +8,8 @@ export default function OnboardingPage({
   onBack,
   onContinue,
   onBegin,
+  previewMode = false,
+  beginLabel = "Begin",
 }) {
   const step = Number(onboardingStep || 1);
   const cadenceValue = String(continuitySettings?.reminder_cadence_weeks ?? 2);
@@ -29,6 +31,11 @@ export default function OnboardingPage({
       >
         <div>
           <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>{`Onboarding ${step}/3`}</div>
+          {previewMode ? (
+            <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 10 }}>
+              Preview mode: changes here are not saved.
+            </div>
+          ) : null}
           {step === 1 ? (
             <div>
               <div style={{ fontWeight: 600, fontSize: 20, marginBottom: 8 }}>Welcome to Kinin</div>
@@ -150,7 +157,7 @@ export default function OnboardingPage({
                   Beginning...
                 </>
               ) : (
-                "Begin"
+                beginLabel
               )}
             </button>
           )}

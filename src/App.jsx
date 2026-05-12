@@ -50,6 +50,7 @@ const PAGE_TO_PATH = {
   unsubscribe: "/unsubscribe",
   onboarding: "/onboarding",
   admin: "/admin",
+  "admin-onboarding-preview": "/admin/onboarding-preview",
   "admin-crm": "/admin/crm",
   "admin-metrics": "/admin/metrics",
   "admin-user-purge": "/admin/user-purge",
@@ -122,6 +123,11 @@ export default function App() {
   });
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [onboardingBusy, setOnboardingBusy] = useState(false);
+  const [onboardingPreview, setOnboardingPreview] = useState({
+    step: 1,
+    bioProfile: { preferred_name: "", age: "" },
+    continuitySettings: { reminder_cadence_weeks: 2, reminder_channel: "email" },
+  });
   const messageInputRef = useRef(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuOverflowOpen, setMenuOverflowOpen] = useState(false);
@@ -308,6 +314,7 @@ export default function App() {
       activePage === "settings" || activePage === "account" || activePage === "onboarding";
     const isAdminPage =
       activePage === "admin" ||
+      activePage === "admin-onboarding-preview" ||
       activePage === "admin-crm" ||
       activePage === "admin-metrics" ||
       activePage === "admin-user-purge";
@@ -331,6 +338,15 @@ export default function App() {
       navigateToPage("interview", { replace: true });
     }
   }, [activePage, isAuthed, onboardingChecked, onboardingRequired]);
+
+  useEffect(() => {
+    if (activePage !== "admin-onboarding-preview") return;
+    setOnboardingPreview({
+      step: 1,
+      bioProfile: { ...bioProfile },
+      continuitySettings: { ...continuitySettings },
+    });
+  }, [activePage, bioProfile, continuitySettings]);
   useEffect(() => {
     function recompute() {
       if (!sidebarRef.current || !sidebarMeasureRef.current || !sidebarBottomRef.current) {
@@ -1115,6 +1131,24 @@ export default function App() {
     navigateToPage("interview");
   }
 
+  function onOnboardingPreviewBack() {
+    setOnboardingPreview((prev) => ({
+      ...prev,
+      step: Math.max(1, Number(prev.step || 1) - 1),
+    }));
+  }
+
+  function onOnboardingPreviewContinue() {
+    setOnboardingPreview((prev) => ({
+      ...prev,
+      step: Math.min(3, Number(prev.step || 1) + 1),
+    }));
+  }
+
+  function onOnboardingPreviewBegin() {
+    navigateToPage("admin");
+  }
+
   return (
     <div className="app-shell">
       {showNavigation ? (
@@ -1498,6 +1532,31 @@ export default function App() {
           onBack={onOnboardingBack}
           onContinue={onOnboardingContinue}
           onBegin={onOnboardingBegin}
+        />
+      ) : activePage === "admin-onboarding-preview" ? (
+        <OnboardingPage
+          onboardingStep={Number(onboardingPreview.step || 1)}
+          bioProfile={onboardingPreview.bioProfile}
+          setBioProfile={(next) =>
+            setOnboardingPreview((prev) => ({
+              ...prev,
+              bioProfile: typeof next === "function" ? next(prev.bioProfile) : next,
+            }))
+          }
+          continuitySettings={onboardingPreview.continuitySettings}
+          setContinuitySettings={(next) =>
+            setOnboardingPreview((prev) => ({
+              ...prev,
+              continuitySettings:
+                typeof next === "function" ? next(prev.continuitySettings) : next,
+            }))
+          }
+          busy={false}
+          onBack={onOnboardingPreviewBack}
+          onContinue={onOnboardingPreviewContinue}
+          onBegin={onOnboardingPreviewBegin}
+          previewMode
+          beginLabel="Back to Admin"
         />
       ) : activePage === "account" ? (
         <AccountPage

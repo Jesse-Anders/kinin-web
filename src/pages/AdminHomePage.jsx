@@ -496,6 +496,21 @@ export default function AdminHomePage({ isAuthed, getAccessToken, apiBase, setAc
     >
       <div style={{ marginBottom: 12 }}>
         <button
+          onClick={() => setActivePage("admin-onboarding-preview")}
+          style={{
+            background: "transparent",
+            border: "none",
+            color: "#2563eb",
+            cursor: "pointer",
+            fontSize: 13,
+            padding: 0,
+            textDecoration: "underline",
+          }}
+        >
+          Preview Onboarding &rarr;
+        </button>
+        <div style={{ height: 6 }} />
+        <button
           onClick={() => setActivePage("admin-crm")}
           style={{
             background: "transparent",
