@@ -122,15 +122,36 @@ export default function OnboardingPage({
         </div>
         <div style={{ marginTop: 18, display: "flex", justifyContent: "space-between" }}>
           <button onClick={onBack} disabled={busy || step === 1}>
-            Back
+            {busy ? (
+              <>
+                <span className="inline-spinner" aria-hidden="true" />
+                Back
+              </>
+            ) : (
+              "Back"
+            )}
           </button>
           {step < 3 ? (
             <button onClick={onContinue} disabled={busy}>
-              Continue
+              {busy ? (
+                <>
+                  <span className="inline-spinner" aria-hidden="true" />
+                  Continuing...
+                </>
+              ) : (
+                "Continue"
+              )}
             </button>
           ) : (
             <button onClick={onBegin} disabled={busy}>
-              Begin
+              {busy ? (
+                <>
+                  <span className="inline-spinner" aria-hidden="true" />
+                  Beginning...
+                </>
+              ) : (
+                "Begin"
+              )}
             </button>
           )}
         </div>

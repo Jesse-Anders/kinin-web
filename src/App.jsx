@@ -100,6 +100,9 @@ export default function App() {
   const [chat, setChat] = useState([]);
   const [busy, setBusy] = useState(false);
   const [isSendingTurn, setIsSendingTurn] = useState(false);
+  const [isStartingSession, setIsStartingSession] = useState(false);
+  const [isEndingSession, setIsEndingSession] = useState(false);
+  const [isSigningIn, setIsSigningIn] = useState(false);
   const [error, setError] = useState("");
   const [accessBlocked, setAccessBlocked] = useState(null);
   const [didStart, setDidStart] = useState(false);
@@ -589,11 +592,14 @@ export default function App() {
   async function onLogin() {
     setError("");
     setAccessBlocked(null);
+    setIsSigningIn(true);
     try {
       await signInWithRedirect(); // Hosted UI
     } catch (e) {
       console.error("Login redirect failed:", e);
       setTopErrorFromException(e);
+    } finally {
+      setIsSigningIn(false);
     }
   }
 
@@ -674,6 +680,7 @@ export default function App() {
   async function startSession() {
     setError("");
     setBusy(true);
+    setIsStartingSession(true);
     try {
       const session = await fetchAuthSession();
       const idToken = session.tokens?.idToken?.toString();
@@ -722,6 +729,7 @@ export default function App() {
     } catch (e) {
       setTopErrorFromException(e);
     } finally {
+      setIsStartingSession(false);
       setBusy(false);
     }
   }
@@ -831,6 +839,7 @@ export default function App() {
   async function endSession() {
     setError("");
     setBusy(true);
+    setIsEndingSession(true);
     try {
       const session = await fetchAuthSession();
       const idToken = session.tokens?.idToken?.toString();
@@ -871,6 +880,7 @@ export default function App() {
     } catch (e) {
       setTopErrorFromException(e);
     } finally {
+      setIsEndingSession(false);
       setBusy(false);
     }
   }
@@ -1393,6 +1403,13 @@ export default function App() {
         </div>
       )}
 
+      {isEndingSession ? (
+        <div className="status-banner status-banner-info">
+          <span className="inline-spinner" aria-hidden="true" />
+          Ending session...
+        </div>
+      ) : null}
+
       {accessBlocked ? (
         <div
           style={{
@@ -1520,7 +1537,17 @@ export default function App() {
           >
             {chat.length === 0 ? (
               <div style={{ opacity: 0.5, textAlign: "center", paddingTop: 80, fontSize: 15 }}>
-                Start chatting after logging in.
+                {isStartingSession ? (
+                  <div className="session-loading-wrap">
+                    <div className="loading-skeleton loading-skeleton-line" />
+                    <div className="loading-skeleton loading-skeleton-line short" />
+                    <div style={{ marginTop: 8, fontSize: 13, opacity: 0.75 }}>
+                      Preparing your interview...
+                    </div>
+                  </div>
+                ) : (
+                  "Start chatting after logging in."
+                )}
               </div>
             ) : (
               chat.map((m, idx) => (
@@ -1591,7 +1618,7 @@ export default function App() {
                 fontSize: 14,
               }}
             >
-              {busy ? "Sending..." : "Send"}
+              {isSendingTurn ? "Sending..." : "Send"}
             </button>
           </div>
           <details
@@ -1613,7 +1640,14 @@ export default function App() {
                 </div>
                 <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                   <button onClick={updateInterviewDetails} disabled={!isAuthed || !sessionId || detailsBusy}>
-                    {detailsBusy ? "Updating..." : "Update Details"}
+                    {detailsBusy ? (
+                      <>
+                        <span className="inline-spinner" aria-hidden="true" />
+                        Updating...
+                      </>
+                    ) : (
+                      "Update Details"
+                    )}
                   </button>
                   <div style={{ opacity: 0.7, alignSelf: "center", fontSize: 12 }}>
                     Manual refresh
@@ -1749,6 +1783,14 @@ export default function App() {
             setMenuOverflowOpen(false);
           }}
         />
+      ) : null}
+      {isSigningIn ? (
+        <div className="fullscreen-loader-backdrop" role="status" aria-live="polite">
+          <div className="fullscreen-loader-card">
+            <span className="inline-spinner large" aria-hidden="true" />
+            Redirecting to sign in...
+          </div>
+        </div>
       ) : null}
     </div>
   );

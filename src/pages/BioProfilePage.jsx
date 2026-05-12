@@ -9,6 +9,7 @@ export default function BioProfilePage({
   onClose,
 }) {
   const cadenceValue = String(continuitySettings?.reminder_cadence_weeks ?? 2);
+  const showInitialLoader = profileBusy && !profileSchema;
 
   return (
     <div style={{ padding: 16 }}>
@@ -33,6 +34,13 @@ export default function BioProfilePage({
         </div>
 
         <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+          {showInitialLoader ? (
+            <div style={{ display: "grid", gap: 10 }}>
+              <div className="loading-skeleton loading-skeleton-line" />
+              <div className="loading-skeleton loading-skeleton-line short" />
+              <div className="loading-skeleton loading-skeleton-line" />
+            </div>
+          ) : null}
           <div style={{ fontWeight: 600, fontSize: 14 }}>Profile</div>
           <label>
             <div style={{ fontSize: 12, opacity: 0.8 }}>Preferred name *</div>
@@ -118,7 +126,14 @@ export default function BioProfilePage({
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={saveProfile} disabled={profileBusy}>
-              {profileBusy ? "Saving..." : "Save"}
+              {profileBusy ? (
+                <>
+                  <span className="inline-spinner" aria-hidden="true" />
+                  Saving...
+                </>
+              ) : (
+                "Save"
+              )}
             </button>
             <button onClick={onClose} disabled={profileBusy}>
               Cancel
