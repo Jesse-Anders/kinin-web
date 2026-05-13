@@ -16,13 +16,20 @@ export default function BioProfilePage({
   const cadenceValue = String(continuitySettings?.reminder_cadence_weeks ?? 2);
   const showInitialLoader = profileBusy && !profileSchema;
   const executorStatus = accountExecutor?.status || "";
+  const executorStatusNorm = String(executorStatus).trim().toLowerCase();
+  const hasInviteBeenSent =
+    !!accountExecutor?.last_invite_sent_at ||
+    executorStatusNorm === "pending" ||
+    executorStatusNorm === "confirmed";
   const hasExecutorDetails = !!((accountExecutor?.name || "").trim() || (accountExecutor?.email || "").trim());
+  const hasExistingExecutor =
+    !!((accountExecutor?.name || "").trim() && (accountExecutor?.email || "").trim()) &&
+    (hasInviteBeenSent || !!executorStatusNorm || !!accountExecutor?.confirmed_at);
   const executorStatusLabel =
     executorStatus === "saved_not_invited"
       ? "Saved (not invited yet)"
       : executorStatus;
-  const resendButtonLabel =
-    executorStatus === "saved_not_invited" ? "Send invite" : "Resend invite";
+  const resendButtonLabel = hasInviteBeenSent ? "Resend invite" : "Send invite";
 
   return (
     <div style={{ padding: 16 }}>
@@ -195,6 +202,11 @@ export default function BioProfilePage({
                 inputMode="email"
               />
             </label>
+            {hasExistingExecutor ? (
+              <div style={{ fontSize: 12, opacity: 0.75 }}>
+                Existing executor on file: <b>{accountExecutor.name}</b> ({accountExecutor.email})
+              </div>
+            ) : null}
             {executorStatus ? (
               <div style={{ fontSize: 12, opacity: 0.75 }}>
                 Status: <b>{executorStatusLabel}</b>

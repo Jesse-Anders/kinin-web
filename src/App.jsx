@@ -1090,7 +1090,10 @@ export default function App() {
 
   async function resendAccountExecutorInvite() {
     const validation = validateExecutorDraft();
-    const firstSend = (accountExecutor?.status || "").trim().toLowerCase() === "saved_not_invited";
+    const statusNorm = (accountExecutor?.status || "").trim().toLowerCase();
+    const hasInviteBeenSent =
+      !!accountExecutor?.last_invite_sent_at || statusNorm === "pending" || statusNorm === "confirmed";
+    const firstSend = !hasInviteBeenSent;
     if (!validation.ok) {
       setError(validation.message || "Please complete account executor details before sending an invite.");
       return;
