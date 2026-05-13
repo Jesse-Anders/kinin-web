@@ -25,10 +25,16 @@ export default function BioProfilePage({
   const hasExistingExecutor =
     !!((accountExecutor?.name || "").trim() && (accountExecutor?.email || "").trim()) &&
     (hasInviteBeenSent || !!executorStatusNorm || !!accountExecutor?.confirmed_at);
-  const executorStatusLabel =
-    executorStatus === "saved_not_invited"
-      ? "Saved (not invited yet)"
-      : executorStatus;
+  let executorStatusLabel = "";
+  if (executorStatusNorm === "confirmed" || !!accountExecutor?.confirmed_at) {
+    executorStatusLabel = "Confirmed";
+  } else if (executorStatusNorm === "saved_not_invited") {
+    executorStatusLabel = "Saved (not invited yet)";
+  } else if (hasInviteBeenSent) {
+    executorStatusLabel = "Invite sent (awaiting confirmation)";
+  } else if (executorStatus) {
+    executorStatusLabel = executorStatus;
+  }
   const resendButtonLabel = hasInviteBeenSent ? "Resend invite" : "Send invite";
 
   return (
@@ -207,7 +213,7 @@ export default function BioProfilePage({
                 Existing executor on file: <b>{accountExecutor.name}</b> ({accountExecutor.email})
               </div>
             ) : null}
-            {executorStatus ? (
+            {executorStatusLabel ? (
               <div style={{ fontSize: 12, opacity: 0.75 }}>
                 Status: <b>{executorStatusLabel}</b>
               </div>
