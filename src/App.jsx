@@ -120,6 +120,7 @@ export default function App() {
   const [accountExecutor, setAccountExecutor] = useState({
     name: "",
     email: "",
+    confirm_email: "",
     status: "",
     confirmed_at: null,
     last_invite_sent_at: null,
@@ -136,7 +137,7 @@ export default function App() {
   const [onboardingPreview, setOnboardingPreview] = useState({
     step: 1,
     bioProfile: { preferred_name: "", age: "" },
-    accountExecutor: { name: "", email: "" },
+    accountExecutor: { name: "", email: "", confirm_email: "" },
     continuitySettings: { reminder_cadence_weeks: 2, reminder_channel: "email" },
   });
   const messageInputRef = useRef(null);
@@ -355,7 +356,11 @@ export default function App() {
     setOnboardingPreview({
       step: 1,
       bioProfile: { ...bioProfile },
-      accountExecutor: { name: accountExecutor?.name || "", email: accountExecutor?.email || "" },
+      accountExecutor: {
+        name: accountExecutor?.name || "",
+        email: accountExecutor?.email || "",
+        confirm_email: accountExecutor?.confirm_email || accountExecutor?.email || "",
+      },
       continuitySettings: { ...continuitySettings },
     });
   }, [activePage, bioProfile, accountExecutor, continuitySettings]);
@@ -451,10 +456,32 @@ export default function App() {
     setAccountExecutor({
       name: executor.name || "",
       email: executor.email || "",
+      confirm_email: executor.email || "",
       status: executor.status || "",
       confirmed_at: executor.confirmed_at || null,
       last_invite_sent_at: executor.last_invite_sent_at || null,
     });
+  }
+
+  function normalizedExecutorDraft() {
+    return {
+      name: (accountExecutor?.name || "").trim(),
+      email: (accountExecutor?.email || "").trim().toLowerCase(),
+      confirmEmail: (accountExecutor?.confirm_email || "").trim().toLowerCase(),
+    };
+  }
+
+  function validateExecutorDraft() {
+    const draft = normalizedExecutorDraft();
+    const hasAny = !!(draft.name || draft.email || draft.confirmEmail);
+    if (!hasAny) return { ok: true, draft, hasAny: false };
+    if (!draft.name || !draft.email || !draft.confirmEmail) {
+      return { ok: false, message: "Account executor requires name, email, and confirm email." };
+    }
+    if (draft.email !== draft.confirmEmail) {
+      return { ok: false, message: "Account executor email and confirm email must match." };
+    }
+    return { ok: true, draft, hasAny: true };
   }
 
   async function loadProfileState({ includeSchema = false } = {}) {
@@ -966,6 +993,10 @@ export default function App() {
       if (!Number.isInteger(ageNum) || ageNum < 0 || ageNum > 120) {
         throw new Error("Age must be a whole number between 0 and 120.");
       }
+      const executorValidation = validateExecutorDraft();
+      if (!executorValidation.ok) {
+        throw new Error(executorValidation.message);
+      }
 
       const payload = {
         biography_user_profile: {
@@ -984,17 +1015,14 @@ export default function App() {
               }
             : undefined,
         account_executor:
-          accountExecutor?.name || accountExecutor?.email
+          executorValidation.hasAny
             ? {
-                name: (accountExecutor?.name || "").trim(),
-                email: (accountExecutor?.email || "").trim().toLowerCase(),
+                name: executorValidation.draft.name,
+                email: executorValidation.draft.email,
                 send_invite: !!executorSendInvite,
               }
             : null,
       };
-      if ((payload.account_executor && (!payload.account_executor.name || !payload.account_executor.email))) {
-        throw new Error("Account executor requires both name and email, or leave both blank.");
-      }
 
       const res = await fetch(`${API_BASE}/profile`, {
         method: "PUT",
@@ -1061,11 +1089,14 @@ export default function App() {
   }
 
   async function resendAccountExecutorInvite() {
-    const name = (accountExecutor?.name || "").trim();
-    const email = (accountExecutor?.email || "").trim().toLowerCase();
+    const validation = validateExecutorDraft();
     const firstSend = (accountExecutor?.status || "").trim().toLowerCase() === "saved_not_invited";
-    if (!name || !email) {
-      setError("Enter both account executor name and email before sending an invite.");
+    if (!validation.ok) {
+      setError(validation.message || "Please complete account executor details before sending an invite.");
+      return;
+    }
+    if (!validation.hasAny) {
+      setError("Enter account executor details before sending an invite.");
       return;
     }
     const ok = await saveProfile({
@@ -1207,10 +1238,9 @@ export default function App() {
       return;
     }
     if (step === 3) {
-      const name = (accountExecutor?.name || "").trim();
-      const email = (accountExecutor?.email || "").trim().toLowerCase();
-      if ((name && !email) || (!name && email)) {
-        setError("Trusted contact requires both name and email, or leave both blank.");
+      const validation = validateExecutorDraft();
+      if (!validation.ok) {
+        setError(validation.message || "Trusted contact requires valid details.");
         return;
       }
       await updateOnboardingStep(4);
@@ -1230,7 +1260,14 @@ export default function App() {
   }
 
   async function onOnboardingSkip() {
-    setAccountExecutor({ name: "", email: "", status: "", confirmed_at: null, last_invite_sent_at: null });
+    setAccountExecutor({
+      name: "",
+      email: "",
+      confirm_email: "",
+      status: "",
+      confirmed_at: null,
+      last_invite_sent_at: null,
+    });
     await updateOnboardingStep(4);
   }
 
@@ -1251,7 +1288,7 @@ export default function App() {
   function onOnboardingPreviewSkip() {
     setOnboardingPreview((prev) => ({
       ...prev,
-      accountExecutor: { name: "", email: "" },
+      accountExecutor: { name: "", email: "", confirm_email: "" },
       step: 4,
     }));
   }

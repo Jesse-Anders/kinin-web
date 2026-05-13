@@ -120,6 +120,17 @@ export default function OnboardingPage({
                   inputMode="email"
                 />
               </label>
+              <label>
+                <div style={{ fontSize: 12, opacity: 0.8 }}>Confirm trusted contact email</div>
+                <input
+                  value={accountExecutor?.confirm_email || ""}
+                  onChange={(e) => setAccountExecutor((p) => ({ ...p, confirm_email: e.target.value }))}
+                  disabled={busy}
+                  placeholder="Re-enter their email address"
+                  style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
+                  inputMode="email"
+                />
+              </label>
               <div style={{ fontSize: 12, opacity: 0.75 }}>
                 We will send an an email for this person to accept the invite to your Kinin account and to verify their email. You can add, review or change your trusted contact in the settings as well.
               </div>

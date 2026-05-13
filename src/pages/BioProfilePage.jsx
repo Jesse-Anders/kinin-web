@@ -180,6 +180,21 @@ export default function BioProfilePage({
                 inputMode="email"
               />
             </label>
+            <label>
+              <div style={{ fontSize: 12, opacity: 0.8 }}>Confirm executor email</div>
+              <input
+                value={accountExecutor?.confirm_email || ""}
+                onChange={(e) =>
+                  setAccountExecutor((p) => ({
+                    ...p,
+                    confirm_email: e.target.value,
+                  }))
+                }
+                disabled={profileBusy}
+                style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
+                inputMode="email"
+              />
+            </label>
             {executorStatus ? (
               <div style={{ fontSize: 12, opacity: 0.75 }}>
                 Status: <b>{executorStatusLabel}</b>
