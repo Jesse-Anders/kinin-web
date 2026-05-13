@@ -108,7 +108,7 @@ export default function BioProfilePage({
               gap: 10,
             }}
           >
-            <div style={{ fontWeight: 600, fontSize: 14 }}>Continuity settings</div>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>Reminder Settings</div>
             <div style={{ fontSize: 12, opacity: 0.85 }}>
               The user is choosing how Kinin stays gently present in their life.
             </div>
