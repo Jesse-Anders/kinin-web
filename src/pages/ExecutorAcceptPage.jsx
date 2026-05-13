@@ -11,6 +11,7 @@ function parseParams() {
     email: fromEither("email").toLowerCase(),
     exp: fromEither("exp"),
     token: fromEither("token"),
+    owner_name: fromEither("owner_name"),
   };
 }
 
@@ -19,16 +20,23 @@ export default function ExecutorAcceptPage({ apiBase }) {
   const [statusText, setStatusText] = useState("");
   const [errorText, setErrorText] = useState("");
   const params = useMemo(() => parseParams(), []);
+  const apiBaseNorm = String(apiBase || "").trim();
   const hasInputs = !!(params.owner_user_id && params.email && params.exp && params.token);
 
   useEffect(() => {
     async function runAccept() {
       if (!hasInputs) return;
+      if (!apiBaseNorm) {
+        setErrorText(
+          "Confirmation service is not configured for this site variant. Please contact support and include this link."
+        );
+        return;
+      }
       setBusy(true);
       setStatusText("");
       setErrorText("");
       try {
-        const res = await fetch(`${apiBase}/account_executor/accept`, {
+        const res = await fetch(`${apiBaseNorm}/account_executor/accept`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(params),
@@ -52,13 +60,23 @@ export default function ExecutorAcceptPage({ apiBase }) {
           setStatusText("You have confirmed this account executor request.");
         }
       } catch (e) {
-        setErrorText(e.message || String(e));
+        const raw = e?.message || String(e);
+        const generic =
+          "We could not confirm this request right now. Please retry from the email link in a moment.";
+        if (
+          String(raw).toLowerCase().includes("failed to fetch") ||
+          String(raw).toLowerCase().includes("load failed")
+        ) {
+          setErrorText(`${generic} This usually means the confirmation API is unreachable from this site.`);
+        } else {
+          setErrorText(raw);
+        }
       } finally {
         setBusy(false);
       }
     }
     runAccept();
-  }, [apiBase, hasInputs, params]);
+  }, [apiBaseNorm, hasInputs, params]);
 
   return (
     <div style={{ padding: 16 }}>
@@ -73,7 +91,9 @@ export default function ExecutorAcceptPage({ apiBase }) {
       >
       <div style={{ fontSize: 22, fontWeight: 600, marginBottom: 8 }}>Account Executor Confirmation</div>
       <div style={{ fontSize: 14, opacity: 0.85, lineHeight: 1.45, marginBottom: 8 }}>
-        Thank you for being a trusted account executor in Kinin.
+        {params.owner_name
+          ? `Thank you for being ${params.owner_name}'s trusted account executor in Kinin.`
+          : "Thank you for being a trusted account executor in Kinin."}
       </div>
       <div style={{ fontSize: 14, opacity: 0.85, lineHeight: 1.45, marginBottom: 12 }}>
         Kinin is an AI biographer where people share their stories, memories, and life experiences over time.
