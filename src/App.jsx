@@ -75,7 +75,6 @@ function normalizePath(pathname, hash = "") {
   return pathname.replace(/\/+$/, "") || "/";
 }
 
-
 export default function App() {
   const LABEL_GROUPS = [
     { key: "user_focus_labels", label: "User focus" },
