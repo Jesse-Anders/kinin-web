@@ -38,6 +38,8 @@ const STREAM_WS_URL = import.meta.env.VITE_STREAM_WS_URL || "";
 const RELEASE_CHANNEL = (import.meta.env.VITE_RELEASE_CHANNEL || "dev").toLowerCase();
 const IS_BETA_LITE = RELEASE_CHANNEL === "beta-lite";
 const VERSION_LABEL = IS_BETA_LITE ? "Beta-lite Version 1.0" : "Dev Version 1.0";
+const GOOGLE_LOGIN_ENABLED = String(import.meta.env.VITE_GOOGLE_LOGIN_ENABLED || "").toLowerCase() === "1";
+const GOOGLE_PROVIDER_NAME = import.meta.env.VITE_GOOGLE_PROVIDER_NAME || "Google";
 const ACCOUNT_CONFIRM_PHRASE = "delete my account and all data";
 const CHAT_MESSAGE_MAX_CHARS = 4000;
 const PAGE_TO_PATH = {
@@ -657,12 +659,16 @@ export default function App() {
     setAccountUsername(user.username);
   }, [user]);
 
-  async function onLogin() {
+  async function onLogin(provider) {
     setError("");
     setAccessBlocked(null);
     setIsSigningIn(true);
     try {
-      await signInWithRedirect(); // Hosted UI
+      if (provider) {
+        await signInWithRedirect({ provider }); // Hosted UI with explicit provider
+      } else {
+        await signInWithRedirect(); // Hosted UI provider picker/default
+      }
     } catch (e) {
       console.error("Login redirect failed:", e);
       setTopErrorFromException(e);
@@ -1477,6 +1483,19 @@ export default function App() {
                 <CircleUserRound className="sidebar-home-icon" size={20} strokeWidth={1.5} />
                 Sign In
               </button>
+              {GOOGLE_LOGIN_ENABLED ? (
+                <button
+                  type="button"
+                  className="sidebar-home sidebar-home-secondary signin"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onLogin(GOOGLE_PROVIDER_NAME);
+                  }}
+                >
+                  <CircleUserRound className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+                  Continue with Google
+                </button>
+              ) : null}
             </div>
           ) : (
             <div className="sidebar-auth">

@@ -14,3 +14,19 @@ The React Compiler is not enabled on this template because of its impact on dev 
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+
+## Cognito Environment Variables
+
+Set these in your local `.env` (or deployment env):
+
+- `VITE_COGNITO_USER_POOL_ID`
+- `VITE_COGNITO_USER_POOL_CLIENT_ID`
+- `VITE_COGNITO_DOMAIN`
+- `VITE_REDIRECT_SIGNIN`
+- `VITE_REDIRECT_SIGNOUT`
+- `VITE_API_BASE_URL`
+
+Optional Google login toggle:
+
+- `VITE_GOOGLE_LOGIN_ENABLED=1` to show "Continue with Google"
+- `VITE_GOOGLE_PROVIDER_NAME=Google` (default: `Google`)
