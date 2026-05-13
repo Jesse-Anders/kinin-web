@@ -25,6 +25,10 @@ export default function BioProfilePage({
   const hasExistingExecutor =
     !!((accountExecutor?.name || "").trim() && (accountExecutor?.email || "").trim()) &&
     (hasInviteBeenSent || !!executorStatusNorm || !!accountExecutor?.confirmed_at);
+  const executorEmailNorm = (accountExecutor?.email || "").trim().toLowerCase();
+  const executorConfirmEmailNorm = (accountExecutor?.confirm_email || "").trim().toLowerCase();
+  const showExecutorEmailMismatch =
+    !!executorEmailNorm && !!executorConfirmEmailNorm && executorEmailNorm !== executorConfirmEmailNorm;
   let executorStatusLabel = "";
   if (executorStatusNorm === "confirmed" || !!accountExecutor?.confirmed_at) {
     executorStatusLabel = "Confirmed";
@@ -207,6 +211,11 @@ export default function BioProfilePage({
                 style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
                 inputMode="email"
               />
+              {showExecutorEmailMismatch ? (
+                <div style={{ fontSize: 12, color: "#b42318", marginTop: 4 }}>
+                  Email addresses do not match.
+                </div>
+              ) : null}
             </label>
             {hasExistingExecutor ? (
               <div style={{ fontSize: 12, opacity: 0.75 }}>

@@ -16,6 +16,10 @@ export default function OnboardingPage({
 }) {
   const step = Number(onboardingStep || 1);
   const cadenceValue = String(continuitySettings?.reminder_cadence_weeks ?? 2);
+  const executorEmailNorm = (accountExecutor?.email || "").trim().toLowerCase();
+  const executorConfirmEmailNorm = (accountExecutor?.confirm_email || "").trim().toLowerCase();
+  const showExecutorEmailMismatch =
+    !!executorEmailNorm && !!executorConfirmEmailNorm && executorEmailNorm !== executorConfirmEmailNorm;
 
   return (
     <div style={{ padding: 16 }}>
@@ -130,6 +134,11 @@ export default function OnboardingPage({
                   style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
                   inputMode="email"
                 />
+                {showExecutorEmailMismatch ? (
+                  <div style={{ fontSize: 12, color: "#b42318", marginTop: 4 }}>
+                    Email addresses do not match.
+                  </div>
+                ) : null}
               </label>
               <div style={{ fontSize: 12, opacity: 0.75 }}>
                 We will send an an email for this person to accept the invite to your Kinin account and to verify their email. You can add, review or change your trusted contact in the settings as well.

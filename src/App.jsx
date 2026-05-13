@@ -63,7 +63,13 @@ const PATH_TO_PAGE = {
   "/bio": "settings",
 };
 
-function normalizePath(pathname) {
+function normalizePath(pathname, hash = "") {
+  const hashRaw = String(hash || "");
+  if ((pathname || "") === "/" && hashRaw.startsWith("#/")) {
+    const hashPath = hashRaw.slice(1).split("?")[0] || "/";
+    if (hashPath === "/") return "/";
+    return hashPath.replace(/\/+$/, "") || "/";
+  }
   if (!pathname) return "/";
   if (pathname === "/") return pathname;
   return pathname.replace(/\/+$/, "") || "/";
@@ -216,7 +222,7 @@ export default function App() {
 
   function navigateToPage(page, options = {}) {
     const targetPath = PAGE_TO_PATH[page] || "/";
-    const currentPath = normalizePath(location.pathname || "/");
+    const currentPath = normalizePath(location.pathname || "/", location.hash || "");
     if (targetPath === currentPath) return;
     navigate(targetPath, options);
   }
@@ -300,7 +306,7 @@ export default function App() {
     }
   }, [uiState]);
   useEffect(() => {
-    const normalizedPath = normalizePath(location.pathname || "/");
+    const normalizedPath = normalizePath(location.pathname || "/", location.hash || "");
     const page = PATH_TO_PAGE[normalizedPath];
     if (!page) {
       navigate("/", { replace: true });
@@ -308,18 +314,18 @@ export default function App() {
     }
     hasSyncedPathRef.current = true;
     setActivePage((prev) => (prev === page ? prev : page));
-  }, [location.pathname, navigate]);
+  }, [location.pathname, location.hash, navigate]);
 
   useEffect(() => {
     if (!hasSyncedPathRef.current) return;
-    const currentPath = normalizePath(location.pathname || "/");
+    const currentPath = normalizePath(location.pathname || "/", location.hash || "");
     const currentPage = PATH_TO_PAGE[currentPath];
     if (currentPage && currentPage !== activePage) return;
     const targetPath = PAGE_TO_PATH[activePage] || "/";
     if (currentPath !== targetPath) {
       navigate(targetPath);
     }
-  }, [activePage, location.pathname, navigate]);
+  }, [activePage, location.pathname, location.hash, navigate]);
 
   useEffect(() => {
     const isRestrictedAuthPage =
