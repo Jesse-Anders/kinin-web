@@ -72,7 +72,7 @@ export default function KininSettingsPage({
           </button>
         </div>
 
-        <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+        <div style={{ marginTop: 12, display: "grid", gap: 14 }}>
           {profileNotice ? (
             <div style={{ background: "#e8f6ee", color: "#0a6a3b", padding: 10, borderRadius: 8 }}>
               {profileNotice}
@@ -111,9 +111,9 @@ export default function KininSettingsPage({
             </label>
           </div>
           <div style={sectionCardStyle}>
-            <div style={{ fontWeight: 600, fontSize: 14 }}>Reminder</div>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>Reminder Rhythm</div>
             <div style={{ fontSize: 12, opacity: 0.85 }}>
-              The user is choosing how Kinin stays gently present in their life.
+              Choose how long you can go absent before Kinin get&apos;s back in touch.
             </div>
             <div>
               <div style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}>
