@@ -176,7 +176,7 @@ export default function App() {
       id: "feedback",
       label: "Feedback",
       icon: Megaphone,
-      requiresAuth: false,
+      requiresAuth: true,
       onClick: () => navigateToPage("feedback"),
     },
     {
@@ -338,7 +338,10 @@ export default function App() {
 
   useEffect(() => {
     const isRestrictedAuthPage =
-      activePage === "settings" || activePage === "account" || activePage === "onboarding";
+      activePage === "settings" ||
+      activePage === "account" ||
+      activePage === "onboarding" ||
+      activePage === "feedback";
     const isAdminPage =
       activePage === "admin" ||
       activePage === "admin-onboarding-preview" ||
@@ -1213,20 +1216,14 @@ export default function App() {
       if (!messageText) {
         throw new Error("Please enter a message.");
       }
-      const session = await fetchAuthSession();
-      const idToken = session?.tokens?.idToken?.toString();
       const payload = {
         name: (contactName || "").trim() || undefined,
         email,
         message: messageText,
       };
-      const headers = { "Content-Type": "application/json" };
-      if (idToken) {
-        headers.Authorization = `Bearer ${idToken}`;
-      }
       const res = await fetch(`${API_BASE}/contact`, {
         method: "POST",
-        headers,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
