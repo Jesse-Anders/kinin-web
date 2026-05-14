@@ -3,6 +3,7 @@ import {
   CircleUserRound,
   Footprints,
   Grid2X2Check,
+  History,
   Megaphone,
   Menu,
   CirclePlus,
@@ -28,6 +29,7 @@ import AdminMetricsPage from "./pages/AdminMetricsPage";
 import AdminUserPurgePage from "./pages/AdminUserPurgePage";
 import AboutKininPage from "./pages/AboutKininPage";
 import PrivacyPage from "./pages/PrivacyPage";
+import ReviewEditChatsPage from "./pages/ReviewEditChatsPage";
 import UnsubscribePage from "./pages/UnsubscribePage";
 import OnboardingPage from "./pages/OnboardingPage";
 import ExecutorAcceptPage from "./pages/ExecutorAcceptPage";
@@ -48,6 +50,7 @@ const PAGE_TO_PATH = {
   faq: "/faq",
   feedback: "/feedback",
   settings: "/settings",
+  "review-chats": "/review-chats",
   contact: "/contact",
   privacy: "/privacy",
   unsubscribe: "/unsubscribe",
@@ -185,6 +188,13 @@ export default function App() {
       icon: Footprints,
       requiresAuth: true,
       onClick: () => openProfile(),
+    },
+    {
+      id: "review-chats",
+      label: "Review / Edit Chats",
+      icon: History,
+      requiresAuth: true,
+      onClick: () => navigateToPage("review-chats"),
     },
     {
       id: "admin",
@@ -341,7 +351,8 @@ export default function App() {
       activePage === "settings" ||
       activePage === "account" ||
       activePage === "onboarding" ||
-      activePage === "feedback";
+      activePage === "feedback" ||
+      activePage === "review-chats";
     const isAdminPage =
       activePage === "admin" ||
       activePage === "admin-onboarding-preview" ||
@@ -1683,6 +1694,12 @@ export default function App() {
         <AboutKininPage />
       ) : activePage === "privacy" ? (
         <PrivacyPage />
+      ) : activePage === "review-chats" ? (
+        <ReviewEditChatsPage
+          isAuthed={isAuthed}
+          getAccessToken={getAccessToken}
+          apiBase={API_BASE}
+        />
       ) : activePage === "unsubscribe" ? (
         <UnsubscribePage apiBase={API_BASE} />
       ) : activePage === "executor-accept" ? (
