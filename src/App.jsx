@@ -213,6 +213,7 @@ export default function App() {
   const [contactMessage, setContactMessage] = useState("");
   const [contactStatus, setContactStatus] = useState("");
   const [contactBusy, setContactBusy] = useState(false);
+  const [cognitoGivenName, setCognitoGivenName] = useState("");
   const [detailsBusy, setDetailsBusy] = useState(false);
   const [accountConfirmText, setAccountConfirmText] = useState("");
   const [accountUsername, setAccountUsername] = useState("");
@@ -271,6 +272,13 @@ export default function App() {
       }
     );
   }, [uiState, lastProgress]);
+  const navDisplayName = useMemo(() => {
+    const preferred = String(bioProfile?.preferred_name || "").trim();
+    if (preferred) return preferred;
+    const given = String(cognitoGivenName || "").trim();
+    if (given) return given;
+    return "";
+  }, [bioProfile?.preferred_name, cognitoGivenName]);
 
   useEffect(() => {
     if (!messageInputRef.current) return;
@@ -604,6 +612,8 @@ export default function App() {
 
         // If tokens exist, we are authenticated
         if (session?.tokens?.idToken) {
+          const tokenGivenName = String(session.tokens.idToken.payload?.given_name || "").trim();
+          setCognitoGivenName(tokenGivenName);
           const u = await getCurrentUser();
           setUser(u);
 
@@ -619,8 +629,10 @@ export default function App() {
         }
 
         setUser(null);
+        setCognitoGivenName("");
       } catch {
         setUser(null);
+        setCognitoGivenName("");
       }
     })();
   }, []);
@@ -1510,7 +1522,7 @@ export default function App() {
                 <CircleUserRound className="sidebar-home-icon" size={20} strokeWidth={1.5} />
                 Sign Out
               </button>
-              <div className="sidebar-muted">{user?.username}</div>
+              <div className="sidebar-muted">{navDisplayName || "Signed in"}</div>
             </div>
           )}
           {isAuthed ? (
