@@ -13,8 +13,12 @@ function formatDateInput(value) {
   return (value || "").trim();
 }
 
+function toLocalDateInputValue(date) {
+  const shifted = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return shifted.toISOString().slice(0, 10);
+}
+
 export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase }) {
-  const [sessionId, setSessionId] = useState("");
   const [query, setQuery] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -23,7 +27,7 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
-  const [editTurnId, setEditTurnId] = useState("");
+  const [editRowKey, setEditRowKey] = useState("");
   const [editDraft, setEditDraft] = useState("");
   const [editBusy, setEditBusy] = useState(false);
 
@@ -42,14 +46,57 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase 
     });
   }, [items]);
 
+  const invalidDateRange = Boolean(dateFrom && dateTo && dateFrom > dateTo);
+  const activeFilterSummary = useMemo(() => {
+    const parts = [];
+    if ((query || "").trim()) parts.push(`matching "${(query || "").trim()}"`);
+    if (dateFrom && dateTo) parts.push(`from ${dateFrom} to ${dateTo}`);
+    else if (dateFrom) parts.push(`from ${dateFrom}`);
+    else if (dateTo) parts.push(`through ${dateTo}`);
+    return parts.length ? `Showing results ${parts.join(" ")}` : "Showing all chats";
+  }, [query, dateFrom, dateTo]);
+
+  function applyDatePreset(days) {
+    if (days === "all") {
+      setDateFrom("");
+      setDateTo("");
+      return;
+    }
+    const now = new Date();
+    if (days === "month") {
+      const first = new Date(now.getFullYear(), now.getMonth(), 1);
+      setDateFrom(toLocalDateInputValue(first));
+      setDateTo(toLocalDateInputValue(now));
+      return;
+    }
+    const delta = Number(days);
+    if (!Number.isFinite(delta) || delta < 1) return;
+    const start = new Date(now);
+    start.setDate(now.getDate() - (delta - 1));
+    setDateFrom(toLocalDateInputValue(start));
+    setDateTo(toLocalDateInputValue(now));
+  }
+
+  function clearFilters() {
+    setQuery("");
+    setDateFrom("");
+    setDateTo("");
+    setError("");
+    setStatus("Filters cleared.");
+  }
+
   async function searchChats({ append = false } = {}) {
+    if (invalidDateRange) {
+      setError("`From` date must be on or before `To` date.");
+      setStatus("");
+      return;
+    }
     setError("");
     setStatus("");
     setBusy(true);
     try {
       const accessToken = await getAccessToken();
       const payload = {
-        session_id: (sessionId || "").trim() || undefined,
         query: (query || "").trim() || undefined,
         date_from: formatDateInput(dateFrom) || undefined,
         date_to: formatDateInput(dateTo) || undefined,
@@ -80,15 +127,22 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase 
     }
   }
 
+  function getRowKey(item) {
+    const sid = String(item?.session_id || "");
+    const tid = String(item?.turn_id || "");
+    const role = String(item?.role || "").toLowerCase();
+    return `${sid}::${tid}::${role}`;
+  }
+
   function startEdit(item) {
-    setEditTurnId(String(item?.turn_id || ""));
+    setEditRowKey(getRowKey(item));
     setEditDraft(String(item?.content || ""));
     setError("");
     setStatus("");
   }
 
   function cancelEdit() {
-    setEditTurnId("");
+    setEditRowKey("");
     setEditDraft("");
   }
 
@@ -146,7 +200,7 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase 
         )
       );
       setStatus("Turn updated.");
-      setEditTurnId("");
+      setEditRowKey("");
       setEditDraft("");
     } catch (e) {
       setError(e?.message || String(e));
@@ -164,41 +218,63 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase 
 
       <div style={{ display: "grid", gap: 8, marginBottom: 10 }}>
         <input
-          value={sessionId}
-          onChange={(e) => setSessionId(e.target.value)}
-          placeholder="session_id (optional)"
-          disabled={!isAuthed || busy || editBusy}
-          style={{ padding: 9 }}
-        />
-        <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search text"
           disabled={!isAuthed || busy || editBusy}
           style={{ padding: 9 }}
         />
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <button type="button" onClick={() => applyDatePreset(7)} disabled={!isAuthed || busy || editBusy}>
+            Last 7 days
+          </button>
+          <button type="button" onClick={() => applyDatePreset(30)} disabled={!isAuthed || busy || editBusy}>
+            Last 30 days
+          </button>
+          <button type="button" onClick={() => applyDatePreset("month")} disabled={!isAuthed || busy || editBusy}>
+            This month
+          </button>
+          <button type="button" onClick={() => applyDatePreset("all")} disabled={!isAuthed || busy || editBusy}>
+            All time
+          </button>
+        </div>
         <div style={{ display: "flex", gap: 8 }}>
           <input
+            type="date"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
-            placeholder="date_from YYYY-MM-DD"
+            aria-label="From date"
             disabled={!isAuthed || busy || editBusy}
             style={{ flex: 1, padding: 9 }}
           />
           <input
+            type="date"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
-            placeholder="date_to YYYY-MM-DD"
+            aria-label="To date"
             disabled={!isAuthed || busy || editBusy}
             style={{ flex: 1, padding: 9 }}
           />
         </div>
+        {invalidDateRange ? (
+          <div style={{ color: "#b00020", fontSize: 13 }}>`From` date must be on or before `To` date.</div>
+        ) : null}
+        <div style={{ fontSize: 13, opacity: 0.72 }}>{activeFilterSummary}</div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => searchChats({ append: false })} disabled={!isAuthed || busy || editBusy}>
+          <button
+            onClick={() => searchChats({ append: false })}
+            disabled={!isAuthed || busy || editBusy || invalidDateRange}
+          >
             {busy ? "Searching..." : "Search"}
           </button>
-          <button onClick={() => searchChats({ append: true })} disabled={!isAuthed || busy || !nextKey || editBusy}>
+          <button
+            onClick={() => searchChats({ append: true })}
+            disabled={!isAuthed || busy || !nextKey || editBusy || invalidDateRange}
+          >
             Load More
+          </button>
+          <button type="button" onClick={clearFilters} disabled={!isAuthed || busy || editBusy}>
+            Clear Filters
           </button>
         </div>
       </div>
@@ -220,9 +296,10 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase 
           orderedItems.map((item, idx) => {
             const rowTurnId = String(item?.turn_id || "");
             const rowRole = String(item?.role || "").toLowerCase();
-            const isEditing = rowTurnId && rowTurnId === editTurnId;
+            const rowKey = getRowKey(item);
+            const isEditing = rowTurnId && rowKey === editRowKey;
             return (
-              <div key={`${item?.session_id || ""}-${rowTurnId}-${idx}`} style={{ marginBottom: 12 }}>
+              <div key={`${rowKey}-${idx}`} style={{ marginBottom: 12 }}>
                 <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 4 }}>
                   {item?.timestamp || "—"} · {item?.session_id || "—"} · {item?.role || "—"}
                 </div>
