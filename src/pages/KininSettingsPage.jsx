@@ -41,7 +41,7 @@ export default function KininSettingsPage({
   }
   const resendButtonLabel = hasInviteBeenSent ? "Resend invite" : "Send invite";
   const sectionCardStyle = {
-    border: "1px solid #eee",
+    border: "1px solid #d8d8d8",
     borderRadius: 10,
     padding: 12,
     background: "#fafafa",
@@ -57,6 +57,7 @@ export default function KininSettingsPage({
           borderRadius: 10,
           padding: 12,
           marginBottom: 12,
+          background: "#fcfcfc",
         }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
