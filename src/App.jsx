@@ -22,7 +22,7 @@ import FaqPage from "./pages/FaqPage";
 import FeedbackPage from "./pages/FeedbackPage";
 import ContactPage from "./pages/ContactPage";
 import AccountPage from "./pages/AccountPage";
-import BioProfilePage from "./pages/BioProfilePage";
+import KininSettingsPage from "./pages/KininSettingsPage";
 import AdminCrmPage from "./pages/AdminCrmPage";
 import AdminHomePage from "./pages/AdminHomePage";
 import AdminMetricsPage from "./pages/AdminMetricsPage";
@@ -1699,6 +1699,7 @@ export default function App() {
           isAuthed={isAuthed}
           getAccessToken={getAccessToken}
           apiBase={API_BASE}
+          userDisplayName={navDisplayName || "You"}
         />
       ) : activePage === "unsubscribe" ? (
         <UnsubscribePage apiBase={API_BASE} />
@@ -1786,7 +1787,7 @@ export default function App() {
           closeAccount={closeAccount}
         />
       ) : activePage === "settings" ? (
-        <BioProfilePage
+        <KininSettingsPage
           profileSchema={profileSchema}
           bioProfile={bioProfile}
           setBioProfile={setBioProfile}

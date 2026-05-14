@@ -1,4 +1,4 @@
-export default function BioProfilePage({
+export default function KininSettingsPage({
   profileSchema,
   bioProfile,
   setBioProfile,
@@ -40,6 +40,14 @@ export default function BioProfilePage({
     executorStatusLabel = executorStatus;
   }
   const resendButtonLabel = hasInviteBeenSent ? "Resend invite" : "Send invite";
+  const sectionCardStyle = {
+    border: "1px solid #eee",
+    borderRadius: 10,
+    padding: 12,
+    background: "#fafafa",
+    display: "grid",
+    gap: 10,
+  };
 
   return (
     <div style={{ padding: 16 }}>
@@ -76,39 +84,33 @@ export default function BioProfilePage({
               <div className="loading-skeleton loading-skeleton-line" />
             </div>
           ) : null}
-          <div style={{ fontWeight: 600, fontSize: 14 }}>Profile</div>
-          <label>
-            <div style={{ fontSize: 12, opacity: 0.8 }}>Preferred name *</div>
-            <input
-              value={bioProfile.preferred_name}
-              onChange={(e) => setBioProfile((p) => ({ ...p, preferred_name: e.target.value }))}
-              disabled={profileBusy}
-              style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
-            />
-          </label>
-          <label>
-            <div style={{ fontSize: 12, opacity: 0.8 }}>Age *</div>
-            <input
-              value={bioProfile.age}
-              onChange={(e) => setBioProfile((p) => ({ ...p, age: e.target.value }))}
-              disabled={profileBusy}
-              style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
-              inputMode="numeric"
-            />
-            <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>
-              Your age helps Kinin place life events naturally on your timeline.
-            </div>
-          </label>
-          <div
-            style={{
-              borderTop: "1px solid #eee",
-              marginTop: 6,
-              paddingTop: 10,
-              display: "grid",
-              gap: 10,
-            }}
-          >
-            <div style={{ fontWeight: 600, fontSize: 14 }}>Reminder Settings</div>
+          <div style={sectionCardStyle}>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>Profile</div>
+            <label>
+              <div style={{ fontSize: 12, opacity: 0.8 }}>Preferred name *</div>
+              <input
+                value={bioProfile.preferred_name}
+                onChange={(e) => setBioProfile((p) => ({ ...p, preferred_name: e.target.value }))}
+                disabled={profileBusy}
+                style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
+              />
+            </label>
+            <label>
+              <div style={{ fontSize: 12, opacity: 0.8 }}>Age *</div>
+              <input
+                value={bioProfile.age}
+                onChange={(e) => setBioProfile((p) => ({ ...p, age: e.target.value }))}
+                disabled={profileBusy}
+                style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
+                inputMode="numeric"
+              />
+              <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>
+                Your age helps Kinin place life events naturally on your timeline.
+              </div>
+            </label>
+          </div>
+          <div style={sectionCardStyle}>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>Reminder</div>
             <div style={{ fontSize: 12, opacity: 0.85 }}>
               The user is choosing how Kinin stays gently present in their life.
             </div>
@@ -159,16 +161,8 @@ export default function BioProfilePage({
               </div>
             </div>
           </div>
-          <div
-            style={{
-              borderTop: "1px solid #eee",
-              marginTop: 6,
-              paddingTop: 10,
-              display: "grid",
-              gap: 10,
-            }}
-          >
-            <div style={{ fontWeight: 600, fontSize: 14 }}>Account executor</div>
+          <div style={sectionCardStyle}>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>Account Executor</div>
             <div style={{ fontSize: 12, opacity: 0.85 }}>
               Optional but strongly encouraged. Add a family member or close friend who can be designated as your
               account executor.
@@ -233,7 +227,7 @@ export default function BioProfilePage({
                   {resendButtonLabel}
                 </button>
                 <button onClick={removeAccountExecutor} disabled={profileBusy}>
-                  Remove executor
+                  Remove Executor
                 </button>
               </div>
             ) : null}

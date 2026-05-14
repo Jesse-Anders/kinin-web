@@ -18,7 +18,18 @@ function toLocalDateInputValue(date) {
   return shifted.toISOString().slice(0, 10);
 }
 
-export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase }) {
+function formatEditedAt(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const dt = new Date(raw);
+  if (Number.isNaN(dt.getTime())) return raw;
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(dt);
+}
+
+export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase, userDisplayName = "You" }) {
   const [query, setQuery] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -298,10 +309,11 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase 
             const rowRole = String(item?.role || "").toLowerCase();
             const rowKey = getRowKey(item);
             const isEditing = rowTurnId && rowKey === editRowKey;
+            const speakerLabel = rowRole === "assistant" ? "Kinin" : userDisplayName;
             return (
               <div key={`${rowKey}-${idx}`} style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 4 }}>
-                  {item?.timestamp || "—"} · {item?.session_id || "—"} · {item?.role || "—"}
+                <div style={{ fontSize: 13, fontWeight: 600, opacity: 0.85, marginBottom: 4 }}>
+                  {speakerLabel}:
                 </div>
                 {!isEditing ? (
                   <div style={{ marginBottom: 6, whiteSpace: "pre-wrap" }}>{item?.content || ""}</div>
@@ -315,7 +327,7 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase 
                 )}
                 {item?.edited_at ? (
                   <div style={{ fontSize: 12, opacity: 0.65, marginBottom: 6 }}>
-                    edited_at: {item.edited_at}
+                    Edited at: {formatEditedAt(item.edited_at)}
                   </div>
                 ) : null}
                 {rowRole === "user" ? (
@@ -334,7 +346,7 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase 
                     </div>
                   )
                 ) : (
-                  <div style={{ fontSize: 12, opacity: 0.6 }}>Only user turns are editable.</div>
+                  <div style={{ fontSize: 12, opacity: 0.6 }}>Kinin's text cannot be edited.</div>
                 )}
               </div>
             );
