@@ -29,7 +29,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "What are Kinin Settings?",
-    a: "Kinin Settings let you manage your preferred name, age, and reminder rhythm settings — including how often Kinin should gently remind you if you have been away for a while. You can update these anytime from the sidebar menu.",
+    a: "Kinin Settings let you manage your preferred name, date of birth, and reminder rhythm settings — including how often Kinin should gently remind you if you have been away for a while. You can update these anytime from the sidebar menu.",
   },
   {
     q: "Can I edit or remove something I said in the interview?",

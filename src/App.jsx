@@ -122,7 +122,7 @@ export default function App() {
   const [didStart, setDidStart] = useState(false);
   const [_showProfile, setShowProfile] = useState(false);
   const [profileSchema, setProfileSchema] = useState(null);
-  const [bioProfile, setBioProfile] = useState({ preferred_name: "", age: "" });
+  const [bioProfile, setBioProfile] = useState({ preferred_name: "", date_of_birth: "" });
   const [continuitySettings, setContinuitySettings] = useState({
     reminder_cadence_weeks: 2,
     reminder_channel: "email",
@@ -146,7 +146,7 @@ export default function App() {
   const [onboardingBusy, setOnboardingBusy] = useState(false);
   const [onboardingPreview, setOnboardingPreview] = useState({
     step: 1,
-    bioProfile: { preferred_name: "", age: "" },
+    bioProfile: { preferred_name: "", date_of_birth: "" },
     accountExecutor: { name: "", email: "", confirm_email: "" },
     continuitySettings: { reminder_cadence_weeks: 2, reminder_channel: "email" },
   });
@@ -250,6 +250,17 @@ export default function App() {
       .filter((x) => typeof x === "string")
       .map((s) => s.trim())
       .filter(Boolean);
+  }
+
+  function isValidDateOfBirth(value) {
+    const text = String(value || "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return false;
+    const dt = new Date(`${text}T00:00:00`);
+    if (Number.isNaN(dt.getTime())) return false;
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (dt > today) return false;
+    return true;
   }
 
   function syncLabelGroupsFromParsed(parsed) {
@@ -468,7 +479,7 @@ export default function App() {
     const executor = parsed?.account_executor || {};
     setBioProfile({
       preferred_name: bp.preferred_name || "",
-      age: bp.age === undefined || bp.age === null ? "" : String(bp.age),
+      date_of_birth: bp.date_of_birth || "",
     });
     setContinuitySettings({
       reminder_cadence_weeks:
@@ -1024,11 +1035,10 @@ export default function App() {
 
       const preferred = (bioProfile.preferred_name || "").trim();
       if (!preferred) throw new Error("Preferred name is required.");
-      const ageVal = (bioProfile.age || "").trim();
-      if (!ageVal) throw new Error("Age is required.");
-      const ageNum = Number(ageVal);
-      if (!Number.isInteger(ageNum) || ageNum < 0 || ageNum > 120) {
-        throw new Error("Age must be a whole number between 0 and 120.");
+      const dateOfBirth = String(bioProfile.date_of_birth || "").trim();
+      if (!dateOfBirth) throw new Error("Date of birth is required.");
+      if (!isValidDateOfBirth(dateOfBirth)) {
+        throw new Error("Date of birth must be a valid date in YYYY-MM-DD format.");
       }
       const executorValidation = validateExecutorDraft();
       if (!executorValidation.ok) {
@@ -1038,7 +1048,7 @@ export default function App() {
       const payload = {
         biography_user_profile: {
           preferred_name: preferred,
-          age: ageNum,
+          date_of_birth: dateOfBirth,
         },
         continuity_settings: {
           reminder_cadence_weeks: Number(continuitySettings?.reminder_cadence_weeks ?? 2),

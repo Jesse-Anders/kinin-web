@@ -1,3 +1,26 @@
+function deriveAgeFromDateOfBirth(dateOfBirth) {
+  const text = String(dateOfBirth || "").trim();
+  if (!text) return null;
+  const dob = new Date(`${text}T00:00:00`);
+  if (Number.isNaN(dob.getTime())) return null;
+  const now = new Date();
+  let years = now.getFullYear() - dob.getFullYear();
+  const beforeBirthday =
+    now.getMonth() < dob.getMonth() ||
+    (now.getMonth() === dob.getMonth() && now.getDate() < dob.getDate());
+  if (beforeBirthday) years -= 1;
+  if (years < 0 || years > 120) return null;
+  return years;
+}
+
+function formatDateLong(dateOfBirth) {
+  const text = String(dateOfBirth || "").trim();
+  if (!text) return "";
+  const dt = new Date(`${text}T00:00:00`);
+  if (Number.isNaN(dt.getTime())) return "";
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "long" }).format(dt);
+}
+
 export default function KininSettingsPage({
   profileSchema,
   bioProfile,
@@ -40,6 +63,8 @@ export default function KininSettingsPage({
     executorStatusLabel = executorStatus;
   }
   const resendButtonLabel = hasInviteBeenSent ? "Resend invite" : "Send invite";
+  const selectedDobText = formatDateLong(bioProfile.date_of_birth);
+  const derivedAge = deriveAgeFromDateOfBirth(bioProfile.date_of_birth);
   const sectionCardStyle = {
     border: "1px solid #d8d8d8",
     borderRadius: 10,
@@ -97,16 +122,27 @@ export default function KininSettingsPage({
               />
             </label>
             <label>
-              <div style={{ fontSize: 12, opacity: 0.8 }}>Age *</div>
+              <div style={{ fontSize: 12, opacity: 0.8 }}>Date of birth *</div>
               <input
-                value={bioProfile.age}
-                onChange={(e) => setBioProfile((p) => ({ ...p, age: e.target.value }))}
+                type="date"
+                value={bioProfile.date_of_birth}
+                onChange={(e) => setBioProfile((p) => ({ ...p, date_of_birth: e.target.value }))}
                 disabled={profileBusy}
                 style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
-                inputMode="numeric"
+                max={new Date().toISOString().slice(0, 10)}
               />
+              {selectedDobText ? (
+                <div style={{ fontSize: 12, opacity: 0.82, marginTop: 6 }}>
+                  Selected date: <b>{selectedDobText}</b>
+                </div>
+              ) : null}
+              {derivedAge !== null ? (
+                <div style={{ fontSize: 12, opacity: 0.82, marginTop: 2 }}>
+                  Current age: <b>{derivedAge}</b>
+                </div>
+              ) : null}
               <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>
-                Your age helps Kinin place life events naturally on your timeline.
+                Use the calendar picker to avoid day/month ordering mistakes. Kinin derives your current age from this date.
               </div>
             </label>
           </div>
