@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Section } from "../theme";
 
 function todayUtcDay() {
   return new Date().toISOString().slice(0, 10);
@@ -124,27 +125,29 @@ export default function AdminMetricsPage({ isAuthed, getAccessToken, apiBase, se
   }
 
   return (
-    <div style={{ border: "1px solid #ddd", borderRadius: 10, padding: 12, marginBottom: 12 }}>
-      <div style={{ marginBottom: 12 }}>
+    <Section
+      eyebrow="Admin · Metrics"
+      title={
+        <>
+          Tokens, <em>plainly</em><br />
+          counted.
+        </>
+      }
+    >
+    <div className="km-admin-page">
+      <div style={{ marginBottom: 18 }}>
         <button
+          type="button"
           onClick={() => setActivePage("admin")}
-          style={{
-            background: "transparent",
-            border: "none",
-            color: "#2563eb",
-            cursor: "pointer",
-            fontSize: 13,
-            padding: 0,
-            textDecoration: "underline",
-          }}
+          className="km-link-button"
         >
-          &larr; Back to Admin Home
+          ← Back to Admin Home
         </button>
       </div>
 
-      <div style={{ marginBottom: 10, fontWeight: 600 }}>Admin Metrics - Token Calculator</div>
-      <div style={{ opacity: 0.7, fontSize: 12, marginBottom: 12 }}>
-        Token metrics are tracked in UTC with provider-reported values when available and character-based estimates as a fallback.
+      <div className="km-prose" style={{ maxWidth: 720, marginBottom: 24, fontSize: 15 }}>
+        Token metrics are tracked in UTC with provider-reported values when
+        available and character-based estimates as a fallback.
       </div>
 
       <div style={{ display: "grid", gap: 8, marginBottom: 12 }}>
@@ -388,5 +391,6 @@ export default function AdminMetricsPage({ isAuthed, getAccessToken, apiBase, se
         </>
       ) : null}
     </div>
+    </Section>
   );
 }

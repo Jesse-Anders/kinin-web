@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Banner, Button, Frame, Section, Spinner } from "../theme";
 
 function parseUnsubscribeParams() {
   const p = new URLSearchParams(window.location.search || "");
@@ -46,11 +47,7 @@ export default function UnsubscribePage({ apiBase }) {
       setErrorText("");
       setStatusText("");
       try {
-        const payload = {
-          email: params.email,
-          exp: params.exp,
-          token: params.token,
-        };
+        const payload = { email: params.email, exp: params.exp, token: params.token };
         const out = await postEmailPrefs(apiBase, "/email_prefs/unsubscribe", payload);
         setGlobalUnsubscribed(!!out.global_unsubscribed);
         setStatusText("You have been unsubscribed from non-essential Kinin emails.");
@@ -68,11 +65,7 @@ export default function UnsubscribePage({ apiBase }) {
     setErrorText("");
     setStatusText("");
     try {
-      const payload = {
-        email: params.email,
-        exp: params.exp,
-        token: params.token,
-      };
+      const payload = { email: params.email, exp: params.exp, token: params.token };
       const out = await postEmailPrefs(apiBase, "/email_prefs/resubscribe", payload);
       setGlobalUnsubscribed(!!out.global_unsubscribed);
       setStatusText("You are resubscribed. Non-essential emails are enabled again.");
@@ -88,11 +81,7 @@ export default function UnsubscribePage({ apiBase }) {
     setBusy(true);
     setErrorText("");
     try {
-      const payload = {
-        email: params.email,
-        exp: params.exp,
-        token: params.token,
-      };
+      const payload = { email: params.email, exp: params.exp, token: params.token };
       const out = await postEmailPrefs(apiBase, "/email_prefs/status", payload);
       setGlobalUnsubscribed(!!out.global_unsubscribed);
     } catch (e) {
@@ -103,40 +92,69 @@ export default function UnsubscribePage({ apiBase }) {
   }
 
   return (
-    <div style={{ padding: 16, maxWidth: 760 }}>
-      <div style={{ fontSize: 22, fontWeight: 600, marginBottom: 12 }}>Email Preferences</div>
-
+    <Section
+      eyebrow="Email preferences"
+      title={
+        <>
+          Your<br /><em>inbox, your call.</em>
+        </>
+      }
+    >
       {!hasTokenInputs ? (
-        <div style={{ color: "#b00020" }}>
-          This unsubscribe link is missing required parameters. Please use the full link from your email.
-        </div>
+        <Banner tone="danger">
+          <span>
+            This unsubscribe link is missing required parameters. Please use the full link from your email.
+          </span>
+        </Banner>
       ) : null}
 
       {hasTokenInputs ? (
-        <div style={{ display: "grid", gap: 10 }}>
-          <div style={{ fontSize: 14 }}>
-            Email: <b>{params.email}</b>
+        <Frame label="Subscription status">
+          <div className="km-stack" style={{ gap: 16 }}>
+            <div>
+              <div className="km-mono-label" style={{ marginBottom: 6 }}>Email</div>
+              <div className="km-field-value">{params.email}</div>
+            </div>
+            <div>
+              <div className="km-mono-label" style={{ marginBottom: 6 }}>Current status</div>
+              <div className="km-prose" style={{ margin: 0 }}>
+                {globalUnsubscribed === true ? (
+                  <>You're <strong>unsubscribed</strong> from non-essential emails.</>
+                ) : globalUnsubscribed === false ? (
+                  <>You're <strong>subscribed</strong> to non-essential emails.</>
+                ) : (
+                  <>Checking status...</>
+                )}
+              </div>
+            </div>
+            <div className="km-row">
+              <Button variant="primary" onClick={doResubscribe} disabled={busy}>
+                {busy ? (
+                  <>
+                    <Spinner /> Working...
+                  </>
+                ) : (
+                  "Resubscribe"
+                )}
+              </Button>
+              <Button onClick={refreshStatus} disabled={busy}>
+                Refresh status
+              </Button>
+            </div>
           </div>
-          <div style={{ opacity: 0.8 }}>
-            {globalUnsubscribed === true
-              ? "Current status: unsubscribed from non-essential emails."
-              : globalUnsubscribed === false
-                ? "Current status: subscribed to non-essential emails."
-                : "Checking status..."}
-          </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <button onClick={doResubscribe} disabled={busy}>
-              {busy ? "Working..." : "Resubscribe"}
-            </button>
-            <button onClick={refreshStatus} disabled={busy}>
-              {busy ? "Working..." : "Refresh Status"}
-            </button>
-          </div>
-        </div>
+        </Frame>
       ) : null}
 
-      {statusText ? <div style={{ marginTop: 12, color: "#0a6a3b" }}>{statusText}</div> : null}
-      {errorText ? <div style={{ marginTop: 12, color: "#b00020" }}>{errorText}</div> : null}
-    </div>
+      {statusText ? (
+        <div style={{ marginTop: 20 }}>
+          <Banner tone="info">{statusText}</Banner>
+        </div>
+      ) : null}
+      {errorText ? (
+        <div style={{ marginTop: 20 }}>
+          <Banner tone="danger">{errorText}</Banner>
+        </div>
+      ) : null}
+    </Section>
   );
 }

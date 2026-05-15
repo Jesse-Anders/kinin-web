@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  BookOpen,
   CircleUserRound,
-  Footprints,
-  Grid2X2Check,
-  History,
-  Megaphone,
-  Menu,
   CirclePlus,
-  Shield,
-  Glasses,
+  Feather,
+  Key,
+  Menu,
+  Pen,
+  Quote,
+  ScrollText,
 } from "lucide-react";
 import kininHomeIcon from "./assets/icons/kinin-icon-390sq.png";
 import {
@@ -33,6 +33,18 @@ import ReviewEditChatsPage from "./pages/ReviewEditChatsPage";
 import UnsubscribePage from "./pages/UnsubscribePage";
 import OnboardingPage from "./pages/OnboardingPage";
 import ExecutorAcceptPage from "./pages/ExecutorAcceptPage";
+import AdminThemeStudioPage from "./pages/AdminThemeStudioPage";
+import {
+  Banner,
+  Button,
+  ChatRow,
+  DetailRow,
+  Frame,
+  FullscreenLoader,
+  Skeleton,
+  Spinner,
+  TypingDots,
+} from "./theme";
 import { streamTurn } from "./services/turnStreamClient";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
@@ -61,6 +73,7 @@ const PAGE_TO_PATH = {
   "admin-crm": "/admin/crm",
   "admin-metrics": "/admin/metrics",
   "admin-user-purge": "/admin/user-purge",
+  "admin-theme": "/admin/theme",
   account: "/account",
 };
 const PATH_TO_PAGE = {
@@ -164,42 +177,42 @@ export default function App() {
     {
       id: "about",
       label: "About",
-      icon: Glasses,
+      icon: BookOpen,
       requiresAuth: false,
       onClick: () => navigateToPage("about"),
     },
     {
       id: "faq",
       label: "FAQ",
-      icon: Grid2X2Check,
+      icon: Quote,
       requiresAuth: false,
       onClick: () => navigateToPage("faq"),
     },
     {
       id: "feedback",
       label: "Feedback",
-      icon: Megaphone,
+      icon: Feather,
       requiresAuth: true,
       onClick: () => navigateToPage("feedback"),
     },
     {
       id: "settings",
-      label: "Kinin Settings",
-      icon: Footprints,
+      label: "Settings",
+      icon: Pen,
       requiresAuth: true,
       onClick: () => openProfile(),
     },
     {
       id: "review-chats",
-      label: "Review / Edit Chats",
-      icon: History,
+      label: "Review",
+      icon: ScrollText,
       requiresAuth: true,
       onClick: () => navigateToPage("review-chats"),
     },
     {
       id: "admin",
       label: "Admin",
-      icon: Shield,
+      icon: Key,
       requiresAuth: true,
       hideForBetaLite: true,
       onClick: () => navigateToPage("admin"),
@@ -369,7 +382,8 @@ export default function App() {
       activePage === "admin-onboarding-preview" ||
       activePage === "admin-crm" ||
       activePage === "admin-metrics" ||
-      activePage === "admin-user-purge";
+      activePage === "admin-user-purge" ||
+      activePage === "admin-theme";
 
     if (isRestrictedAuthPage && !isAuthed) {
       navigate("/", { replace: true });
@@ -1342,12 +1356,12 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className="km-app-shell">
       {showNavigation ? (
-      <aside className={`sidebar ${menuOpen ? "sidebar-open" : ""}`} ref={sidebarRef}>
+      <aside className={`km-sidebar ${menuOpen ? "is-open" : ""}`} ref={sidebarRef}>
         <button
           type="button"
-          className="sidebar-home sidebar-home-primary"
+          className="km-sidebar-brand"
           onClick={() => {
             setMenuOpen(false);
             setShowProfile(false);
@@ -1355,14 +1369,10 @@ export default function App() {
             navigateToPage("interview");
           }}
         >
-          <img
-            src={kininHomeIcon}
-            alt="Kinin"
-            className="sidebar-home-icon sidebar-home-icon-img"
-          />
-          Kinin
+          <img src={kininHomeIcon} alt="Kinin" />
+          <span className="km-sidebar-wordmark">Kinin</span>
         </button>
-        <div className="sidebar-divider" />
+        <div className="km-sidebar-divider" />
         {!menuCollapsed ? (
           <>
             {primaryTopItems.map((item) => {
@@ -1371,34 +1381,34 @@ export default function App() {
                 <button
                   key={item.id}
                   type="button"
-                  className="sidebar-home sidebar-home-secondary"
+                  className="km-sidebar-item"
                   onClick={() => {
                     setMenuOpen(false);
                     setMenuOverflowOpen(false);
                     item.onClick();
                   }}
                 >
-                  {Icon ? <Icon className="sidebar-home-icon" size={20} strokeWidth={1.5} /> : null}
+                  {Icon ? <Icon className="km-sidebar-icon" size={20} strokeWidth={1.5} /> : null}
                   {item.label}
                 </button>
               );
             })}
-            <div className="sidebar-overflow-toggle">
+            <div className="km-sidebar-overflow-toggle">
               <button
                 type="button"
-                className="sidebar-home sidebar-home-secondary"
+                className="km-sidebar-item"
                 onClick={() => setMenuOverflowOpen((prev) => !prev)}
               >
-                <CirclePlus className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+                <CirclePlus className="km-sidebar-icon" size={20} strokeWidth={1.5} />
               </button>
               {menuOverflowOpen ? (
-                <div className="sidebar-popover">
+                <div className="km-sidebar-popover">
                   {visibleExtraMenuItems.map((item) => {
                     return (
                       <button
                         key={item.id}
                         type="button"
-                        className="sidebar-home sidebar-home-secondary"
+                        className="km-sidebar-item"
                         onClick={() => {
                           setMenuOpen(false);
                           setMenuOverflowOpen(false);
@@ -1418,44 +1428,44 @@ export default function App() {
                 <button
                   key={item.id}
                   type="button"
-                  className="sidebar-home sidebar-home-secondary"
+                  className="km-sidebar-item"
                   onClick={() => {
                     setMenuOpen(false);
                     setMenuOverflowOpen(false);
                     item.onClick();
                   }}
                 >
-                  {Icon ? <Icon className="sidebar-home-icon" size={20} strokeWidth={1.5} /> : null}
+                  {Icon ? <Icon className="km-sidebar-icon" size={20} strokeWidth={1.5} /> : null}
                   {item.label}
                 </button>
               );
             })}
           </>
         ) : (
-          <div className="sidebar-overflow-toggle">
+          <div className="km-sidebar-overflow-toggle">
             <button
               type="button"
-              className="sidebar-home sidebar-home-secondary"
+              className="km-sidebar-item"
               onClick={() => setMenuOverflowOpen((prev) => !prev)}
             >
-              <CirclePlus className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+              <CirclePlus className="km-sidebar-icon" size={20} strokeWidth={1.5} />
             </button>
             {menuOverflowOpen ? (
-              <div className="sidebar-popover">
+              <div className="km-sidebar-popover">
                 {primaryTopItems.map((item) => {
                   const Icon = item.icon;
                   return (
                     <button
                       key={item.id}
                       type="button"
-                      className="sidebar-home sidebar-home-secondary"
+                      className="km-sidebar-item"
                       onClick={() => {
                         setMenuOpen(false);
                         setMenuOverflowOpen(false);
                         item.onClick();
                       }}
                     >
-                      {Icon ? <Icon className="sidebar-home-icon" size={20} strokeWidth={1.5} /> : null}
+                      {Icon ? <Icon className="km-sidebar-icon" size={20} strokeWidth={1.5} /> : null}
                       {item.label}
                     </button>
                   );
@@ -1465,7 +1475,7 @@ export default function App() {
                     <button
                       key={item.id}
                       type="button"
-                      className="sidebar-home sidebar-home-secondary"
+                      className="km-sidebar-item"
                       onClick={() => {
                         setMenuOpen(false);
                         setMenuOverflowOpen(false);
@@ -1482,14 +1492,14 @@ export default function App() {
                     <button
                       key={item.id}
                       type="button"
-                      className="sidebar-home sidebar-home-secondary"
+                      className="km-sidebar-item"
                       onClick={() => {
                         setMenuOpen(false);
                         setMenuOverflowOpen(false);
                         item.onClick();
                       }}
                     >
-                      {Icon ? <Icon className="sidebar-home-icon" size={20} strokeWidth={1.5} /> : null}
+                      {Icon ? <Icon className="km-sidebar-icon" size={20} strokeWidth={1.5} /> : null}
                       {item.label}
                     </button>
                   );
@@ -1498,55 +1508,55 @@ export default function App() {
             ) : null}
           </div>
         )}
-        <div className="sidebar-spacer" />
+        <div className="km-sidebar-spacer" />
         <div ref={sidebarBottomRef}>
           {!isAuthed ? (
-            <div className="sidebar-auth">
+            <div className="km-sidebar-auth">
               <button
                 type="button"
-                className="sidebar-home sidebar-home-secondary signin"
+                className="km-sidebar-item is-signin"
                 onClick={() => {
                   setMenuOpen(false);
                   onLogin();
                 }}
               >
-                <CircleUserRound className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+                <CircleUserRound className="km-sidebar-icon" size={20} strokeWidth={1.5} />
                 Sign In
               </button>
               {GOOGLE_LOGIN_ENABLED ? (
                 <button
                   type="button"
-                  className="sidebar-home sidebar-home-secondary signin"
+                  className="km-sidebar-item is-signin"
                   onClick={() => {
                     setMenuOpen(false);
                     onLogin(GOOGLE_PROVIDER_NAME);
                   }}
                 >
-                  <CircleUserRound className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+                  <CircleUserRound className="km-sidebar-icon" size={20} strokeWidth={1.5} />
                   Continue with Google
                 </button>
               ) : null}
             </div>
           ) : (
-            <div className="sidebar-auth">
+            <div className="km-sidebar-auth">
               <button
                 type="button"
-                className="sidebar-home sidebar-home-secondary signin"
+                className="km-sidebar-item is-signin"
                 onClick={() => {
                   setMenuOpen(false);
                   onLogout();
                 }}
               >
-                <CircleUserRound className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+                <CircleUserRound className="km-sidebar-icon" size={20} strokeWidth={1.5} />
                 Sign Out
               </button>
-              <div className="sidebar-muted">{navDisplayName || "Signed in"}</div>
+              <div className="km-sidebar-muted">{navDisplayName || "Signed in"}</div>
             </div>
           )}
           {isAuthed ? (
             <button
               type="button"
-              className="sidebar-home sidebar-home-secondary sidebar-home-bottom"
+              className="km-sidebar-item is-bottom"
               onClick={() => {
                 setMenuOpen(false);
                 navigateToPage("account");
@@ -1555,12 +1565,12 @@ export default function App() {
               My Account
             </button>
           ) : null}
-        {visibleBottomItems.length ? <div className="sidebar-divider" /> : null}
+        {visibleBottomItems.length ? <div className="km-sidebar-divider" /> : null}
         {visibleBottomItems.map((item) => (
           <button
             key={item.id}
             type="button"
-            className="sidebar-home sidebar-home-secondary sidebar-home-bottom"
+            className="km-sidebar-item is-bottom"
             onClick={() => {
               setMenuOpen(false);
               item.onClick();
@@ -1573,7 +1583,7 @@ export default function App() {
       </aside>
       ) : null}
       {showNavigation ? (
-      <div className="sidebar-measure" ref={sidebarMeasureRef}>
+      <div className="km-vh" ref={sidebarMeasureRef}>
         <button type="button" className="sidebar-home sidebar-home-primary">
           <img
             src={kininHomeIcon}
@@ -1582,37 +1592,40 @@ export default function App() {
           />
           Kinin
         </button>
-        <div className="sidebar-divider" />
+        <div className="km-sidebar-divider" />
         {primaryTopItems.map((item) => {
           const Icon = item.icon;
           return (
-            <button key={item.id} type="button" className="sidebar-home sidebar-home-secondary">
-              {Icon ? <Icon className="sidebar-home-icon" size={20} strokeWidth={1.5} /> : null}
+            <button key={item.id} type="button" className="km-sidebar-item">
+              {Icon ? <Icon className="km-sidebar-icon" size={20} strokeWidth={1.5} /> : null}
               {item.label}
             </button>
           );
         })}
-        <button type="button" className="sidebar-home sidebar-home-secondary">
-          <CirclePlus className="sidebar-home-icon" size={20} strokeWidth={1.5} />
+        <button type="button" className="km-sidebar-item">
+          <CirclePlus className="km-sidebar-icon" size={20} strokeWidth={1.5} />
         </button>
         {adminTopItems.map((item) => {
           const Icon = item.icon;
           return (
-            <button key={item.id} type="button" className="sidebar-home sidebar-home-secondary">
-              {Icon ? <Icon className="sidebar-home-icon" size={20} strokeWidth={1.5} /> : null}
+            <button key={item.id} type="button" className="km-sidebar-item">
+              {Icon ? <Icon className="km-sidebar-icon" size={20} strokeWidth={1.5} /> : null}
               {item.label}
             </button>
           );
         })}
       </div>
       ) : null}
-      <main className={`main-content ${showNavigation ? "" : "main-content-no-sidebar"}`}>
+      <main className={`km-main ${showNavigation ? "" : "km-main-no-sidebar"}`}>
         {showNavigation ? (
-        <button type="button" className="menu-toggle" onClick={() => setMenuOpen(true)}>
-          <Menu className="menu-toggle-icon" size={22} strokeWidth={1.5} />
+        <button type="button" className="km-menu-toggle" onClick={() => setMenuOpen(true)}>
+          <Menu size={22} strokeWidth={1.5} />
           Kinin
         </button>
         ) : null}
+        {activePage === "admin-theme" ? (
+          <AdminThemeStudioPage />
+        ) : (
         <div
           style={{
             maxWidth: 900,
@@ -1620,51 +1633,36 @@ export default function App() {
             padding: 16,
           }}
         >
-          <div style={{ textAlign: "center", marginBottom: 20 }}>
-            <img
-              src={kininHomeIcon}
-              alt="Kinin"
-              style={{ width: 48, height: 48, objectFit: "contain", display: "block", margin: "0 auto 6px", opacity: 0.8 }}
-            />
-            <div style={{ fontSize: 18, fontWeight: 300, color: "rgba(17, 17, 17, 0.55)" }}>Kinin</div>
+          <div className="km-chat-header">
+            <img src={kininHomeIcon} alt="Kinin" className="km-chat-header-icon" />
+            <div className="km-chat-header-wordmark">Kinin</div>
+            <div className="km-chat-header-rule" />
+            <div className="km-chat-header-tag">— a living biography, in conversation.</div>
           </div>
 
       {error && (
-        <div
-          style={{
-            background: "#ffe8e8",
-            padding: 12,
-            borderRadius: 8,
-            marginBottom: 16,
-          }}
-        >
-          <b>Error:</b> {error}
-        </div>
+        <Banner tone="danger">
+          <span><strong>Error.</strong> {error}</span>
+        </Banner>
       )}
 
       {isEndingSession ? (
-        <div className="status-banner status-banner-info">
-          <span className="inline-spinner" aria-hidden="true" />
-          Ending session...
-        </div>
+        <Banner tone="info">
+          <Spinner />
+          <span>Ending session...</span>
+        </Banner>
       ) : null}
 
       {accessBlocked ? (
-        <div
-          style={{
-            background: "#fff4e5",
-            padding: 12,
-            borderRadius: 8,
-            marginBottom: 16,
-            border: "1px solid #f5d7a1",
-          }}
-        >
-          <div><b>Sorry, Kinin app use is by invite only at this time.</b></div>
-          <div style={{ marginTop: 6 }}>
-            If you believe you are receiving this message in error, or you would like to be considered for early
-            access, please email Jesse@kinin.ai
+        <Banner tone="info">
+          <div>
+            <div><strong>Sorry, Kinin app use is by invite only at this time.</strong></div>
+            <div style={{ marginTop: 6 }}>
+              If you believe you are receiving this message in error, or you would like to be considered for
+              early access, please email <a href="mailto:Jesse@kinin.ai">Jesse@kinin.ai</a>.
+            </div>
           </div>
-        </div>
+        </Banner>
       ) : null}
 
       {activePage === "admin" && !IS_BETA_LITE ? (
@@ -1817,58 +1815,31 @@ export default function App() {
         />
       ) : (
         <div>
-          <div
-            style={{
-              minHeight: 260,
-              marginBottom: 12,
-              padding: "8px 0",
-            }}
-          >
+          <div className="km-chat-surface km-chat">
             {chat.length === 0 ? (
-              <div style={{ opacity: 0.5, textAlign: "center", paddingTop: 80, fontSize: 15 }}>
-                {isStartingSession ? (
-                  <div className="session-loading-wrap">
-                    <div className="loading-skeleton loading-skeleton-line" />
-                    <div className="loading-skeleton loading-skeleton-line short" />
-                    <div style={{ marginTop: 8, fontSize: 13, opacity: 0.75 }}>
-                      Preparing your interview...
-                    </div>
-                  </div>
-                ) : (
-                  "Start chatting after logging in."
-                )}
-              </div>
+              isStartingSession ? (
+                <div className="km-chat-loading">
+                  <Skeleton />
+                  <Skeleton short />
+                  <div className="km-chat-loading-tag">Preparing your interview...</div>
+                </div>
+              ) : (
+                <div className="km-chat-empty">Start chatting after logging in.</div>
+              )
             ) : (
               chat.map((m, idx) => (
-                <div
-                  key={m.id ?? idx}
-                  className={
-                    m.role === "user" ? "chat-row chat-row-user" : "chat-row chat-row-assistant"
-                  }
-                >
-                  <div
-                    className={
-                      m.role === "user"
-                        ? "chat-bubble chat-bubble-user"
-                        : "chat-bubble chat-bubble-assistant"
-                    }
-                  >
-                    {m.role === "assistant" && isSendingTurn && !m.content ? (
-                      <span className="typing-dots" aria-label="Kinin is typing" role="status">
-                        <span className="typing-dot" />
-                        <span className="typing-dot" />
-                        <span className="typing-dot" />
-                      </span>
-                    ) : (
-                      m.content
-                    )}
-                  </div>
-                </div>
+                <ChatRow key={m.id ?? idx} role={m.role}>
+                  {m.role === "assistant" && isSendingTurn && !m.content ? (
+                    <TypingDots />
+                  ) : (
+                    m.content
+                  )}
+                </ChatRow>
               ))
             )}
           </div>
 
-          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          <div className="km-chat-input-row">
             <textarea
               ref={messageInputRef}
               value={message}
@@ -1879,137 +1850,117 @@ export default function App() {
               }}
               onInput={(e) => autoResizeMessageInput(e.target)}
               placeholder={isAuthed ? "Type a message..." : "Login to chat..."}
-              className="chat-input"
+              className="km-chat-input"
               maxLength={CHAT_MESSAGE_MAX_CHARS}
-              style={{
-                flex: 1,
-                padding: 10,
-                fontSize: 16,
-                resize: "none",
-                overflow: "hidden",
-                borderRadius: 12,
-                border: "1px solid #e5e7eb",
-                color: "rgba(17, 17, 17, 0.7)",
-              }}
               rows={1}
               disabled={!isAuthed || busy || !!accessBlocked}
             />
-            <button
+            <Button
+              variant="primary"
               onClick={sendTurn}
               disabled={!isAuthed || busy || !!accessBlocked}
-              style={{
-                background: "#f0f0f0",
-                color: "rgba(17, 17, 17, 0.75)",
-                border: "1px solid #e5e7eb",
-                borderRadius: 12,
-                padding: "8px 16px",
-                cursor: "pointer",
-                fontSize: 14,
-              }}
             >
               {isSendingTurn ? "Sending..." : "Send"}
-            </button>
+            </Button>
           </div>
-          <details
-            style={{
-              border: "1px solid #ddd",
-              borderRadius: 10,
-              padding: 12,
-              marginBottom: 12,
-              background: "#fcfcfc",
-            }}
-          >
-            <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#999" }}>
-              Interview Details
+          <details className="km-details">
+            <summary className="km-details-summary">
+              <span className="km-mono-label">— Interview Details</span>
+              <span className="km-details-version">{VERSION_LABEL}</span>
             </summary>
-            <div style={{ marginTop: 12 }}>
-                <div style={{ marginBottom: 10, opacity: 0.8 }}>
-                  <div style={{ fontWeight: 600 }}>Kinin - Interviewer</div>
-                  <div style={{ fontSize: 12, opacity: 0.7 }}>{VERSION_LABEL}</div>
-                </div>
-                <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-                  <button onClick={updateInterviewDetails} disabled={!isAuthed || !sessionId || detailsBusy}>
+            <Frame label="Interview state · debug">
+              <div className="km-stack" style={{ gap: 18 }}>
+                <div className="km-row" style={{ justifyContent: "space-between" }}>
+                  <Button
+                    size="sm"
+                    onClick={updateInterviewDetails}
+                    disabled={!isAuthed || !sessionId || detailsBusy}
+                  >
                     {detailsBusy ? (
                       <>
-                        <span className="inline-spinner" aria-hidden="true" />
-                        Updating...
+                        <Spinner /> Updating...
                       </>
                     ) : (
-                      "Update Details"
+                      "Refresh"
                     )}
-                  </button>
-                  <div style={{ opacity: 0.7, alignSelf: "center", fontSize: 12 }}>
-                    Manual refresh
-                  </div>
+                  </Button>
+                  <span className="km-mono-label">Manual refresh</span>
                 </div>
-                <div style={{ marginBottom: 8, opacity: 0.8 }}>
-                  Journey version: <b>{journeyVersion || "—"}</b>
-                </div>
+
+                <DetailRow label="Journey version" value={journeyVersion || "—"} />
+
                 {LABEL_GROUPS.map(({ key, label }) => (
-                  <div key={key} style={{ marginBottom: 8, opacity: 0.8 }}>
-                    {label}:{" "}
-                    <b>
-                      {labelGroups?.[key]?.length ? labelGroups[key].join(", ") : "—"}
-                    </b>
-                  </div>
+                  <DetailRow
+                    key={key}
+                    label={label}
+                    value={labelGroups?.[key]?.length ? labelGroups[key].join(", ") : "—"}
+                  />
                 ))}
-                {/* Journey progress bar (completed + closed steps / total). */}
-                <div style={{ marginBottom: 12, opacity: 0.8 }}>
-                  Journey progress: <b>{progressForDisplay.percent}%</b>{" "}
-                  <span style={{ opacity: 0.7 }}>
-                    ({progressForDisplay.complete_steps} complete,{" "}
-                    {progressForDisplay.closed_steps} closed /{" "}
-                    {progressForDisplay.total_steps} total)
-                  </span>
-                  <div
-                    style={{
-                      height: 8,
-                      marginTop: 6,
-                      borderRadius: 999,
-                      background: "#eee",
-                      overflow: "hidden",
-                    }}
-                  >
+
+                <div>
+                  <DetailRow
+                    label="Journey progress"
+                    value={
+                      <>
+                        <strong>{progressForDisplay.percent}%</strong>{" "}
+                        <span className="km-muted">
+                          ({progressForDisplay.complete_steps} complete,{" "}
+                          {progressForDisplay.closed_steps} closed /{" "}
+                          {progressForDisplay.total_steps} total)
+                        </span>
+                      </>
+                    }
+                  />
+                  <div className="km-progress">
                     <div
+                      className="km-progress-bar"
                       style={{
-                        height: "100%",
                         width: `${Math.min(100, Math.max(0, progressForDisplay.percent))}%`,
-                        background: "#3b82f6",
                       }}
                     />
                   </div>
                 </div>
-                <div style={{ marginBottom: 8, opacity: 0.8 }}>
-                  Mode: <b>{uiState?.mode || "—"}</b>
-                  {uiState?.current_step_title ? (
+
+                <DetailRow
+                  label="Mode"
+                  value={
                     <>
-                      {" "}— Step: <b>{uiState.current_step_title}</b>
+                      <strong>{uiState?.mode || "—"}</strong>
+                      {uiState?.current_step_title ? (
+                        <>
+                          {" "}— Step: <strong>{uiState.current_step_title}</strong>
+                        </>
+                      ) : null}
                     </>
-                  ) : null}
-                </div>
+                  }
+                />
+
                 {uiState?.interviewer_step_specific_context ? (
-                  <div style={{ marginBottom: 8, opacity: 0.8 }}>
-                    Interviewer step context:{" "}
-                    <b>{uiState.interviewer_step_specific_context}</b>
-                  </div>
+                  <DetailRow
+                    label="Interviewer step context"
+                    value={<strong>{uiState.interviewer_step_specific_context}</strong>}
+                  />
                 ) : null}
                 {uiState?.evaluator_step_specific_context ? (
-                  <div style={{ marginBottom: 8, opacity: 0.8 }}>
-                    Evaluator step context:{" "}
-                    <b>{uiState.evaluator_step_specific_context}</b>
-                  </div>
+                  <DetailRow
+                    label="Evaluator step context"
+                    value={<strong>{uiState.evaluator_step_specific_context}</strong>}
+                  />
                 ) : null}
 
-                <div style={{ marginBottom: 8, opacity: 0.8 }}>
-                  Pending advance:{" "}
-                  <b>
-                    {uiState?.pending_advance && Object.keys(uiState.pending_advance).length
-                      ? JSON.stringify(uiState.pending_advance)
-                      : "—"}
-                  </b>
-                </div>
+                <DetailRow
+                  label="Pending advance"
+                  value={
+                    <strong>
+                      {uiState?.pending_advance && Object.keys(uiState.pending_advance).length
+                        ? JSON.stringify(uiState.pending_advance)
+                        : "—"}
+                    </strong>
+                  }
+                />
 
-                <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                <div>
+                  <div className="km-mono-label" style={{ marginBottom: 6 }}>session_id</div>
                   <input
                     value={sessionId}
                     onChange={(e) => {
@@ -2017,56 +1968,49 @@ export default function App() {
                       localStorage.setItem("session_id", e.target.value);
                     }}
                     placeholder="session_id (optional — leave blank to auto-create)"
-                    style={{ flex: 1, padding: 10 }}
+                    className="km-input-compact"
                     disabled={busy}
                   />
                 </div>
 
                 {uiState && uiState.mode === "guided" ? (
-                  <div
-                    style={{
-                      border: "1px solid #eee",
-                      borderRadius: 10,
-                      padding: 12,
-                      background: "#fafafa",
-                    }}
-                  >
-                    <div style={{ marginBottom: 8 }}>
-                      <b>Step fields</b>
-                    </div>
-                    <div style={{ display: "flex", gap: 16 }}>
+                  <div className="km-stepfields">
+                    <div className="km-mono-label" style={{ marginBottom: 10 }}>Step fields</div>
+                    <div className="km-row" style={{ alignItems: "flex-start", gap: 24 }}>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 600, marginBottom: 6 }}>Covered</div>
-                        <ul style={{ margin: 0, paddingLeft: 18 }}>
+                        <div className="km-mono-label" style={{ color: "var(--sage-deep)", marginBottom: 4 }}>Covered</div>
+                        <ul className="km-list-bare">
                           {(uiState.covered_fields || []).length ? (
                             (uiState.covered_fields || []).map((f, i) => <li key={"c-" + i}>{f}</li>)
                           ) : (
-                            <li style={{ opacity: 0.7 }}>(none yet)</li>
+                            <li className="km-muted">(none yet)</li>
                           )}
                         </ul>
                       </div>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 600, marginBottom: 6 }}>Uncovered</div>
-                        <ul style={{ margin: 0, paddingLeft: 18 }}>
+                        <div className="km-mono-label" style={{ color: "var(--crimson)", marginBottom: 4 }}>Uncovered</div>
+                        <ul className="km-list-bare">
                           {(uiState.uncovered_fields || []).length ? (
                             (uiState.uncovered_fields || []).map((f, i) => <li key={"u-" + i}>{f}</li>)
                           ) : (
-                            <li style={{ opacity: 0.7 }}>(none)</li>
+                            <li className="km-muted">(none)</li>
                           )}
                         </ul>
                       </div>
                     </div>
                   </div>
                 ) : null}
-            </div>
+              </div>
+            </Frame>
           </details>
         </div>
           )}
         </div>
+        )}
       </main>
       {showNavigation && menuOpen ? (
         <div
-          className="menu-backdrop"
+          className="km-menu-backdrop"
           onClick={() => {
             setMenuOpen(false);
             setMenuOverflowOpen(false);
@@ -2074,12 +2018,7 @@ export default function App() {
         />
       ) : null}
       {isSigningIn ? (
-        <div className="fullscreen-loader-backdrop" role="status" aria-live="polite">
-          <div className="fullscreen-loader-card">
-            <span className="inline-spinner large" aria-hidden="true" />
-            Redirecting to sign in...
-          </div>
-        </div>
+        <FullscreenLoader>Redirecting to sign in...</FullscreenLoader>
       ) : null}
     </div>
   );

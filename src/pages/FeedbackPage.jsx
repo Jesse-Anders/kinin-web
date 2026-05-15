@@ -1,3 +1,5 @@
+import { Banner, Button, FormRow, Section, Spinner, TextArea, TextInput } from "../theme";
+
 export default function FeedbackPage({
   feedbackName,
   setFeedbackName,
@@ -9,48 +11,67 @@ export default function FeedbackPage({
   feedbackStatus,
   submitFeedback,
 }) {
+  const isError = feedbackStatus && /error|failed|invalid|missing/i.test(feedbackStatus);
   return (
-    <div style={{ padding: 16, maxWidth: 720 }}>
-      <div style={{ fontSize: 22, fontWeight: 600, marginBottom: 12 }}>
-        Feedback: Please, let us know your thoughts.
+    <Section
+      eyebrow="Feedback"
+      title={
+        <>
+          Tell us<br /><em>what's working.</em>
+        </>
+      }
+    >
+      <div className="km-prose" style={{ maxWidth: 640, marginBottom: 32 }}>
+        <p>
+          What's helping, what's confusing, what's missing — we read every
+          message. Anonymous is fine; if you'd like a response, leave your
+          name and email.
+        </p>
       </div>
-      <div style={{ display: "grid", gap: 10 }}>
-        <label>
-          <div style={{ fontSize: 12, opacity: 0.8 }}>Name (optional)</div>
-          <input
+
+      <div className="km-form-grid">
+        <FormRow label="Name" help="Optional.">
+          <TextInput
             value={feedbackName}
             onChange={(e) => setFeedbackName(e.target.value)}
-            style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
             placeholder="Your name"
           />
-        </label>
-        <label>
-          <div style={{ fontSize: 12, opacity: 0.8 }}>Email (optional)</div>
-          <input
+        </FormRow>
+        <FormRow label="Email" help="Optional. Only used to reply.">
+          <TextInput
             value={feedbackEmail}
             onChange={(e) => setFeedbackEmail(e.target.value)}
-            style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
             placeholder="you@example.com"
             inputMode="email"
           />
-        </label>
-        <label>
-          <div style={{ fontSize: 12, opacity: 0.8 }}>Message *</div>
-          <textarea
+        </FormRow>
+        <FormRow label="Message" required>
+          <TextArea
             value={feedbackMessage}
             onChange={(e) => setFeedbackMessage(e.target.value)}
-            style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10, minHeight: 120 }}
             placeholder="What should we improve?"
+            rows={6}
           />
-        </label>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button onClick={submitFeedback} disabled={feedbackBusy}>
-            {feedbackBusy ? "Sending..." : "Send Feedback"}
-          </button>
-          {feedbackStatus ? <div style={{ opacity: 0.7 }}>{feedbackStatus}</div> : null}
-        </div>
+        </FormRow>
       </div>
-      <div style={{ minHeight: 12 }} />
-    </div>
+
+      <div className="km-form-actions">
+        <Button variant="primary" onClick={submitFeedback} disabled={feedbackBusy}>
+          {feedbackBusy ? (
+            <>
+              <Spinner /> Sending...
+            </>
+          ) : (
+            "Send feedback"
+          )}
+        </Button>
+      </div>
+
+      {feedbackStatus ? (
+        <div style={{ marginTop: 20 }}>
+          <Banner tone={isError ? "danger" : "info"}>{feedbackStatus}</Banner>
+        </div>
+      ) : null}
+    </Section>
   );
 }

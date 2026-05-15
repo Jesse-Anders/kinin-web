@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Banner, Button, Frame, Section, Spinner } from "../theme";
 
 function normalizeEmail(value) {
   return (value || "").trim().toLowerCase();
@@ -400,14 +401,22 @@ export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
   }
 
   return (
-    <div style={{ padding: 16, maxWidth: 980 }}>
-      <div style={{ fontSize: 22, fontWeight: 600, marginBottom: 10 }}>Admin CRM - Invites</div>
-      <div style={{ opacity: 0.7, marginBottom: 14 }}>
-        Bulk add emails, list and filter invites, revoke access, and resend invite emails.
+    <Section
+      eyebrow="Admin · CRM"
+      title={
+        <>
+          Invites &amp;<br />
+          <em>access</em>.
+        </>
+      }
+    >
+    <div className="km-admin-page">
+      <div className="km-prose" style={{ maxWidth: 720, marginBottom: 24, fontSize: 15 }}>
+        Bulk add emails, list and filter invites, revoke access, and resend
+        invite emails.
       </div>
 
-      <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, marginBottom: 12 }}>
-        <div style={{ fontWeight: 600, marginBottom: 8 }}>A) Bulk add / update</div>
+      <Frame label="A — Bulk add / update">
         <textarea
           value={bulkInput}
           onChange={(e) => setBulkInput(e.target.value)}
@@ -432,14 +441,21 @@ export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
             />
             Send invite email now
           </label>
-          <button onClick={runBulkAdd} disabled={!isAuthed || busy}>
-            {busy ? "Processing..." : "Run Bulk Add"}
-          </button>
+          <Button variant="primary" onClick={runBulkAdd} disabled={!isAuthed || busy}>
+            {busy ? (
+              <>
+                <Spinner /> Processing...
+              </>
+            ) : (
+              "Run bulk add"
+            )}
+          </Button>
         </div>
-      </div>
+      </Frame>
 
-      <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, marginBottom: 12 }}>
-        <div style={{ fontWeight: 600, marginBottom: 8 }}>B/C/D) List, filter, revoke, resend</div>
+      <div style={{ height: 24 }} />
+
+      <Frame label="B · C · D — List, filter, revoke, resend">
         <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
           <select
             value={listStatusFilter}
@@ -457,42 +473,42 @@ export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
             style={{ flex: 1, padding: 8 }}
             disabled={!isAuthed || busy}
           />
-          <button onClick={() => listInvites({ append: false })} disabled={!isAuthed || busy}>
+          <Button size="sm" variant="primary" onClick={() => listInvites({ append: false })} disabled={!isAuthed || busy}>
             {busy ? "Loading..." : "Load"}
-          </button>
-          <button onClick={() => listInvites({ append: true })} disabled={!isAuthed || busy || !nextKey}>
-            Load More
-          </button>
-          <button onClick={exportAllInvitesCsv} disabled={!isAuthed || busy || exportBusy}>
-            {exportBusy ? "Exporting..." : "Export All CSV"}
-          </button>
+          </Button>
+          <Button size="sm" onClick={() => listInvites({ append: true })} disabled={!isAuthed || busy || !nextKey}>
+            Load more
+          </Button>
+          <Button size="sm" onClick={exportAllInvitesCsv} disabled={!isAuthed || busy || exportBusy}>
+            {exportBusy ? "Exporting..." : "Export all CSV"}
+          </Button>
         </div>
 
-        <div style={{ border: "1px solid #eee", borderRadius: 10, overflowX: "auto", overflowY: "hidden" }}>
-          <table style={{ width: "100%", minWidth: 1150, borderCollapse: "collapse", fontSize: 14 }}>
+        <div className="km-table-wrap" style={{ marginTop: 14 }}>
+          <table className="km-table" style={{ minWidth: 1150 }}>
             <thead>
-              <tr style={{ textAlign: "left", background: "#fafafa" }}>
-                <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Email</th>
-                <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>First name</th>
-                <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Allowed/Blocked</th>
-                <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Email status</th>
-                <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Last sent</th>
-                <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Updated</th>
-                <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Invite history</th>
-                <th style={{ padding: 8, borderBottom: "1px solid #eee" }}>Actions</th>
+              <tr>
+                <th>Email</th>
+                <th>First name</th>
+                <th>Allowed / blocked</th>
+                <th>Email status</th>
+                <th>Last sent</th>
+                <th>Updated</th>
+                <th>Invite history</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredInvites.length ? (
                 filteredInvites.map((row) => (
                   <tr key={row.email}>
-                    <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{row.email}</td>
-                    <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{row?.metadata?.first_name || "-"}</td>
-                    <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{row.access_status || row.status || "-"}</td>
-                    <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{row.email_status || "-"}</td>
-                    <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{row.last_sent_at || "-"}</td>
-                    <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>{row.updated_at || "-"}</td>
-                    <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5", maxWidth: 260 }}>
+                    <td>{row.email}</td>
+                    <td>{row?.metadata?.first_name || "-"}</td>
+                    <td>{row.access_status || row.status || "-"}</td>
+                    <td>{row.email_status || "-"}</td>
+                    <td>{row.last_sent_at || "-"}</td>
+                    <td>{row.updated_at || "-"}</td>
+                    <td style={{ maxWidth: 260 }}>
                       {Array.isArray(row.invite_history) && row.invite_history.length ? (
                         <details>
                           <summary style={{ cursor: "pointer" }}>{row.invite_history.length} send(s)</summary>
@@ -511,21 +527,21 @@ export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
                         "-"
                       )}
                     </td>
-                    <td style={{ padding: 8, borderBottom: "1px solid #f5f5f5" }}>
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <button onClick={() => resendInvite(row)} disabled={!isAuthed || busy}>
+                    <td>
+                      <div className="km-row" style={{ gap: 6 }}>
+                        <Button size="sm" onClick={() => resendInvite(row)} disabled={!isAuthed || busy}>
                           Resend
-                        </button>
-                        <button onClick={() => revokeInvite(row.email)} disabled={!isAuthed || busy}>
+                        </Button>
+                        <Button size="sm" onClick={() => revokeInvite(row.email)} disabled={!isAuthed || busy}>
                           Revoke
-                        </button>
+                        </Button>
                       </div>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} style={{ padding: 12, opacity: 0.7 }}>
+                  <td colSpan={8} className="km-table-empty">
                     No invite records loaded.
                   </td>
                 </tr>
@@ -533,10 +549,11 @@ export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
             </tbody>
           </table>
         </div>
-      </div>
+      </Frame>
 
-      <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, marginBottom: 12 }}>
-        <div style={{ fontWeight: 600, marginBottom: 8 }}>E) Email preferences (exact email)</div>
+      <div style={{ height: 24 }} />
+
+      <Frame label="E — Email preferences (exact email)">
         <div style={{ display: "grid", gap: 8 }}>
           <input
             value={emailPrefsEmail}
@@ -552,34 +569,43 @@ export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
             style={{ width: "100%", padding: 8 }}
             disabled={!isAuthed || busy}
           />
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button onClick={loadEmailPrefs} disabled={!isAuthed || busy}>
-              Load Status
-            </button>
-            <button onClick={() => setEmailPrefs(true)} disabled={!isAuthed || busy}>
+          <div className="km-row" style={{ gap: 8 }}>
+            <Button size="sm" variant="primary" onClick={loadEmailPrefs} disabled={!isAuthed || busy}>
+              Load status
+            </Button>
+            <Button size="sm" onClick={() => setEmailPrefs(true)} disabled={!isAuthed || busy}>
               Unsubscribe
-            </button>
-            <button onClick={() => setEmailPrefs(false)} disabled={!isAuthed || busy}>
+            </Button>
+            <Button size="sm" onClick={() => setEmailPrefs(false)} disabled={!isAuthed || busy}>
               Resubscribe
-            </button>
+            </Button>
           </div>
-          <div style={{ fontSize: 13, opacity: 0.85 }}>
+          <div className="km-form-help" style={{ fontStyle: "italic" }}>
             {emailPrefsRecord ? (
               <>
-                Status: {emailPrefsRecord.global_unsubscribed ? "unsubscribed" : "subscribed"} | Updated:{" "}
-                {emailPrefsRecord.updated_at || "-"} | Source: {emailPrefsRecord.source || "-"}
-                {emailPrefsRecord.note ? ` | Note: ${emailPrefsRecord.note}` : ""}
+                Status: <strong>{emailPrefsRecord.global_unsubscribed ? "unsubscribed" : "subscribed"}</strong> ·
+                Updated: {emailPrefsRecord.updated_at || "-"} · Source: {emailPrefsRecord.source || "-"}
+                {emailPrefsRecord.note ? ` · Note: ${emailPrefsRecord.note}` : ""}
               </>
             ) : (
               "Load an email to view current non-essential email preference."
             )}
           </div>
         </div>
-      </div>
+      </Frame>
 
-      {statusMessage ? <div style={{ color: "#065f46", marginBottom: 8 }}>{statusMessage}</div> : null}
-      {errorMessage ? <div style={{ color: "#b00020", marginBottom: 8 }}>{errorMessage}</div> : null}
+      {statusMessage ? (
+        <div style={{ marginTop: 16 }}>
+          <Banner tone="info">{statusMessage}</Banner>
+        </div>
+      ) : null}
+      {errorMessage ? (
+        <div style={{ marginTop: 16 }}>
+          <Banner tone="danger">{errorMessage}</Banner>
+        </div>
+      ) : null}
     </div>
+    </Section>
   );
 }
 

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Banner, Frame, Section, Spinner } from "../theme";
 
 function parseParams() {
   const p = new URLSearchParams(window.location.search || "");
@@ -28,7 +29,7 @@ export default function ExecutorAcceptPage({ apiBase }) {
       if (!hasInputs) return;
       if (!apiBaseNorm) {
         setErrorText(
-          "Confirmation service is not configured for this site variant. Please contact support and include this link."
+          "Confirmation service is not configured for this site variant. Please contact support and include this link.",
         );
         return;
       }
@@ -79,34 +80,56 @@ export default function ExecutorAcceptPage({ apiBase }) {
   }, [apiBaseNorm, hasInputs, params]);
 
   return (
-    <div style={{ padding: 16 }}>
-      <div
-        style={{
-          border: "1px solid #ddd",
-          borderRadius: 10,
-          padding: 16,
-          maxWidth: 760,
-          margin: "0 auto",
-        }}
-      >
-      <div style={{ fontSize: 22, fontWeight: 600, marginBottom: 8 }}>Account Executor Confirmation</div>
-      <div style={{ fontSize: 14, opacity: 0.85, lineHeight: 1.45, marginBottom: 8 }}>
-        {params.owner_name
-          ? `Thank you for being ${params.owner_name}'s trusted account executor in Kinin.`
-          : "Thank you for being a trusted account executor in Kinin."}
-      </div>
-      <div style={{ fontSize: 14, opacity: 0.85, lineHeight: 1.45, marginBottom: 12 }}>
-        Kinin is an AI biographer where people share their stories, memories, and life experiences over time.
-      </div>
-      {!hasInputs ? (
-        <div style={{ color: "#b00020" }}>
-          This confirmation link is missing required parameters. Please use the full link from your email.
+    <Section
+      eyebrow="Account executor"
+      title={
+        <>
+          A letter of<br /><em>confirmation.</em>
+        </>
+      }
+    >
+      <Frame label="Trusted contact">
+        <div className="km-prose" style={{ maxWidth: 640 }}>
+          <p>
+            {params.owner_name
+              ? <>Thank you for being <strong>{params.owner_name}'s</strong> trusted account executor in Kinin.</>
+              : "Thank you for being a trusted account executor in Kinin."}
+          </p>
+          <p>
+            Kinin is an AI biographer where people share their stories,
+            memories, and life experiences over time. Being someone's
+            executor means they trust you to look after the record of their
+            life if they can no longer do so themselves.
+          </p>
         </div>
-      ) : null}
-      {busy ? <div>Confirming...</div> : null}
-      {statusText ? <div style={{ marginTop: 12, color: "#0a6a3b" }}>{statusText}</div> : null}
-      {errorText ? <div style={{ marginTop: 12, color: "#b00020" }}>{errorText}</div> : null}
-      </div>
-    </div>
+
+        {!hasInputs ? (
+          <div style={{ marginTop: 18 }}>
+            <Banner tone="danger">
+              <span>
+                This confirmation link is missing required parameters. Please use the full link from your email.
+              </span>
+            </Banner>
+          </div>
+        ) : null}
+
+        {busy ? (
+          <div className="km-row" style={{ marginTop: 18 }}>
+            <Spinner /> <span className="km-mono-label">Confirming...</span>
+          </div>
+        ) : null}
+
+        {statusText ? (
+          <div style={{ marginTop: 18 }}>
+            <Banner tone="info">{statusText}</Banner>
+          </div>
+        ) : null}
+        {errorText ? (
+          <div style={{ marginTop: 18 }}>
+            <Banner tone="danger">{errorText}</Banner>
+          </div>
+        ) : null}
+      </Frame>
+    </Section>
   );
 }

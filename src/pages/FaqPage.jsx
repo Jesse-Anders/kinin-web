@@ -1,3 +1,5 @@
+import { FaqList, Section } from "../theme";
+
 const FAQ_ITEMS = [
   {
     q: "What is Kinin?",
@@ -43,43 +45,15 @@ const FAQ_ITEMS = [
 
 export default function FaqPage() {
   return (
-    <div style={{ padding: 16, maxWidth: 720 }}>
-      <div style={{ fontSize: 22, fontWeight: 600, marginBottom: 16 }}>
-        Frequently Asked Questions
-      </div>
-
-      {FAQ_ITEMS.map((item, idx) => (
-        <details
-          key={idx}
-          style={{
-            marginBottom: 8,
-            borderBottom: "1px solid #e5e7eb",
-            paddingBottom: 8,
-          }}
-        >
-          <summary
-            style={{
-              cursor: "pointer",
-              fontWeight: 600,
-              fontSize: 15,
-              padding: "8px 0",
-              listStyle: "revert",
-            }}
-          >
-            {item.q}
-          </summary>
-          <div
-            style={{
-              fontSize: 14,
-              lineHeight: 1.6,
-              color: "#333",
-              padding: "4px 0 8px 18px",
-            }}
-          >
-            {item.a}
-          </div>
-        </details>
-      ))}
-    </div>
+    <Section
+      eyebrow="Common questions"
+      title={
+        <>
+          What people<br /><em>ask first.</em>
+        </>
+      }
+    >
+      <FaqList items={FAQ_ITEMS} />
+    </Section>
   );
 }

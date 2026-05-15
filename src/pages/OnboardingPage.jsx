@@ -1,3 +1,5 @@
+import { Banner, Button, Eyebrow, FormRow, Frame, Spinner, TextInput } from "../theme";
+
 function deriveAgeFromDateOfBirth(dateOfBirth) {
   const text = String(dateOfBirth || "").trim();
   if (!text) return null;
@@ -20,6 +22,17 @@ function formatDateLong(dateOfBirth) {
   if (Number.isNaN(dt.getTime())) return "";
   return new Intl.DateTimeFormat(undefined, { dateStyle: "long" }).format(dt);
 }
+
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+
+const STEP_META = {
+  1: { eyebrow: "A welcome", title: <>Welcome to <em>Kinin.</em></> },
+  2: { eyebrow: "A few details", title: <>Tell us a little<br /><em>about you.</em></> },
+  3: { eyebrow: "Trusted contact", title: <>Choose someone<br /><em>you trust.</em></> },
+  4: { eyebrow: "Cadence", title: <>How often should<br />Kinin <em>nudge you?</em></> },
+};
 
 export default function OnboardingPage({
   onboardingStep,
@@ -46,235 +59,226 @@ export default function OnboardingPage({
   const selectedDobText = formatDateLong(bioProfile.date_of_birth);
   const derivedAge = deriveAgeFromDateOfBirth(bioProfile.date_of_birth);
 
+  const meta = STEP_META[step] || STEP_META[1];
+
   return (
-    <div style={{ padding: 16 }}>
-      <div
-        style={{
-          border: "1px solid #ddd",
-          borderRadius: 10,
-          padding: 16,
-          maxWidth: 760,
-          margin: "0 auto",
-          minHeight: 380,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-        }}
-      >
-        <div>
-          <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>{`Onboarding ${step}/4`}</div>
-          {previewMode ? (
-            <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 10 }}>
-              Preview mode: changes here are not saved.
-            </div>
-          ) : null}
-          {step === 1 ? (
-            <div>
-              <div style={{ fontWeight: 600, fontSize: 20, marginBottom: 8 }}>Welcome to Kinin</div>
-              <div style={{ opacity: 0.85, lineHeight: 1.45 }}>
-                Kinin helps you tell the story of your life, one conversation at a time.
-              </div>
-              <div style={{ opacity: 0.85, lineHeight: 1.45, marginTop: 8 }}>
-                Your memories, experiences, and reflections come together as a living, interactive biography&mdash;one
-                your family and friends can engage with conversationally to better understand your story, your
-                memories, and the moments that mattered most.
-              </div>
-              <div style={{ opacity: 0.85, lineHeight: 1.45, marginTop: 8 }}>
-                Before we begin, we&apos;ll ask a few quick questions to personalize your experience and help Kinin
-                support you over time.
-              </div>
-            </div>
-          ) : null}
-          {step === 2 ? (
-            <div style={{ display: "grid", gap: 12 }}>
-              <div style={{ fontWeight: 600, fontSize: 18 }}>Tell us a little about you</div>
-              <label>
-                <div style={{ fontSize: 12, opacity: 0.8 }}>Preferred name *</div>
-                <input
-                  value={bioProfile.preferred_name}
-                  onChange={(e) => setBioProfile((p) => ({ ...p, preferred_name: e.target.value }))}
-                  disabled={busy}
-                  placeholder="Enter your preferred name"
-                  style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
-                />
-                <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>
-                  This is how Kinin will address you in conversation.
+    <div className="km-onboarding">
+      <div className="km-onboarding-progress">
+        <Eyebrow>{`${pad2(step)} / 04 · onboarding`}</Eyebrow>
+        <div className="km-progress" style={{ marginTop: 14, maxWidth: 360 }}>
+          <div className="km-progress-bar" style={{ width: `${(step / 4) * 100}%` }} />
+        </div>
+      </div>
+
+      {previewMode ? (
+        <Banner tone="info">
+          <span><strong>Preview mode.</strong> Changes here are not saved.</span>
+        </Banner>
+      ) : null}
+
+      <h2 className="km-h2" style={{ marginTop: 24 }}>{meta.title}</h2>
+
+      <Frame label={`Step ${pad2(step)} of 04`}>
+        {step === 1 ? (
+          <div className="km-prose" style={{ maxWidth: 640 }}>
+            <p>
+              Kinin helps you tell the story of your life, one conversation at
+              a time.
+            </p>
+            <p>
+              Your memories, experiences, and reflections come together as a
+              living, interactive biography — one your family and friends can
+              engage with conversationally to better understand your story,
+              your memories, and the moments that mattered most.
+            </p>
+            <p>
+              Before we begin, we'll ask a few quick questions to personalize
+              your experience and help Kinin support you over time.
+            </p>
+          </div>
+        ) : null}
+
+        {step === 2 ? (
+          <div className="km-form-grid">
+            <FormRow
+              label="Preferred name"
+              required
+              help="This is how Kinin will address you in conversation."
+            >
+              <TextInput
+                value={bioProfile.preferred_name}
+                onChange={(e) => setBioProfile((p) => ({ ...p, preferred_name: e.target.value }))}
+                disabled={busy}
+                placeholder="Enter your preferred name"
+              />
+            </FormRow>
+
+            <FormRow
+              label="Date of birth"
+              required
+              help="Use the calendar picker to avoid day/month ordering mistakes. Kinin derives your current age from this date."
+            >
+              <TextInput
+                type="date"
+                value={bioProfile.date_of_birth}
+                onChange={(e) => setBioProfile((p) => ({ ...p, date_of_birth: e.target.value }))}
+                disabled={busy}
+                max={new Date().toISOString().slice(0, 10)}
+              />
+              {selectedDobText ? (
+                <div className="km-form-help" style={{ fontStyle: "normal" }}>
+                  Selected date: <strong>{selectedDobText}</strong>
+                  {derivedAge !== null ? (
+                    <>
+                      {" "}· Current age: <strong>{derivedAge}</strong>
+                    </>
+                  ) : null}
                 </div>
-              </label>
-              <label>
-                <div style={{ fontSize: 12, opacity: 0.8 }}>Date of birth *</div>
-                <input
-                  type="date"
-                  value={bioProfile.date_of_birth}
-                  onChange={(e) => setBioProfile((p) => ({ ...p, date_of_birth: e.target.value }))}
-                  disabled={busy}
-                  style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
-                  max={new Date().toISOString().slice(0, 10)}
-                />
-                {selectedDobText ? (
-                  <div style={{ fontSize: 12, opacity: 0.82, marginTop: 6 }}>
-                    Selected date: <b>{selectedDobText}</b>
-                  </div>
-                ) : null}
-                {derivedAge !== null ? (
-                  <div style={{ fontSize: 12, opacity: 0.82, marginTop: 2 }}>
-                    Current age: <b>{derivedAge}</b>
-                  </div>
-                ) : null}
-                <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>
-                  Use the calendar picker to avoid day/month ordering mistakes. Kinin derives your current age from this date.
-                </div>
-              </label>
+              ) : null}
+            </FormRow>
+          </div>
+        ) : null}
+
+        {step === 3 ? (
+          <>
+            <div className="km-prose" style={{ maxWidth: 640, marginBottom: 24 }}>
+              <p>
+                Kinin is designed to preserve your story for the people who
+                matter most. Add someone you trust who may be given access to
+                your Kinin account or biography in the future, according to
+                your account settings.
+              </p>
             </div>
-          ) : null}
-          {step === 3 ? (
-            <div style={{ display: "grid", gap: 12 }}>
-              <div style={{ fontWeight: 600, fontSize: 18 }}>Choose a trusted contact</div>
-              <div style={{ fontSize: 12, opacity: 0.85 }}>
-                Kinin is designed to preserve your story for the people who matter most.
-              </div>
-              <div style={{ fontSize: 12, opacity: 0.85 }}>
-                Add someone you trust who may be given access to your Kinin account or biography in the future,
-                according to your account settings.
-              </div>
-              <label>
-                <div style={{ fontSize: 12, opacity: 0.8 }}>Trusted contact name</div>
-                <input
+            <div className="km-form-grid">
+              <FormRow label="Trusted contact name">
+                <TextInput
                   value={accountExecutor?.name || ""}
                   onChange={(e) => setAccountExecutor((p) => ({ ...p, name: e.target.value }))}
                   disabled={busy}
                   placeholder="Enter their full name"
-                  style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
                 />
-              </label>
-              <label>
-                <div style={{ fontSize: 12, opacity: 0.8 }}>Trusted contact email</div>
-                <input
+              </FormRow>
+              <FormRow label="Trusted contact email">
+                <TextInput
                   value={accountExecutor?.email || ""}
                   onChange={(e) => setAccountExecutor((p) => ({ ...p, email: e.target.value }))}
                   disabled={busy}
                   placeholder="Enter their email address"
-                  style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
                   inputMode="email"
                 />
-              </label>
-              <label>
-                <div style={{ fontSize: 12, opacity: 0.8 }}>Confirm trusted contact email</div>
-                <input
+              </FormRow>
+              <FormRow
+                label="Confirm trusted contact email"
+                error={showExecutorEmailMismatch ? "Email addresses do not match." : ""}
+                help="We'll send them an email to accept the invite and verify the address. You can review or change your trusted contact later in Settings."
+              >
+                <TextInput
                   value={accountExecutor?.confirm_email || ""}
-                  onChange={(e) => setAccountExecutor((p) => ({ ...p, confirm_email: e.target.value }))}
+                  onChange={(e) =>
+                    setAccountExecutor((p) => ({ ...p, confirm_email: e.target.value }))
+                  }
                   disabled={busy}
                   placeholder="Re-enter their email address"
-                  style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
                   inputMode="email"
                 />
-                {showExecutorEmailMismatch ? (
-                  <div style={{ fontSize: 12, color: "#b42318", marginTop: 4 }}>
-                    Email addresses do not match.
-                  </div>
-                ) : null}
-              </label>
-              <div style={{ fontSize: 12, opacity: 0.75 }}>
-                We will send an an email for this person to accept the invite to your Kinin account and to verify their email. You can add, review or change your trusted contact in the settings as well.
+              </FormRow>
+            </div>
+          </>
+        ) : null}
+
+        {step === 4 ? (
+          <>
+            <div className="km-prose" style={{ maxWidth: 640, marginBottom: 24 }}>
+              <p>
+                Life gets busy. Kinin can gently remind you to return when it
+                has been a while since your last conversation.
+              </p>
+            </div>
+            <div>
+              <div className="km-mono-label" style={{ marginBottom: 10 }}>
+                Remind me when I haven't talked with Kinin for
+              </div>
+              <div className="km-radio-list">
+                {[
+                  { value: "1", label: "1 week" },
+                  { value: "2", label: "2 weeks" },
+                  { value: "3", label: "3 weeks" },
+                  { value: "4", label: "4 weeks" },
+                  { value: "0", label: "Never" },
+                ].map((opt) => (
+                  <label key={opt.value} className="km-radio">
+                    <input
+                      type="radio"
+                      name="onboarding-reminder-cadence-weeks"
+                      value={opt.value}
+                      checked={cadenceValue === opt.value}
+                      onChange={(e) =>
+                        setContinuitySettings((prev) => ({
+                          ...prev,
+                          reminder_cadence_weeks: Number(e.target.value),
+                        }))
+                      }
+                      disabled={busy}
+                    />
+                    <span>{opt.label}</span>
+                  </label>
+                ))}
               </div>
             </div>
-          ) : null}
-          {step === 4 ? (
-            <div style={{ display: "grid", gap: 12 }}>
-              <div style={{ fontWeight: 600, fontSize: 18 }}>Choose your reminder rhythm</div>
-              <div style={{ fontSize: 12, opacity: 0.85 }}>
-                Life gets busy. Kinin can gently remind you to return when it has been a while since your last
-                conversation.
+            <div style={{ marginTop: 24 }}>
+              <div className="km-mono-label" style={{ marginBottom: 10 }}>
+                How should Kinin remind me?
               </div>
-              <div>
-                <div style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}>
-                  Remind me when I haven&apos;t talked with Kinin for:
-                </div>
-                <div style={{ display: "grid", gap: 6 }}>
-                  {[
-                    { value: "1", label: "1 week" },
-                    { value: "2", label: "2 weeks" },
-                    { value: "3", label: "3 weeks" },
-                    { value: "4", label: "4 weeks" },
-                    { value: "0", label: "Never" },
-                  ].map((opt) => (
-                    <label key={opt.value} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                      <input
-                        type="radio"
-                        name="onboarding-reminder-cadence-weeks"
-                        value={opt.value}
-                        checked={cadenceValue === opt.value}
-                        onChange={(e) =>
-                          setContinuitySettings((prev) => ({
-                            ...prev,
-                            reminder_cadence_weeks: Number(e.target.value),
-                          }))
-                        }
-                        disabled={busy}
-                      />
-                      <span>{opt.label}</span>
-                    </label>
-                  ))}
-                </div>
+              <div className="km-radio-list">
+                <label className="km-radio">
+                  <input type="radio" checked readOnly disabled={busy} />
+                  <span>Email</span>
+                </label>
+                <label className="km-radio km-radio-disabled">
+                  <input type="radio" disabled />
+                  <span>
+                    Text message <span className="km-muted">— coming soon</span>
+                  </span>
+                </label>
               </div>
-              <div>
-                <div style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}>
-                  How should Kinin remind me?
-                </div>
-                <div style={{ display: "grid", gap: 6 }}>
-                  <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <input type="radio" checked readOnly disabled={busy} />
-                    <span>Email</span>
-                  </label>
-                  <label style={{ display: "flex", gap: 8, alignItems: "center", opacity: 0.65 }}>
-                    <input type="radio" disabled />
-                    <span>Text message — coming soon</span>
-                  </label>
-                </div>
-              </div>
-              <div style={{ fontSize: 12, opacity: 0.75 }}>You can update these settings at any time.</div>
             </div>
+            <div className="km-form-help" style={{ marginTop: 20 }}>
+              You can update these settings at any time.
+            </div>
+          </>
+        ) : null}
+      </Frame>
+
+      <div className="km-form-actions km-form-actions-between">
+        <Button onClick={onBack} disabled={busy || step === 1}>
+          Back
+        </Button>
+        <div className="km-row">
+          {step === 3 ? (
+            <button
+              type="button"
+              onClick={onSkip}
+              disabled={busy}
+              className="km-link-button"
+            >
+              Skip for now
+            </button>
           ) : null}
-        </div>
-        <div style={{ marginTop: 18, display: "flex", justifyContent: "space-between" }}>
-          <button onClick={onBack} disabled={busy || step === 1}>
-            {busy ? (
-              <>
-                <span className="inline-spinner" aria-hidden="true" />
-                Back
-              </>
-            ) : (
-              "Back"
-            )}
-          </button>
-          <div style={{ display: "flex", gap: 8 }}>
-            {step === 3 ? (
-              <button
-                type="button"
-                onClick={onSkip}
-                disabled={busy}
-                style={{ background: "transparent", border: "none", textDecoration: "underline", opacity: 0.85 }}
-              >
-                Skip for now
-              </button>
-            ) : null}
-            {step < 4 ? (
-              <button onClick={onContinue} disabled={busy}>
-                {step === 1 ? "Let's begin" : "Continue"}
-              </button>
-            ) : (
-              <button onClick={onBegin} disabled={busy}>
-                {busy ? (
-                  <>
-                    <span className="inline-spinner" aria-hidden="true" />
-                    Completing...
-                  </>
-                ) : (
-                  beginLabel
-                )}
-              </button>
-            )}
-          </div>
+          {step < 4 ? (
+            <Button variant="primary" onClick={onContinue} disabled={busy}>
+              {step === 1 ? "Let's begin" : "Continue"}
+            </Button>
+          ) : (
+            <Button variant="primary" onClick={onBegin} disabled={busy}>
+              {busy ? (
+                <>
+                  <Spinner /> Completing...
+                </>
+              ) : (
+                beginLabel
+              )}
+            </Button>
+          )}
         </div>
       </div>
     </div>

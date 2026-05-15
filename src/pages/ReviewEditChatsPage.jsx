@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Banner, Button, Frame, Section, Spinner, TextArea, TextInput } from "../theme";
 
 function parseApiPayload(text) {
   try {
@@ -207,8 +208,8 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
                 edited_at: parsed?.item?.edited_at || parsed?.edited_at || row?.edited_at,
                 edited_by: parsed?.item?.edited_by || parsed?.edited_by || row?.edited_by,
               }
-            : row
-        )
+            : row,
+        ),
       );
       setStatus("Turn updated.");
       setEditRowKey("");
@@ -221,88 +222,120 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
   }
 
   return (
-    <div style={{ border: "1px solid #ddd", borderRadius: 10, padding: 12, marginBottom: 12 }}>
-      <div style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>Review / Edit Chats</div>
-      <div style={{ opacity: 0.75, marginBottom: 12 }}>
-        Search your past chats by text/date and correct your own user turns.
+    <Section
+      eyebrow="Review &amp; edit"
+      title={
+        <>
+          Your conversations,<br /><em>in your hands.</em>
+        </>
+      }
+    >
+      <div className="km-prose" style={{ maxWidth: 680, marginBottom: 32 }}>
+        <p>
+          Search your past chats by text or date, and correct your own user
+          turns. Kinin's replies are kept intact as a record of what was said.
+        </p>
       </div>
 
-      <div style={{ display: "grid", gap: 8, marginBottom: 10 }}>
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search text"
-          disabled={!isAuthed || busy || editBusy}
-          style={{ padding: 9 }}
-        />
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          <button type="button" onClick={() => applyDatePreset(7)} disabled={!isAuthed || busy || editBusy}>
-            Last 7 days
-          </button>
-          <button type="button" onClick={() => applyDatePreset(30)} disabled={!isAuthed || busy || editBusy}>
-            Last 30 days
-          </button>
-          <button type="button" onClick={() => applyDatePreset("month")} disabled={!isAuthed || busy || editBusy}>
-            This month
-          </button>
-          <button type="button" onClick={() => applyDatePreset("all")} disabled={!isAuthed || busy || editBusy}>
-            All time
-          </button>
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            aria-label="From date"
-            disabled={!isAuthed || busy || editBusy}
-            style={{ flex: 1, padding: 9 }}
-          />
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            aria-label="To date"
-            disabled={!isAuthed || busy || editBusy}
-            style={{ flex: 1, padding: 9 }}
-          />
-        </div>
-        {invalidDateRange ? (
-          <div style={{ color: "#b00020", fontSize: 13 }}>`From` date must be on or before `To` date.</div>
-        ) : null}
-        <div style={{ fontSize: 13, opacity: 0.72 }}>{activeFilterSummary}</div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            onClick={() => searchChats({ append: false })}
-            disabled={!isAuthed || busy || editBusy || invalidDateRange}
-          >
-            {busy ? "Searching..." : "Search"}
-          </button>
-          <button
-            onClick={() => searchChats({ append: true })}
-            disabled={!isAuthed || busy || !nextKey || editBusy || invalidDateRange}
-          >
-            Load More
-          </button>
-          <button type="button" onClick={clearFilters} disabled={!isAuthed || busy || editBusy}>
-            Clear Filters
-          </button>
-        </div>
-      </div>
+      <Frame label="Filters">
+        <div className="km-stack" style={{ gap: 18 }}>
+          <div>
+            <div className="km-mono-label" style={{ marginBottom: 6 }}>Search text</div>
+            <TextInput
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Type a phrase, name, place..."
+              disabled={!isAuthed || busy || editBusy}
+            />
+          </div>
 
-      {status ? <div style={{ color: "#065f46", marginBottom: 8 }}>{status}</div> : null}
-      {error ? <div style={{ color: "#b00020", marginBottom: 8 }}>{error}</div> : null}
+          <div className="km-row" style={{ gap: 8 }}>
+            <Button size="sm" onClick={() => applyDatePreset(7)} disabled={!isAuthed || busy || editBusy}>
+              Last 7 days
+            </Button>
+            <Button size="sm" onClick={() => applyDatePreset(30)} disabled={!isAuthed || busy || editBusy}>
+              Last 30 days
+            </Button>
+            <Button size="sm" onClick={() => applyDatePreset("month")} disabled={!isAuthed || busy || editBusy}>
+              This month
+            </Button>
+            <Button size="sm" onClick={() => applyDatePreset("all")} disabled={!isAuthed || busy || editBusy}>
+              All time
+            </Button>
+          </div>
 
-      <div
-        style={{
-          border: "1px solid #eee",
-          borderRadius: 10,
-          padding: 12,
-          background: "#fafafa",
-          maxHeight: 460,
-          overflow: "auto",
-        }}
-      >
+          <div className="km-row" style={{ gap: 24 }}>
+            <div style={{ flex: 1 }}>
+              <div className="km-mono-label" style={{ marginBottom: 6 }}>From</div>
+              <TextInput
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                aria-label="From date"
+                disabled={!isAuthed || busy || editBusy}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div className="km-mono-label" style={{ marginBottom: 6 }}>To</div>
+              <TextInput
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                aria-label="To date"
+                disabled={!isAuthed || busy || editBusy}
+              />
+            </div>
+          </div>
+
+          {invalidDateRange ? (
+            <Banner tone="danger">
+              <span>"From" date must be on or before "To" date.</span>
+            </Banner>
+          ) : null}
+
+          <div className="km-form-help" style={{ fontStyle: "italic" }}>
+            {activeFilterSummary}
+          </div>
+
+          <div className="km-row">
+            <Button
+              variant="primary"
+              onClick={() => searchChats({ append: false })}
+              disabled={!isAuthed || busy || editBusy || invalidDateRange}
+            >
+              {busy ? (
+                <>
+                  <Spinner /> Searching...
+                </>
+              ) : (
+                "Search"
+              )}
+            </Button>
+            <Button
+              onClick={() => searchChats({ append: true })}
+              disabled={!isAuthed || busy || !nextKey || editBusy || invalidDateRange}
+            >
+              Load more
+            </Button>
+            <Button onClick={clearFilters} disabled={!isAuthed || busy || editBusy}>
+              Clear
+            </Button>
+          </div>
+        </div>
+      </Frame>
+
+      {status ? (
+        <div style={{ marginTop: 20 }}>
+          <Banner tone="info">{status}</Banner>
+        </div>
+      ) : null}
+      {error ? (
+        <div style={{ marginTop: 20 }}>
+          <Banner tone="danger">{error}</Banner>
+        </div>
+      ) : null}
+
+      <div className="km-review-results">
         {orderedItems.length ? (
           orderedItems.map((item, idx) => {
             const rowTurnId = String(item?.turn_id || "");
@@ -311,50 +344,59 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
             const isEditing = rowTurnId && rowKey === editRowKey;
             const speakerLabel = rowRole === "assistant" ? "Kinin" : userDisplayName;
             return (
-              <div key={`${rowKey}-${idx}`} style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, opacity: 0.85, marginBottom: 4 }}>
-                  {speakerLabel}:
-                </div>
-                {!isEditing ? (
-                  <div style={{ marginBottom: 6, whiteSpace: "pre-wrap" }}>{item?.content || ""}</div>
-                ) : (
-                  <textarea
-                    value={editDraft}
-                    onChange={(e) => setEditDraft(e.target.value)}
-                    style={{ width: "100%", minHeight: 100, boxSizing: "border-box", padding: 8, marginBottom: 6 }}
-                    disabled={editBusy}
-                  />
-                )}
-                {item?.edited_at ? (
-                  <div style={{ fontSize: 12, opacity: 0.65, marginBottom: 6 }}>
-                    Edited at: {formatEditedAt(item.edited_at)}
-                  </div>
-                ) : null}
-                {rowRole === "user" ? (
-                  !isEditing ? (
-                    <button onClick={() => startEdit(item)} disabled={editBusy || busy}>
-                      Edit
-                    </button>
+              <div key={`${rowKey}-${idx}`} className={`km-chat-row km-chat-row-${rowRole}`}>
+                <div className="km-chat-tag">{speakerLabel}</div>
+                <div className="km-chat-bubble" style={{ width: "100%" }}>
+                  {!isEditing ? (
+                    <div style={{ whiteSpace: "pre-wrap" }}>{item?.content || ""}</div>
                   ) : (
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button onClick={() => submitEdit(item)} disabled={editBusy || busy}>
-                        {editBusy ? "Saving..." : "Save"}
-                      </button>
-                      <button onClick={cancelEdit} disabled={editBusy}>
-                        Cancel
-                      </button>
+                    <TextArea
+                      value={editDraft}
+                      onChange={(e) => setEditDraft(e.target.value)}
+                      disabled={editBusy}
+                      rows={5}
+                      style={{ marginBottom: 8 }}
+                    />
+                  )}
+                  {item?.edited_at ? (
+                    <div className="km-mono-label" style={{ marginTop: 6 }}>
+                      Edited · {formatEditedAt(item.edited_at)}
                     </div>
-                  )
-                ) : (
-                  <div style={{ fontSize: 12, opacity: 0.6 }}>Kinin's text cannot be edited.</div>
-                )}
+                  ) : null}
+                  {rowRole === "user" ? (
+                    !isEditing ? (
+                      <div style={{ marginTop: 10 }}>
+                        <Button size="sm" onClick={() => startEdit(item)} disabled={editBusy || busy}>
+                          Edit
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="km-row" style={{ marginTop: 10 }}>
+                        <Button size="sm" variant="primary" onClick={() => submitEdit(item)} disabled={editBusy || busy}>
+                          {editBusy ? (
+                            <>
+                              <Spinner /> Saving...
+                            </>
+                          ) : (
+                            "Save"
+                          )}
+                        </Button>
+                        <Button size="sm" onClick={cancelEdit} disabled={editBusy}>
+                          Cancel
+                        </Button>
+                      </div>
+                    )
+                  ) : (
+                    <div className="km-form-help">Kinin's text cannot be edited.</div>
+                  )}
+                </div>
               </div>
             );
           })
         ) : (
-          <div style={{ opacity: 0.7 }}>No turns loaded yet.</div>
+          <div className="km-chat-empty">No turns loaded yet. Use the filters above and search.</div>
         )}
       </div>
-    </div>
+    </Section>
   );
 }

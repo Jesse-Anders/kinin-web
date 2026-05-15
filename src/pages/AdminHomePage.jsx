@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchAuthSession } from "aws-amplify/auth";
+import { Banner, Button, Frame, Section, Spinner } from "../theme";
 
 export default function AdminHomePage({ isAuthed, getAccessToken, apiBase, setActivePage }) {
   // ── Admin state ──
@@ -485,82 +486,49 @@ export default function AdminHomePage({ isAuthed, getAccessToken, apiBase, setAc
 
   // ── Render ──
 
+  const adminLinks = [
+    { key: "admin-onboarding-preview", label: "Preview onboarding" },
+    { key: "admin-crm", label: "CRM · Invites" },
+    { key: "admin-metrics", label: "Metrics" },
+    { key: "admin-user-purge", label: "User purge" },
+    { key: "admin-theme", label: "Theme Studio" },
+  ];
+
   return (
-    <div
-      style={{
-        border: "1px solid #ddd",
-        borderRadius: 10,
-        padding: 12,
-        marginBottom: 12,
-      }}
+    <Section
+      eyebrow="Admin · Home"
+      title={
+        <>
+          The <em>operating</em><br />
+          panel.
+        </>
+      }
     >
-      <div style={{ marginBottom: 12 }}>
-        <button
-          onClick={() => setActivePage("admin-onboarding-preview")}
-          style={{
-            background: "transparent",
-            border: "none",
-            color: "#2563eb",
-            cursor: "pointer",
-            fontSize: 13,
-            padding: 0,
-            textDecoration: "underline",
-          }}
-        >
-          Preview Onboarding &rarr;
-        </button>
-        <div style={{ height: 6 }} />
-        <button
-          onClick={() => setActivePage("admin-crm")}
-          style={{
-            background: "transparent",
-            border: "none",
-            color: "#2563eb",
-            cursor: "pointer",
-            fontSize: 13,
-            padding: 0,
-            textDecoration: "underline",
-          }}
-        >
-          Admin CRM &rarr;
-        </button>
-        <div style={{ height: 6 }} />
-        <button
-          onClick={() => setActivePage("admin-metrics")}
-          style={{
-            background: "transparent",
-            border: "none",
-            color: "#2563eb",
-            cursor: "pointer",
-            fontSize: 13,
-            padding: 0,
-            textDecoration: "underline",
-          }}
-        >
-          Admin Metrics &rarr;
-        </button>
-        <div style={{ height: 6 }} />
-        <button
-          onClick={() => setActivePage("admin-user-purge")}
-          style={{
-            background: "transparent",
-            border: "none",
-            color: "#2563eb",
-            cursor: "pointer",
-            fontSize: 13,
-            padding: 0,
-            textDecoration: "underline",
-          }}
-        >
-          Admin User Purge &rarr;
-        </button>
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <b>Admin Lookup</b>
-        <div style={{ opacity: 0.7, fontSize: 12 }}>
+      <div className="km-admin-page">
+      <Frame label="Navigate">
+        <div className="km-row" style={{ gap: 12, flexWrap: "wrap" }}>
+          {adminLinks.map((link) => (
+            <button
+              key={link.key}
+              type="button"
+              onClick={() => setActivePage(link.key)}
+              className="km-link-button"
+            >
+              {link.label} →
+            </button>
+          ))}
+        </div>
+      </Frame>
+
+      <div style={{ height: 24 }} />
+
+      <div className="km-stack" style={{ gap: 4 }}>
+        <div className="km-mono-label">Admin lookup</div>
+        <div className="km-prose" style={{ maxWidth: 560, fontSize: 15 }}>
           Search by username and/or email to find a user, then fetch overview.
         </div>
       </div>
+      <div style={{ height: 16 }} />
       <div style={{ display: "grid", gap: 8, marginBottom: 8 }}>
         <input
           value={lookupUsername}
@@ -1023,12 +991,13 @@ export default function AdminHomePage({ isAuthed, getAccessToken, apiBase, setAc
           </button>
           {forceError ? <div style={{ color: "#b00020" }}>{forceError}</div> : null}
           {forceResult ? (
-            <pre style={{ whiteSpace: "pre-wrap", margin: 0, background: "#fafafa", padding: 8, borderRadius: 6, border: "1px solid #eee", fontSize: 12 }}>
+            <pre className="km-pre">
               {JSON.stringify(forceResult, null, 2)}
             </pre>
           ) : null}
         </div>
       </div>
-    </div>
+      </div>
+    </Section>
   );
 }

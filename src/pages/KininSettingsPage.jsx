@@ -1,3 +1,5 @@
+import { Banner, Button, FormRow, Frame, Section, Skeleton, Spinner, TextInput } from "../theme";
+
 function deriveAgeFromDateOfBirth(dateOfBirth) {
   const text = String(dateOfBirth || "").trim();
   if (!text) return null;
@@ -65,227 +67,197 @@ export default function KininSettingsPage({
   const resendButtonLabel = hasInviteBeenSent ? "Resend invite" : "Send invite";
   const selectedDobText = formatDateLong(bioProfile.date_of_birth);
   const derivedAge = deriveAgeFromDateOfBirth(bioProfile.date_of_birth);
-  const sectionCardStyle = {
-    border: "1px solid #d8d8d8",
-    borderRadius: 10,
-    padding: 12,
-    background: "#fafafa",
-    display: "grid",
-    gap: 10,
-  };
 
   return (
-    <div style={{ padding: 16 }}>
-      <div
-        style={{
-          border: "1px solid #ddd",
-          borderRadius: 10,
-          padding: 12,
-          marginBottom: 12,
-          background: "#fcfcfc",
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <b>Kinin Settings</b>
-            <div style={{ opacity: 0.7, fontSize: 12 }}>
-              {profileSchema?.title || "Settings"} (schema v{profileSchema?.version || "—"})
-            </div>
-          </div>
-          <button onClick={onClose} disabled={profileBusy}>
-            Close
-          </button>
-        </div>
+    <Section
+      eyebrow="Kinin Settings"
+      title={
+        <>
+          Your <em>preferences</em>,
+          <br />plainly stated.
+        </>
+      }
+    >
+      <div className="km-mono-label" style={{ marginBottom: 24 }}>
+        {profileSchema?.title || "Settings"} · schema v{profileSchema?.version || "—"}
+      </div>
 
-        <div style={{ marginTop: 12, display: "grid", gap: 14 }}>
-          {profileNotice ? (
-            <div style={{ background: "#e8f6ee", color: "#0a6a3b", padding: 10, borderRadius: 8 }}>
-              {profileNotice}
-            </div>
-          ) : null}
-          {showInitialLoader ? (
-            <div style={{ display: "grid", gap: 10 }}>
-              <div className="loading-skeleton loading-skeleton-line" />
-              <div className="loading-skeleton loading-skeleton-line short" />
-              <div className="loading-skeleton loading-skeleton-line" />
-            </div>
-          ) : null}
-          <div style={sectionCardStyle}>
-            <div style={{ fontWeight: 600, fontSize: 14 }}>Profile</div>
-            <label>
-              <div style={{ fontSize: 12, opacity: 0.8 }}>Preferred name *</div>
-              <input
+      {profileNotice ? (
+        <div style={{ marginBottom: 20 }}>
+          <Banner tone="info">{profileNotice}</Banner>
+        </div>
+      ) : null}
+
+      {showInitialLoader ? (
+        <div style={{ display: "grid", gap: 10, maxWidth: 480, marginBottom: 24 }}>
+          <Skeleton />
+          <Skeleton short />
+          <Skeleton />
+        </div>
+      ) : null}
+
+      <div className="km-stack" style={{ gap: 32 }}>
+        <Frame label="Profile">
+          <div className="km-form-grid">
+            <FormRow label="Preferred name" required>
+              <TextInput
                 value={bioProfile.preferred_name}
                 onChange={(e) => setBioProfile((p) => ({ ...p, preferred_name: e.target.value }))}
                 disabled={profileBusy}
-                style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
               />
-            </label>
-            <label>
-              <div style={{ fontSize: 12, opacity: 0.8 }}>Date of birth *</div>
-              <input
+            </FormRow>
+            <FormRow
+              label="Date of birth"
+              required
+              help="Use the calendar picker to avoid day/month ordering mistakes. Kinin derives your current age from this date."
+            >
+              <TextInput
                 type="date"
                 value={bioProfile.date_of_birth}
                 onChange={(e) => setBioProfile((p) => ({ ...p, date_of_birth: e.target.value }))}
                 disabled={profileBusy}
-                style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
                 max={new Date().toISOString().slice(0, 10)}
               />
               {selectedDobText ? (
-                <div style={{ fontSize: 12, opacity: 0.82, marginTop: 6 }}>
-                  Selected date: <b>{selectedDobText}</b>
+                <div className="km-form-help" style={{ fontStyle: "normal" }}>
+                  Selected date: <strong>{selectedDobText}</strong>
+                  {derivedAge !== null ? (
+                    <>
+                      {" "}· Current age: <strong>{derivedAge}</strong>
+                    </>
+                  ) : null}
                 </div>
               ) : null}
-              {derivedAge !== null ? (
-                <div style={{ fontSize: 12, opacity: 0.82, marginTop: 2 }}>
-                  Current age: <b>{derivedAge}</b>
-                </div>
-              ) : null}
-              <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>
-                Use the calendar picker to avoid day/month ordering mistakes. Kinin derives your current age from this date.
-              </div>
-            </label>
+            </FormRow>
           </div>
-          <div style={sectionCardStyle}>
-            <div style={{ fontWeight: 600, fontSize: 14 }}>Reminder Rhythm</div>
-            <div style={{ fontSize: 12, opacity: 0.85 }}>
-              Choose how long you can go absent before Kinin get&apos;s back in touch.
+        </Frame>
+
+        <Frame label="Reminder rhythm">
+          <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
+            <p>Choose how long you can go absent before Kinin gets back in touch.</p>
+          </div>
+          <div>
+            <div className="km-mono-label" style={{ marginBottom: 10 }}>
+              Remind me when I haven't talked with Kinin for
             </div>
-            <div>
-              <div style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}>
-                Remind me when I haven&apos;t talked with Kinin for:
-              </div>
-              <div style={{ display: "grid", gap: 6 }}>
-                {[
-                  { value: "1", label: "1 week" },
-                  { value: "2", label: "2 weeks" },
-                  { value: "3", label: "3 weeks" },
-                  { value: "4", label: "4 weeks" },
-                  { value: "0", label: "Never" },
-                ].map((opt) => (
-                  <label key={opt.value} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <input
-                      type="radio"
-                      name="reminder-cadence-weeks"
-                      value={opt.value}
-                      checked={cadenceValue === opt.value}
-                      onChange={(e) =>
-                        setContinuitySettings((prev) => ({
-                          ...prev,
-                          reminder_cadence_weeks: Number(e.target.value),
-                        }))
-                      }
-                      disabled={profileBusy}
-                    />
-                    <span>{opt.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}>
-                How should Kinin remind me?
-              </div>
-              <div style={{ display: "grid", gap: 6 }}>
-                <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <input type="radio" checked readOnly disabled={profileBusy} />
-                  <span>Email</span>
+            <div className="km-radio-list">
+              {[
+                { value: "1", label: "1 week" },
+                { value: "2", label: "2 weeks" },
+                { value: "3", label: "3 weeks" },
+                { value: "4", label: "4 weeks" },
+                { value: "0", label: "Never" },
+              ].map((opt) => (
+                <label key={opt.value} className="km-radio">
+                  <input
+                    type="radio"
+                    name="reminder-cadence-weeks"
+                    value={opt.value}
+                    checked={cadenceValue === opt.value}
+                    onChange={(e) =>
+                      setContinuitySettings((prev) => ({
+                        ...prev,
+                        reminder_cadence_weeks: Number(e.target.value),
+                      }))
+                    }
+                    disabled={profileBusy}
+                  />
+                  <span>{opt.label}</span>
                 </label>
-                <label style={{ display: "flex", gap: 8, alignItems: "center", opacity: 0.65 }}>
-                  <input type="radio" disabled />
-                  <span>Text (coming soon)</span>
-                </label>
-              </div>
+              ))}
             </div>
           </div>
-          <div style={sectionCardStyle}>
-            <div style={{ fontWeight: 600, fontSize: 14 }}>Account Executor</div>
-            <div style={{ fontSize: 12, opacity: 0.85 }}>
-              Optional but strongly encouraged. Add a family member or close friend who can be designated as your
-              account executor.
+          <div style={{ marginTop: 20 }}>
+            <div className="km-mono-label" style={{ marginBottom: 10 }}>
+              How should Kinin remind me?
             </div>
-            <label>
-              <div style={{ fontSize: 12, opacity: 0.8 }}>Executor name</div>
-              <input
+            <div className="km-radio-list">
+              <label className="km-radio">
+                <input type="radio" checked readOnly disabled={profileBusy} />
+                <span>Email</span>
+              </label>
+              <label className="km-radio km-radio-disabled">
+                <input type="radio" disabled />
+                <span>Text <span className="km-muted">— coming soon</span></span>
+              </label>
+            </div>
+          </div>
+        </Frame>
+
+        <Frame label="Account executor">
+          <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
+            <p>
+              Optional but strongly encouraged. Add a family member or close
+              friend who can be designated as your account executor.
+            </p>
+          </div>
+          <div className="km-form-grid">
+            <FormRow label="Executor name">
+              <TextInput
                 value={accountExecutor?.name || ""}
                 onChange={(e) => setAccountExecutor((p) => ({ ...p, name: e.target.value }))}
                 disabled={profileBusy}
-                style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
               />
-            </label>
-            <label>
-              <div style={{ fontSize: 12, opacity: 0.8 }}>Executor email</div>
-              <input
+            </FormRow>
+            <FormRow label="Executor email">
+              <TextInput
                 value={accountExecutor?.email || ""}
-                onChange={(e) =>
-                  setAccountExecutor((p) => ({
-                    ...p,
-                    email: e.target.value,
-                  }))
-                }
+                onChange={(e) => setAccountExecutor((p) => ({ ...p, email: e.target.value }))}
                 disabled={profileBusy}
-                style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
                 inputMode="email"
               />
-            </label>
-            <label>
-              <div style={{ fontSize: 12, opacity: 0.8 }}>Confirm executor email</div>
-              <input
+            </FormRow>
+            <FormRow
+              label="Confirm executor email"
+              error={showExecutorEmailMismatch ? "Email addresses do not match." : ""}
+            >
+              <TextInput
                 value={accountExecutor?.confirm_email || ""}
-                onChange={(e) =>
-                  setAccountExecutor((p) => ({
-                    ...p,
-                    confirm_email: e.target.value,
-                  }))
-                }
+                onChange={(e) => setAccountExecutor((p) => ({ ...p, confirm_email: e.target.value }))}
                 disabled={profileBusy}
-                style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
                 inputMode="email"
               />
-              {showExecutorEmailMismatch ? (
-                <div style={{ fontSize: 12, color: "#b42318", marginTop: 4 }}>
-                  Email addresses do not match.
-                </div>
-              ) : null}
-            </label>
-            {hasExistingExecutor ? (
-              <div style={{ fontSize: 12, opacity: 0.75 }}>
-                Existing executor on file: <b>{accountExecutor.name}</b> ({accountExecutor.email})
-              </div>
-            ) : null}
-            {executorStatusLabel ? (
-              <div style={{ fontSize: 12, opacity: 0.75 }}>
-                Status: <b>{executorStatusLabel}</b>
-              </div>
-            ) : null}
-            {hasExecutorDetails ? (
-              <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={resendAccountExecutorInvite} disabled={profileBusy}>
-                  {resendButtonLabel}
-                </button>
-                <button onClick={removeAccountExecutor} disabled={profileBusy}>
-                  Remove Executor
-                </button>
-              </div>
-            ) : null}
+            </FormRow>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={saveProfile} disabled={profileBusy}>
-              {profileBusy ? (
-                <>
-                  <span className="inline-spinner" aria-hidden="true" />
-                  Saving...
-                </>
-              ) : (
-                "Save"
-              )}
-            </button>
-            <button onClick={onClose} disabled={profileBusy}>
-              Cancel
-            </button>
-          </div>
-        </div>
+
+          {hasExistingExecutor ? (
+            <div className="km-form-help" style={{ fontStyle: "normal", marginTop: 18 }}>
+              Existing executor on file: <strong>{accountExecutor.name}</strong> ({accountExecutor.email})
+            </div>
+          ) : null}
+          {executorStatusLabel ? (
+            <div className="km-form-help" style={{ fontStyle: "normal", marginTop: 4 }}>
+              Status: <strong>{executorStatusLabel}</strong>
+            </div>
+          ) : null}
+
+          {hasExecutorDetails ? (
+            <div className="km-row" style={{ marginTop: 18 }}>
+              <Button onClick={resendAccountExecutorInvite} disabled={profileBusy}>
+                {resendButtonLabel}
+              </Button>
+              <Button onClick={removeAccountExecutor} disabled={profileBusy}>
+                Remove executor
+              </Button>
+            </div>
+          ) : null}
+        </Frame>
       </div>
-    </div>
+
+      <div className="km-form-actions">
+        <Button onClick={onClose} disabled={profileBusy}>
+          Cancel
+        </Button>
+        <Button variant="primary" onClick={saveProfile} disabled={profileBusy}>
+          {profileBusy ? (
+            <>
+              <Spinner /> Saving...
+            </>
+          ) : (
+            "Save"
+          )}
+        </Button>
+      </div>
+    </Section>
   );
 }

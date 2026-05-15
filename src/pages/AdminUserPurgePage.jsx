@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Banner, Button, FormRow, Frame, Section, Spinner, TextInput } from "../theme";
 
 export default function AdminUserPurgePage({ isAuthed, getAccessToken, apiBase, setActivePage }) {
   const [targetUserId, setTargetUserId] = useState(() => localStorage.getItem("admin_user_id") || "");
@@ -45,95 +46,96 @@ export default function AdminUserPurgePage({ isAuthed, getAccessToken, apiBase, 
   }
 
   return (
-    <div style={{ border: "1px solid #ddd", borderRadius: 10, padding: 12, marginBottom: 12 }}>
-      <div style={{ marginBottom: 10 }}>
-        <button
-          onClick={() => setActivePage("admin")}
-          style={{
-            background: "transparent",
-            border: "none",
-            color: "#2563eb",
-            cursor: "pointer",
-            fontSize: 13,
-            padding: 0,
-            textDecoration: "underline",
-          }}
-        >
-          &larr; Back to Admin Home
-        </button>
-      </div>
-
-      <div
-        style={{
-          border: "1px solid #f5c2c7",
-          background: "#fff5f5",
-          borderRadius: 10,
-          padding: 12,
-          marginBottom: 12,
-        }}
-      >
-        <div style={{ fontWeight: 600, marginBottom: 6 }}>Admin User Data Purge</div>
-        <div style={{ fontSize: 13, opacity: 0.85 }}>
-          Permanently deletes S3 archive objects and DynamoDB rows for: ConversationTurns, UserState,
-          UserStepState, kinin-user-idempotency, kinin-user-lifecycle-crm,
-          kinin-user-entitlement-records, user_relationships, and Zep memory.
-        </div>
-        <div style={{ fontSize: 13, opacity: 0.85, marginTop: 6 }}>
-          Cognito auth user is <b>not</b> deleted by this action. Delete the auth user manually in Cognito.
-        </div>
-      </div>
-
-      <div style={{ display: "grid", gap: 10 }}>
-        <label>
-          <div style={{ fontSize: 12, opacity: 0.8 }}>Target user id (Cognito sub)</div>
-          <input
-            value={targetUserId}
-            onChange={(e) => {
-              setTargetUserId(e.target.value);
-              localStorage.setItem("admin_user_id", e.target.value);
-            }}
-            style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
-            placeholder="target_user_id"
-            disabled={busy || !isAuthed}
-          />
-        </label>
-
-        <label>
-          <div style={{ fontSize: 12, opacity: 0.8 }}>Admin password</div>
-          <input
-            type="password"
-            value={adminPassword}
-            onChange={(e) => setAdminPassword(e.target.value)}
-            style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
-            placeholder="Your current admin password"
-            disabled={busy || !isAuthed}
-            autoComplete="current-password"
-          />
-        </label>
-
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button onClick={purgeUser} disabled={!isAuthed || busy || !targetUserId.trim() || !adminPassword.trim()}>
-            {busy ? "Purging..." : "Purge User Data"}
+    <Section
+      eyebrow="Admin · User purge"
+      title={
+        <>
+          A <em>destructive</em><br />
+          operation.
+        </>
+      }
+    >
+      <div className="km-admin-page">
+        <div style={{ marginBottom: 18 }}>
+          <button
+            type="button"
+            onClick={() => setActivePage("admin")}
+            className="km-link-button"
+          >
+            ← Back to Admin Home
           </button>
         </div>
 
-        {error ? <div style={{ color: "#b00020" }}>{error}</div> : null}
+        <Frame label="What this does">
+          <div className="km-prose" style={{ maxWidth: 720 }}>
+            <p>
+              <strong>Permanently deletes</strong> S3 archive objects and DynamoDB rows for:
+              ConversationTurns, UserState, UserStepState, kinin-user-idempotency,
+              kinin-user-lifecycle-crm, kinin-user-entitlement-records, user_relationships,
+              and Zep memory.
+            </p>
+            <p>
+              The Cognito auth user is <strong>not</strong> deleted by this
+              action. Delete the auth user manually in Cognito if needed.
+            </p>
+          </div>
+        </Frame>
+
+        <div style={{ height: 24 }} />
+
+        <Frame label="Run">
+          <div className="km-form-grid">
+            <FormRow label="Target user id (Cognito sub)">
+              <TextInput
+                value={targetUserId}
+                onChange={(e) => {
+                  setTargetUserId(e.target.value);
+                  localStorage.setItem("admin_user_id", e.target.value);
+                }}
+                placeholder="target_user_id"
+                disabled={busy || !isAuthed}
+              />
+            </FormRow>
+            <FormRow label="Admin password">
+              <TextInput
+                type="password"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                placeholder="Your current admin password"
+                disabled={busy || !isAuthed}
+                autoComplete="current-password"
+              />
+            </FormRow>
+          </div>
+
+          <div className="km-form-actions">
+            <Button
+              variant="danger"
+              onClick={purgeUser}
+              disabled={!isAuthed || busy || !targetUserId.trim() || !adminPassword.trim()}
+            >
+              {busy ? (
+                <>
+                  <Spinner /> Purging...
+                </>
+              ) : (
+                "Purge user data"
+              )}
+            </Button>
+          </div>
+        </Frame>
+
+        {error ? (
+          <div style={{ marginTop: 20 }}>
+            <Banner tone="danger">{error}</Banner>
+          </div>
+        ) : null}
         {result ? (
-          <pre
-            style={{
-              whiteSpace: "pre-wrap",
-              margin: 0,
-              background: "#fafafa",
-              padding: 8,
-              borderRadius: 6,
-              border: "1px solid #eee",
-              fontSize: 12,
-            }}
-          >
-            {JSON.stringify(result, null, 2)}
-          </pre>
+          <div style={{ marginTop: 20 }}>
+            <pre className="km-pre">{JSON.stringify(result, null, 2)}</pre>
+          </div>
         ) : null}
       </div>
-    </div>
+    </Section>
   );
 }

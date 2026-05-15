@@ -1,3 +1,5 @@
+import { Banner, Button, FormRow, Section, Spinner, TextArea, TextInput } from "../theme";
+
 export default function ContactPage({
   contactName,
   setContactName,
@@ -9,48 +11,66 @@ export default function ContactPage({
   contactStatus,
   submitContact,
 }) {
+  const isError = contactStatus && /error|failed|invalid|missing/i.test(contactStatus);
   return (
-    <div style={{ padding: 16, maxWidth: 720 }}>
-      <div style={{ fontSize: 22, fontWeight: 600, marginBottom: 12 }}>
-        Contact Kinin
+    <Section
+      eyebrow="Get in touch"
+      title={
+        <>
+          Send us<br /><em>a note.</em>
+        </>
+      }
+    >
+      <div className="km-prose" style={{ maxWidth: 640, marginBottom: 32 }}>
+        <p>
+          Questions about Kinin, the interview, your account, or what we're
+          building? We read every message.
+        </p>
       </div>
-      <div style={{ display: "grid", gap: 10 }}>
-        <label>
-          <div style={{ fontSize: 12, opacity: 0.8 }}>Name (optional)</div>
-          <input
+
+      <div className="km-form-grid">
+        <FormRow label="Name" help="Optional. Use whatever name you'd like us to write back to.">
+          <TextInput
             value={contactName}
             onChange={(e) => setContactName(e.target.value)}
-            style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
             placeholder="Your name"
           />
-        </label>
-        <label>
-          <div style={{ fontSize: 12, opacity: 0.8 }}>Email *</div>
-          <input
+        </FormRow>
+        <FormRow label="Email" required>
+          <TextInput
             value={contactEmail}
             onChange={(e) => setContactEmail(e.target.value)}
-            style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10 }}
             placeholder="you@example.com"
             inputMode="email"
           />
-        </label>
-        <label>
-          <div style={{ fontSize: 12, opacity: 0.8 }}>Message *</div>
-          <textarea
+        </FormRow>
+        <FormRow label="Message" required>
+          <TextArea
             value={contactMessage}
             onChange={(e) => setContactMessage(e.target.value)}
-            style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: 10, minHeight: 120 }}
             placeholder="How can we help?"
+            rows={6}
           />
-        </label>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button onClick={submitContact} disabled={contactBusy}>
-            {contactBusy ? "Sending..." : "Send Message"}
-          </button>
-          {contactStatus ? <div style={{ opacity: 0.7 }}>{contactStatus}</div> : null}
-        </div>
+        </FormRow>
       </div>
-      <div style={{ minHeight: 12 }} />
-    </div>
+
+      <div className="km-form-actions">
+        <Button variant="primary" onClick={submitContact} disabled={contactBusy}>
+          {contactBusy ? (
+            <>
+              <Spinner /> Sending...
+            </>
+          ) : (
+            "Send Message"
+          )}
+        </Button>
+      </div>
+
+      {contactStatus ? (
+        <div style={{ marginTop: 20 }}>
+          <Banner tone={isError ? "danger" : "info"}>{contactStatus}</Banner>
+        </div>
+      ) : null}
+    </Section>
   );
 }
