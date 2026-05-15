@@ -5,6 +5,7 @@ const ACCOUNT_CONFIRM_PHRASE = "delete my account and all data";
 export default function AccountPage({
   isAuthed,
   accountUsername,
+  accountEmail,
   accountPassword,
   setAccountPassword,
   accountConfirmText,
@@ -44,8 +45,8 @@ export default function AccountPage({
         </div>
 
         <div className="km-form-grid">
-          <FormRow label="Username">
-            <TextInput value={accountUsername} readOnly placeholder="username" />
+          <FormRow label="Signed in as">
+            <TextInput value={accountEmail || ""} readOnly placeholder="you@example.com" />
           </FormRow>
           <FormRow label="Password">
             <TextInput

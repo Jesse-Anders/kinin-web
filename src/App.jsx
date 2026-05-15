@@ -237,6 +237,7 @@ export default function App() {
   const [contactStatus, setContactStatus] = useState("");
   const [contactBusy, setContactBusy] = useState(false);
   const [cognitoGivenName, setCognitoGivenName] = useState("");
+  const [cognitoEmail, setCognitoEmail] = useState("");
   const [detailsBusy, setDetailsBusy] = useState(false);
   const [accountConfirmText, setAccountConfirmText] = useState("");
   const [accountUsername, setAccountUsername] = useState("");
@@ -639,6 +640,8 @@ export default function App() {
         if (session?.tokens?.idToken) {
           const tokenGivenName = String(session.tokens.idToken.payload?.given_name || "").trim();
           setCognitoGivenName(tokenGivenName);
+          const tokenEmail = String(session.tokens.idToken.payload?.email || "").trim();
+          setCognitoEmail(tokenEmail);
           const u = await getCurrentUser();
           setUser(u);
 
@@ -655,9 +658,11 @@ export default function App() {
 
         setUser(null);
         setCognitoGivenName("");
+        setCognitoEmail("");
       } catch {
         setUser(null);
         setCognitoGivenName("");
+        setCognitoEmail("");
       }
     })();
   }, []);
@@ -1687,6 +1692,7 @@ export default function App() {
         <AccountPage
           isAuthed={isAuthed}
           accountUsername={accountUsername}
+          accountEmail={cognitoEmail}
           accountPassword={accountPassword}
           setAccountPassword={setAccountPassword}
           accountConfirmText={accountConfirmText}
