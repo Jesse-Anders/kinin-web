@@ -3,7 +3,6 @@ import {
   applyTheme,
   clearOverrides,
   encodeOverridesToUrl,
-  mergeTokens,
   readOverrides,
   writeOverrides,
 } from "../theme/applyTheme";
@@ -11,6 +10,7 @@ import {
   COLOR_GROUPS,
   FONT_CHOICES,
   defaultTokens,
+  mergeTokens,
 } from "../theme/tokens";
 import {
   Banner,
