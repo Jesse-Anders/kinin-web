@@ -13,6 +13,7 @@ export default function AccountPage({
   accountStatus,
   accountError,
   closeAccount,
+  onBack,
 }) {
   const confirmMatches =
     accountConfirmText.trim().toLowerCase() === ACCOUNT_CONFIRM_PHRASE;
@@ -69,7 +70,14 @@ export default function AccountPage({
           </FormRow>
         </div>
 
-        <div className="km-form-actions">
+        <div
+          className={`km-form-actions ${onBack ? "km-form-actions-between" : ""}`}
+        >
+          {onBack ? (
+            <Button onClick={onBack} disabled={accountBusy}>
+              ← Back to My Account
+            </Button>
+          ) : null}
           <Button
             variant="danger"
             onClick={closeAccount}

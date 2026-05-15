@@ -36,6 +36,7 @@ export default function KininSettingsPage({
   saveProfile,
   resendAccountExecutorInvite,
   removeAccountExecutor,
+  onOpenDangerZone,
   onClose,
 }) {
   const cadenceValue = String(continuitySettings?.reminder_cadence_weeks ?? 2);
@@ -240,6 +241,21 @@ export default function KininSettingsPage({
                 Remove executor
               </Button>
             </div>
+          ) : null}
+        </Frame>
+
+        <Frame label="Danger zone">
+          <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
+            <p>
+              Need to walk away? You can permanently delete your account and
+              all associated data — conversations, profile, archive, the lot.
+              This action cannot be undone.
+            </p>
+          </div>
+          {onOpenDangerZone ? (
+            <Button onClick={onOpenDangerZone}>
+              Go to the danger zone →
+            </Button>
           ) : null}
         </Frame>
       </div>

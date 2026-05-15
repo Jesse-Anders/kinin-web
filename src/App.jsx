@@ -6,7 +6,6 @@ import {
   Feather,
   Key,
   Menu,
-  Pen,
   Quote,
   ScrollText,
 } from "lucide-react";
@@ -61,7 +60,6 @@ const PAGE_TO_PATH = {
   about: "/about",
   faq: "/faq",
   feedback: "/feedback",
-  settings: "/settings",
   "review-chats": "/review-chats",
   contact: "/contact",
   privacy: "/privacy",
@@ -75,10 +73,13 @@ const PAGE_TO_PATH = {
   "admin-user-purge": "/admin/user-purge",
   "admin-theme": "/admin/theme",
   account: "/account",
+  "danger-zone": "/danger-zone",
 };
 const PATH_TO_PAGE = {
   ...Object.fromEntries(Object.entries(PAGE_TO_PATH).map(([page, path]) => [path, page])),
-  "/bio": "settings",
+  // Legacy aliases: the old "Settings" page is now reached under My Account.
+  "/settings": "account",
+  "/bio": "account",
 };
 
 function normalizePath(pathname, hash = "") {
@@ -200,13 +201,6 @@ export default function App() {
       icon: Feather,
       requiresAuth: true,
       onClick: () => navigateToPage("feedback"),
-    },
-    {
-      id: "settings",
-      label: "Settings",
-      icon: Pen,
-      requiresAuth: true,
-      onClick: () => openProfile(),
     },
     {
       id: "review-chats",
@@ -378,8 +372,8 @@ export default function App() {
 
   useEffect(() => {
     const isRestrictedAuthPage =
-      activePage === "settings" ||
       activePage === "account" ||
+      activePage === "danger-zone" ||
       activePage === "onboarding" ||
       activePage === "feedback" ||
       activePage === "review-chats";
@@ -1006,7 +1000,7 @@ export default function App() {
     setError("");
     setProfileNotice("");
     setShowProfile(true);
-    navigateToPage("settings");
+    navigateToPage("account");
     if (!isAuthed) {
       setError("Please sign in to view your profile.");
       return;
@@ -1481,7 +1475,7 @@ export default function App() {
               className="km-sidebar-item is-bottom"
               onClick={() => {
                 setMenuOpen(false);
-                navigateToPage("account");
+                openProfile();
               }}
             >
               My Account
@@ -1670,19 +1664,6 @@ export default function App() {
           beginLabel="Back to Admin"
         />
       ) : activePage === "account" ? (
-        <AccountPage
-          isAuthed={isAuthed}
-          accountUsername={accountUsername}
-          accountPassword={accountPassword}
-          setAccountPassword={setAccountPassword}
-          accountConfirmText={accountConfirmText}
-          setAccountConfirmText={setAccountConfirmText}
-          accountBusy={accountBusy}
-          accountStatus={accountStatus}
-          accountError={accountError}
-          closeAccount={closeAccount}
-        />
-      ) : activePage === "settings" ? (
         <KininSettingsPage
           profileSchema={profileSchema}
           bioProfile={bioProfile}
@@ -1696,10 +1677,25 @@ export default function App() {
           saveProfile={saveProfile}
           resendAccountExecutorInvite={resendAccountExecutorInvite}
           removeAccountExecutor={removeAccountExecutor}
+          onOpenDangerZone={() => navigateToPage("danger-zone")}
           onClose={() => {
             setShowProfile(false);
             navigateToPage("interview");
           }}
+        />
+      ) : activePage === "danger-zone" ? (
+        <AccountPage
+          isAuthed={isAuthed}
+          accountUsername={accountUsername}
+          accountPassword={accountPassword}
+          setAccountPassword={setAccountPassword}
+          accountConfirmText={accountConfirmText}
+          setAccountConfirmText={setAccountConfirmText}
+          accountBusy={accountBusy}
+          accountStatus={accountStatus}
+          accountError={accountError}
+          closeAccount={closeAccount}
+          onBack={() => openProfile()}
         />
       ) : (
         <div>

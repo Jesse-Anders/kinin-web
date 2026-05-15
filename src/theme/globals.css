@@ -754,11 +754,12 @@ a:hover {
   position: fixed;
   top: 0; bottom: 0; left: 0;
   z-index: 10;
-  /* If a short viewport can't fit every item, let the column scroll rather
-     than collapsing behind a "+". The full hide happens at the mobile
-     breakpoint below. */
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  /* IMPORTANT: keep overflow `visible` so the "+" popover (which sits at
+     left: calc(100% + 8px)) can escape the sidebar's right edge. iOS Safari
+     in particular will clip absolutely-positioned children when overflow-y
+     is set to anything other than visible. Phone-sized viewports use the
+     768px breakpoint below to swap to a slide-in hamburger menu, so we
+     don't need internal scrolling here. */
 }
 .km-sidebar::before {
   /* Mute body noise underneath the sidebar so it reads as a column. */
