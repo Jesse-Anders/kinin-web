@@ -13,7 +13,7 @@ export const defaultTokens = {
   color: {
     // Surface
     cream: "#F4EBD6",
-    creamWarm: "##f2e5ca",
+    creamWarm: "#f2e5ca",
     creamDeep: "#E8D5A4",
 
     // Ink (foreground)
