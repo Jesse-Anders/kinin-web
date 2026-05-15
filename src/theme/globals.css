@@ -754,6 +754,11 @@ a:hover {
   position: fixed;
   top: 0; bottom: 0; left: 0;
   z-index: 10;
+  /* If a short viewport can't fit every item, let the column scroll rather
+     than collapsing behind a "+". The full hide happens at the mobile
+     breakpoint below. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .km-sidebar::before {
   /* Mute body noise underneath the sidebar so it reads as a column. */
@@ -887,15 +892,6 @@ a:hover {
   .km-sidebar.is-open { transform: translateX(0); }
   .km-main { margin-left: 0; }
   .km-menu-toggle { display: inline-flex; }
-}
-
-/* ─── Visually hidden (for sidebar measurer) ─── */
-.km-vh {
-  position: absolute;
-  left: -9999px;
-  top: -9999px;
-  visibility: hidden;
-  pointer-events: none;
 }
 
 /* ─── Small utilities ─── */

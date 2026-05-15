@@ -166,13 +166,19 @@ export default function App() {
   const messageInputRef = useRef(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuOverflowOpen, setMenuOverflowOpen] = useState(false);
-  const [menuCollapsed, setMenuCollapsed] = useState(false);
   const sidebarRef = useRef(null);
-  const sidebarMeasureRef = useRef(null);
-  const sidebarBottomRef = useRef(null);
   const hasSyncedPathRef = useRef(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Always start a new page at the top. CSS sets html { scroll-behavior:
+  // smooth } for in-page anchors, so we force `instant` here to avoid the
+  // jarring smooth-scroll when changing routes.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [location.pathname]);
+
   const menuItems = [
     {
       id: "about",
@@ -418,20 +424,6 @@ export default function App() {
       continuitySettings: { ...continuitySettings },
     });
   }, [activePage, bioProfile, accountExecutor, continuitySettings]);
-  useEffect(() => {
-    function recompute() {
-      if (!sidebarRef.current || !sidebarMeasureRef.current || !sidebarBottomRef.current) {
-        return;
-      }
-      const available = sidebarRef.current.clientHeight - 32;
-      const topHeight = sidebarMeasureRef.current.scrollHeight;
-      const bottomHeight = sidebarBottomRef.current.scrollHeight;
-      setMenuCollapsed(topHeight + bottomHeight > available);
-    }
-    recompute();
-    window.addEventListener("resize", recompute);
-    return () => window.removeEventListener("resize", recompute);
-  }, [isAuthed, user?.username]);
 
   async function getAccessToken() {
     const session = await fetchAuthSession();
@@ -1373,143 +1365,73 @@ export default function App() {
           <span className="km-sidebar-wordmark">Kinin</span>
         </button>
         <div className="km-sidebar-divider" />
-        {!menuCollapsed ? (
-          <>
-            {primaryTopItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  className="km-sidebar-item"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setMenuOverflowOpen(false);
-                    item.onClick();
-                  }}
-                >
-                  {Icon ? <Icon className="km-sidebar-icon" size={20} strokeWidth={1.5} /> : null}
-                  {item.label}
-                </button>
-              );
-            })}
-            <div className="km-sidebar-overflow-toggle">
-              <button
-                type="button"
-                className="km-sidebar-item"
-                onClick={() => setMenuOverflowOpen((prev) => !prev)}
-              >
-                <CirclePlus className="km-sidebar-icon" size={20} strokeWidth={1.5} />
-              </button>
-              {menuOverflowOpen ? (
-                <div className="km-sidebar-popover">
-                  {visibleExtraMenuItems.map((item) => {
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        className="km-sidebar-item"
-                        onClick={() => {
-                          setMenuOpen(false);
-                          setMenuOverflowOpen(false);
-                          item.onClick();
-                        }}
-                      >
-                        {item.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : null}
-            </div>
-            {adminTopItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  className="km-sidebar-item"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setMenuOverflowOpen(false);
-                    item.onClick();
-                  }}
-                >
-                  {Icon ? <Icon className="km-sidebar-icon" size={20} strokeWidth={1.5} /> : null}
-                  {item.label}
-                </button>
-              );
-            })}
-          </>
-        ) : (
-          <div className="km-sidebar-overflow-toggle">
+        {primaryTopItems.map((item) => {
+          const Icon = item.icon;
+          return (
             <button
+              key={item.id}
               type="button"
               className="km-sidebar-item"
-              onClick={() => setMenuOverflowOpen((prev) => !prev)}
+              onClick={() => {
+                setMenuOpen(false);
+                setMenuOverflowOpen(false);
+                item.onClick();
+              }}
             >
-              <CirclePlus className="km-sidebar-icon" size={20} strokeWidth={1.5} />
+              {Icon ? <Icon className="km-sidebar-icon" size={20} strokeWidth={1.5} /> : null}
+              {item.label}
             </button>
-            {menuOverflowOpen ? (
-              <div className="km-sidebar-popover">
-                {primaryTopItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      className="km-sidebar-item"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        setMenuOverflowOpen(false);
-                        item.onClick();
-                      }}
-                    >
-                      {Icon ? <Icon className="km-sidebar-icon" size={20} strokeWidth={1.5} /> : null}
-                      {item.label}
-                    </button>
-                  );
-                })}
-                {visibleExtraMenuItems.map((item) => {
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      className="km-sidebar-item"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        setMenuOverflowOpen(false);
-                        item.onClick();
-                      }}
-                    >
-                      {item.label}
-                    </button>
-                  );
-                })}
-                {adminTopItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      className="km-sidebar-item"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        setMenuOverflowOpen(false);
-                        item.onClick();
-                      }}
-                    >
-                      {Icon ? <Icon className="km-sidebar-icon" size={20} strokeWidth={1.5} /> : null}
-                      {item.label}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : null}
-          </div>
-        )}
+          );
+        })}
+        <div className="km-sidebar-overflow-toggle">
+          <button
+            type="button"
+            className="km-sidebar-item"
+            onClick={() => setMenuOverflowOpen((prev) => !prev)}
+          >
+            <CirclePlus className="km-sidebar-icon" size={20} strokeWidth={1.5} />
+          </button>
+          {menuOverflowOpen ? (
+            <div className="km-sidebar-popover">
+              {visibleExtraMenuItems.map((item) => {
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="km-sidebar-item"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setMenuOverflowOpen(false);
+                      item.onClick();
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
+        {adminTopItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              className="km-sidebar-item"
+              onClick={() => {
+                setMenuOpen(false);
+                setMenuOverflowOpen(false);
+                item.onClick();
+              }}
+            >
+              {Icon ? <Icon className="km-sidebar-icon" size={20} strokeWidth={1.5} /> : null}
+              {item.label}
+            </button>
+          );
+        })}
         <div className="km-sidebar-spacer" />
-        <div ref={sidebarBottomRef}>
+        <div>
           {!isAuthed ? (
             <div className="km-sidebar-auth">
               <button
@@ -1581,40 +1503,6 @@ export default function App() {
         ))}
         </div>
       </aside>
-      ) : null}
-      {showNavigation ? (
-      <div className="km-vh" ref={sidebarMeasureRef}>
-        <button type="button" className="sidebar-home sidebar-home-primary">
-          <img
-            src={kininHomeIcon}
-            alt="Kinin"
-            className="sidebar-home-icon sidebar-home-icon-img"
-          />
-          Kinin
-        </button>
-        <div className="km-sidebar-divider" />
-        {primaryTopItems.map((item) => {
-          const Icon = item.icon;
-          return (
-            <button key={item.id} type="button" className="km-sidebar-item">
-              {Icon ? <Icon className="km-sidebar-icon" size={20} strokeWidth={1.5} /> : null}
-              {item.label}
-            </button>
-          );
-        })}
-        <button type="button" className="km-sidebar-item">
-          <CirclePlus className="km-sidebar-icon" size={20} strokeWidth={1.5} />
-        </button>
-        {adminTopItems.map((item) => {
-          const Icon = item.icon;
-          return (
-            <button key={item.id} type="button" className="km-sidebar-item">
-              {Icon ? <Icon className="km-sidebar-icon" size={20} strokeWidth={1.5} /> : null}
-              {item.label}
-            </button>
-          );
-        })}
-      </div>
       ) : null}
       <main className={`km-main ${showNavigation ? "" : "km-main-no-sidebar"}`}>
         {showNavigation ? (
