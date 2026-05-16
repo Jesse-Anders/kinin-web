@@ -41,11 +41,11 @@ import OnboardingPage from "./pages/OnboardingPage";
 import ExecutorAcceptPage from "./pages/ExecutorAcceptPage";
 import AdminThemeStudioPage from "./pages/AdminThemeStudioPage";
 import AdminEmailStudioPage from "./pages/AdminEmailStudioPage";
+import InterviewDetailsPanel from "./components/InterviewDetailsPanel";
 import {
   Banner,
   Button,
   ChatRow,
-  DetailRow,
   Frame,
   FullscreenLoader,
   Skeleton,
@@ -1769,6 +1769,18 @@ export default function App() {
             setShowProfile(false);
             navigateToPage("interview");
           }}
+          interviewDetails={{
+            isAuthed,
+            busy,
+            sessionId,
+            setSessionId,
+            detailsBusy,
+            updateInterviewDetails,
+            journeyVersion,
+            labelGroups,
+            progressForDisplay,
+            uiState,
+          }}
         />
       ) : activePage === "danger-zone" ? (
         <AccountPage
@@ -1835,146 +1847,28 @@ export default function App() {
               {isSendingTurn ? "Sending..." : "Send"}
             </Button>
           </div>
-          <details className="km-details">
-            <summary className="km-details-summary">
-              <span className="km-mono-label">— Interview Details</span>
-              <span className="km-details-version">{VERSION_LABEL}</span>
-            </summary>
-            <Frame label="Interview state · debug">
-              <div className="km-stack" style={{ gap: 18 }}>
-                <div className="km-row" style={{ justifyContent: "space-between" }}>
-                  <Button
-                    size="sm"
-                    onClick={updateInterviewDetails}
-                    disabled={!isAuthed || !sessionId || detailsBusy}
-                  >
-                    {detailsBusy ? (
-                      <>
-                        <Spinner /> Updating...
-                      </>
-                    ) : (
-                      "Refresh"
-                    )}
-                  </Button>
-                  <span className="km-mono-label">Manual refresh</span>
-                </div>
-
-                <DetailRow label="Journey version" value={journeyVersion || "—"} />
-
-                {LABEL_GROUPS.map(({ key, label }) => (
-                  <DetailRow
-                    key={key}
-                    label={label}
-                    value={labelGroups?.[key]?.length ? labelGroups[key].join(", ") : "—"}
-                  />
-                ))}
-
-                <div>
-                  <DetailRow
-                    label="Journey progress"
-                    value={
-                      <>
-                        <strong>{progressForDisplay.percent}%</strong>{" "}
-                        <span className="km-muted">
-                          ({progressForDisplay.complete_steps} complete,{" "}
-                          {progressForDisplay.closed_steps} closed /{" "}
-                          {progressForDisplay.total_steps} total)
-                        </span>
-                      </>
-                    }
-                  />
-                  <div className="km-progress">
-                    <div
-                      className="km-progress-bar"
-                      style={{
-                        width: `${Math.min(100, Math.max(0, progressForDisplay.percent))}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <DetailRow
-                  label="Mode"
-                  value={
-                    <>
-                      <strong>{uiState?.mode || "—"}</strong>
-                      {uiState?.current_step_title ? (
-                        <>
-                          {" "}— Step: <strong>{uiState.current_step_title}</strong>
-                        </>
-                      ) : null}
-                    </>
-                  }
+          {!IS_BETA_LITE ? (
+            <details className="km-details">
+              <summary className="km-details-summary">
+                <span className="km-mono-label">— Interview Details</span>
+                <span className="km-details-version">{VERSION_LABEL}</span>
+              </summary>
+              <Frame label="Interview state · debug">
+                <InterviewDetailsPanel
+                  isAuthed={isAuthed}
+                  busy={busy}
+                  sessionId={sessionId}
+                  setSessionId={setSessionId}
+                  detailsBusy={detailsBusy}
+                  updateInterviewDetails={updateInterviewDetails}
+                  journeyVersion={journeyVersion}
+                  labelGroups={labelGroups}
+                  progressForDisplay={progressForDisplay}
+                  uiState={uiState}
                 />
-
-                {uiState?.interviewer_step_specific_context ? (
-                  <DetailRow
-                    label="Interviewer step context"
-                    value={<strong>{uiState.interviewer_step_specific_context}</strong>}
-                  />
-                ) : null}
-                {uiState?.evaluator_step_specific_context ? (
-                  <DetailRow
-                    label="Evaluator step context"
-                    value={<strong>{uiState.evaluator_step_specific_context}</strong>}
-                  />
-                ) : null}
-
-                <DetailRow
-                  label="Pending advance"
-                  value={
-                    <strong>
-                      {uiState?.pending_advance && Object.keys(uiState.pending_advance).length
-                        ? JSON.stringify(uiState.pending_advance)
-                        : "—"}
-                    </strong>
-                  }
-                />
-
-                <div>
-                  <div className="km-mono-label" style={{ marginBottom: 6 }}>session_id</div>
-                  <input
-                    value={sessionId}
-                    onChange={(e) => {
-                      setSessionId(e.target.value);
-                      localStorage.setItem("session_id", e.target.value);
-                    }}
-                    placeholder="session_id (optional — leave blank to auto-create)"
-                    className="km-input-compact"
-                    disabled={busy}
-                  />
-                </div>
-
-                {uiState && uiState.mode === "guided" ? (
-                  <div className="km-stepfields">
-                    <div className="km-mono-label" style={{ marginBottom: 10 }}>Step fields</div>
-                    <div className="km-row" style={{ alignItems: "flex-start", gap: 24 }}>
-                      <div style={{ flex: 1 }}>
-                        <div className="km-mono-label" style={{ color: "var(--sage-deep)", marginBottom: 4 }}>Covered</div>
-                        <ul className="km-list-bare">
-                          {(uiState.covered_fields || []).length ? (
-                            (uiState.covered_fields || []).map((f, i) => <li key={"c-" + i}>{f}</li>)
-                          ) : (
-                            <li className="km-muted">(none yet)</li>
-                          )}
-                        </ul>
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div className="km-mono-label" style={{ color: "var(--crimson)", marginBottom: 4 }}>Uncovered</div>
-                        <ul className="km-list-bare">
-                          {(uiState.uncovered_fields || []).length ? (
-                            (uiState.uncovered_fields || []).map((f, i) => <li key={"u-" + i}>{f}</li>)
-                          ) : (
-                            <li className="km-muted">(none)</li>
-                          )}
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            </Frame>
-          </details>
+              </Frame>
+            </details>
+          ) : null}
         </div>
           )}
         </div>

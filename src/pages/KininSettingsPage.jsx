@@ -1,4 +1,5 @@
 import { Banner, Button, FormRow, Frame, Section, Skeleton, Spinner, TextInput } from "../theme";
+import InterviewDetailsPanel from "../components/InterviewDetailsPanel";
 
 function deriveAgeFromDateOfBirth(dateOfBirth) {
   const text = String(dateOfBirth || "").trim();
@@ -38,6 +39,7 @@ export default function KininSettingsPage({
   removeAccountExecutor,
   onOpenDangerZone,
   onClose,
+  interviewDetails,
 }) {
   const cadenceValue = String(continuitySettings?.reminder_cadence_weeks ?? 2);
   const showInitialLoader = profileBusy && !profileSchema;
@@ -243,6 +245,19 @@ export default function KininSettingsPage({
             </div>
           ) : null}
         </Frame>
+
+        {interviewDetails ? (
+          <Frame label="Interview details">
+            <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
+              <p>
+                A behind-the-scenes look at your current interview session —
+                journey progress, current step, topic labels, and other context
+                Kinin is tracking for you.
+              </p>
+            </div>
+            <InterviewDetailsPanel {...interviewDetails} />
+          </Frame>
+        ) : null}
 
         <Frame label="Danger zone">
           <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
