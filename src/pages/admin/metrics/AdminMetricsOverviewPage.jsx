@@ -89,10 +89,11 @@ export default function AdminMetricsOverviewPage({ isAuthed, getAccessToken, api
 
   return (
     <MetricsShell
+      activePageId="admin-metrics-overview"
+      setActivePage={setActivePage}
       eyebrow="Admin · Metrics · I"
       title={<>Overview</>}
       subtitle="The headline view — active users, sign-ups, messages, words, LLM cost — for the selected range."
-      onBack={() => setActivePage("admin-metrics")}
     >
       {error ? (
         <Banner tone="danger">

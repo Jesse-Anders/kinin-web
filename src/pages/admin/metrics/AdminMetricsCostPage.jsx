@@ -165,10 +165,11 @@ export default function AdminMetricsCostPage({ isAuthed, getAccessToken, apiBase
 
   return (
     <MetricsShell
+      activePageId="admin-metrics-cost"
+      setActivePage={setActivePage}
       eyebrow="Admin · Metrics · II"
       title={<>LLM Cost</>}
       subtitle="Token usage transposed into dollars, using the registered model pricing. Cost figures here reflect LLM inference only."
-      onBack={() => setActivePage("admin-metrics")}
     >
       {error ? (
         <Banner tone="danger">

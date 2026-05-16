@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchAuthSession } from "aws-amplify/auth";
-import { Banner, Button, Frame, Section, Spinner } from "../theme";
+import { Section } from "../theme";
 
 export default function AdminHomePage({ isAuthed, getAccessToken, apiBase, setActivePage }) {
   // ── Admin state ──
@@ -486,15 +486,6 @@ export default function AdminHomePage({ isAuthed, getAccessToken, apiBase, setAc
 
   // ── Render ──
 
-  const adminLinks = [
-    { key: "admin-onboarding-preview", label: "Preview onboarding" },
-    { key: "admin-crm", label: "CRM · Invites" },
-    { key: "admin-metrics", label: "Metrics" },
-    { key: "admin-user-purge", label: "User purge" },
-    { key: "admin-theme", label: "Theme Studio" },
-    { key: "admin-email", label: "Email Studio" },
-  ];
-
   return (
     <Section
       eyebrow="Admin · Home"
@@ -506,23 +497,6 @@ export default function AdminHomePage({ isAuthed, getAccessToken, apiBase, setAc
       }
     >
       <div className="km-admin-page">
-      <Frame label="Navigate">
-        <div className="km-row" style={{ gap: 12, flexWrap: "wrap" }}>
-          {adminLinks.map((link) => (
-            <button
-              key={link.key}
-              type="button"
-              onClick={() => setActivePage(link.key)}
-              className="km-link-button"
-            >
-              {link.label} →
-            </button>
-          ))}
-        </div>
-      </Frame>
-
-      <div style={{ height: 24 }} />
-
       <div className="km-stack" style={{ gap: 4 }}>
         <div className="km-mono-label">Admin lookup</div>
         <div className="km-prose" style={{ maxWidth: 560, fontSize: 15 }}>

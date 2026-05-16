@@ -1121,6 +1121,123 @@ a:hover {
 }
 .km-admin-grid { display: grid; gap: 24px; }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Sticky admin nav (top of viewport on every admin page)
+   ───────────────────────────────────────────────────────────────────────── */
+.km-admin-nav {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  background: var(--cream-warm);
+  border-bottom: 1px solid var(--ink);
+  margin: 0 0 12px;
+}
+.km-admin-nav-inner {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.km-admin-nav-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding-right: 12px;
+  border-right: 1px solid var(--thread);
+}
+.km-admin-nav-items {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.km-admin-nav-item {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 15px;
+  font-variation-settings: "opsz" 20, "SOFT" 100;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--ink-soft);
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: color var(--t-fast), background var(--t-fast), border-color var(--t-fast);
+}
+.km-admin-nav-item:hover:not(:disabled) {
+  color: var(--ink);
+  background: var(--cream);
+}
+.km-admin-nav-item.is-active {
+  color: var(--ink);
+  border-color: var(--ink);
+  background: var(--cream);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Metrics sub-nav (tabs within the metrics suite)
+   ───────────────────────────────────────────────────────────────────────── */
+.km-metrics-tabs {
+  position: sticky;
+  top: 47px; /* sits directly under the admin nav */
+  z-index: 55;
+  background: var(--cream);
+  border-bottom: 1px solid var(--thread);
+  margin: -8px 0 8px;
+}
+.km-metrics-tabs-inner {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+  padding: 8px 0;
+}
+.km-metrics-tab {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: 2px solid transparent;
+  color: var(--ink-soft);
+  padding: 6px 12px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 14px;
+  transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast);
+}
+.km-metrics-tab:hover:not(:disabled) {
+  color: var(--ink);
+  background: var(--cream-deep);
+}
+.km-metrics-tab.is-active {
+  color: var(--ink);
+  border-bottom-color: var(--crimson);
+}
+.km-metrics-tab-roman {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--ink-faint);
+}
+.km-metrics-tab.is-active .km-metrics-tab-roman {
+  color: var(--crimson-deep);
+}
+.km-metrics-tab-label {
+  font-style: italic;
+  font-variation-settings: "opsz" 20, "SOFT" 100;
+}
+
+@media (max-width: 768px) {
+  .km-admin-nav-inner { padding: 8px 12px; gap: 8px; }
+  .km-admin-nav-eyebrow { padding-right: 8px; }
+  .km-admin-nav-item { padding: 4px 8px; font-size: 14px; }
+  .km-metrics-tabs { top: 78px; } /* admin nav wraps taller on phone */
+  .km-metrics-tab { padding: 4px 8px; font-size: 13px; }
+}
+
 /* Code-style pre block */
 .km-pre {
   font-family: var(--font-mono);

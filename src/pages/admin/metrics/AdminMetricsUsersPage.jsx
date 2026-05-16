@@ -79,10 +79,11 @@ export default function AdminMetricsUsersPage({ isAuthed, getAccessToken, apiBas
 
   return (
     <MetricsShell
+      activePageId="admin-metrics-users"
+      setActivePage={setActivePage}
       eyebrow="Admin · Metrics · IV"
       title={<>Users</>}
       subtitle="Top users in the selected range. Click a row for per-day, per-agent, per-model breakdowns."
-      onBack={() => setActivePage("admin-metrics")}
     >
       {error ? (
         <Banner tone="danger">
@@ -150,7 +151,7 @@ export default function AdminMetricsUsersPage({ isAuthed, getAccessToken, apiBas
                   <th className="num">Tokens</th>
                   <th className="num">Calls</th>
                   <th className="num">Words</th>
-                  <th className="num">Cost*</th>
+                  <th className="num">Cost</th>
                   <th>Active days</th>
                   <th style={{ width: 120 }}>Trend</th>
                 </tr>
@@ -174,7 +175,7 @@ export default function AdminMetricsUsersPage({ isAuthed, getAccessToken, apiBas
                       <td className="num">{fmtTokens(maybeObfuscateNumber(u.tokens, { demoMode }))}</td>
                       <td className="num">{fmtInt(maybeObfuscateNumber(u.calls, { demoMode }))}</td>
                       <td className="num">{fmtInt(maybeObfuscateNumber(u.user_words, { demoMode }))}</td>
-                      <td className="num">{u.cost > 0 ? fmtUsd(maybeObfuscateNumber(u.cost, { demoMode, isCount: false })) : "—"}</td>
+                      <td className="num">{fmtUsd(maybeObfuscateNumber(u.cost || 0, { demoMode, isCount: false }))}</td>
                       <td className="num">{u.active_days}</td>
                       <td style={{ minWidth: 100 }}>
                         <Sparkline data={spark} color={tokens.sage} height={28} />
@@ -193,9 +194,6 @@ export default function AdminMetricsUsersPage({ isAuthed, getAccessToken, apiBas
             </table>
           </div>
         )}
-        <div style={{ marginTop: 10, fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--ink-faint)", letterSpacing: "0.08em" }}>
-          * Cost is best-effort when sorted by tokens/calls/words; switch to "Cost" sort for accurate per-user cost.
-        </div>
       </ChartFrame>
 
       {drawerUser ? (

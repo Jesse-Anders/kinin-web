@@ -90,10 +90,11 @@ export default function AdminMetricsEngagementPage({ isAuthed, getAccessToken, a
 
   return (
     <MetricsShell
+      activePageId="admin-metrics-engagement"
+      setActivePage={setActivePage}
       eyebrow="Admin · Metrics · III"
       title={<>Engagement &amp; Funnel</>}
       subtitle="Activity heartbeat and conversion. Funnel counts reflect the current state of the database; series reflect the selected range."
-      onBack={() => setActivePage("admin-metrics")}
     >
       {error ? (
         <Banner tone="danger">

@@ -1,16 +1,18 @@
 import { Banner, Eyebrow } from "../../theme";
 import { useMetrics } from "./MetricsContext";
+import { MetricsTabs } from "./MetricsTabs";
 import { RangePresetBar } from "./RangePresetBar";
 
-// Wraps every metrics sub-page with the consistent header (back link, eyebrow,
-// title, optional subtitle), the date-range bar, and the demo-mode/reveal
-// controls. Keeps every dashboard visually anchored.
+// Wraps every metrics sub-page with the consistent header (eyebrow, title,
+// optional subtitle), the persistent sub-nav across all five dashboards,
+// the date-range bar, and the demo-mode/reveal controls. Keeps every
+// dashboard visually anchored.
 export function MetricsShell({
   eyebrow = "Admin · Metrics",
   title,
   subtitle,
-  backLabel = "← Metrics index",
-  onBack,
+  activePageId,
+  setActivePage,
   rightSlot,
   children,
 }) {
@@ -18,10 +20,8 @@ export function MetricsShell({
 
   return (
     <div className="km-metrics-shell">
-      {onBack ? (
-        <button type="button" className="km-link-button km-metrics-shell-back" onClick={onBack}>
-          {backLabel}
-        </button>
+      {setActivePage ? (
+        <MetricsTabs activeId={activePageId} setActivePage={setActivePage} />
       ) : null}
 
       <header className="km-metrics-shell-head">

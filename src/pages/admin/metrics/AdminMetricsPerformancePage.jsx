@@ -93,10 +93,11 @@ export default function AdminMetricsPerformancePage({ isAuthed, getAccessToken, 
 
   return (
     <MetricsShell
+      activePageId="admin-metrics-performance"
+      setActivePage={setActivePage}
       eyebrow="Admin · Metrics · V"
       title={<>Performance</>}
       subtitle="Per-call latency by agent and model. Provider-reported tokens are the gold standard; estimated tokens reduce data confidence."
-      onBack={() => setActivePage("admin-metrics")}
     >
       {error ? (
         <Banner tone="danger">

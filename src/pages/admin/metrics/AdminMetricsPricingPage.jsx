@@ -171,10 +171,11 @@ export default function AdminMetricsPricingPage({ isAuthed, getAccessToken, apiB
 
   return (
     <MetricsShell
+      activePageId="admin-metrics-pricing"
+      setActivePage={setActivePage}
       eyebrow="Admin · Metrics"
       title={<>Pricing Overrides</>}
       subtitle="Register pricing for any Bedrock / inference-profile model id that the built-in defaults don't already cover. Stored in DynamoDB so admins can update prices without redeploying."
-      onBack={() => setActivePage("admin-metrics")}
     >
       {error ? (
         <Banner tone="danger">

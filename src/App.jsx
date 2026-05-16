@@ -24,6 +24,7 @@ import AccountPage from "./pages/AccountPage";
 import KininSettingsPage from "./pages/KininSettingsPage";
 import AdminCrmPage from "./pages/AdminCrmPage";
 import AdminHomePage from "./pages/AdminHomePage";
+import { AdminNav } from "./admin/AdminNav";
 import AdminMetricsIndexPage from "./pages/admin/metrics/AdminMetricsIndexPage";
 import AdminMetricsOverviewPage from "./pages/admin/metrics/AdminMetricsOverviewPage";
 import AdminMetricsCostPage from "./pages/admin/metrics/AdminMetricsCostPage";
@@ -1530,6 +1531,23 @@ export default function App() {
           <Menu size={22} strokeWidth={1.5} />
           Kinin
         </button>
+        ) : null}
+        {(
+          activePage === "admin" ||
+          activePage === "admin-onboarding-preview" ||
+          activePage === "admin-crm" ||
+          activePage === "admin-metrics" ||
+          activePage === "admin-metrics-overview" ||
+          activePage === "admin-metrics-cost" ||
+          activePage === "admin-metrics-engagement" ||
+          activePage === "admin-metrics-users" ||
+          activePage === "admin-metrics-performance" ||
+          activePage === "admin-metrics-pricing" ||
+          activePage === "admin-user-purge" ||
+          activePage === "admin-theme" ||
+          activePage === "admin-email"
+        ) ? (
+          <AdminNav activePage={activePage} setActivePage={navigateToPage} />
         ) : null}
         {activePage === "admin-theme" ? (
           <AdminThemeStudioPage />
