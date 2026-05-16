@@ -24,8 +24,15 @@ import AccountPage from "./pages/AccountPage";
 import KininSettingsPage from "./pages/KininSettingsPage";
 import AdminCrmPage from "./pages/AdminCrmPage";
 import AdminHomePage from "./pages/AdminHomePage";
-import AdminMetricsPage from "./pages/AdminMetricsPage";
+import AdminMetricsIndexPage from "./pages/admin/metrics/AdminMetricsIndexPage";
+import AdminMetricsOverviewPage from "./pages/admin/metrics/AdminMetricsOverviewPage";
+import AdminMetricsCostPage from "./pages/admin/metrics/AdminMetricsCostPage";
+import AdminMetricsEngagementPage from "./pages/admin/metrics/AdminMetricsEngagementPage";
+import AdminMetricsUsersPage from "./pages/admin/metrics/AdminMetricsUsersPage";
+import AdminMetricsPerformancePage from "./pages/admin/metrics/AdminMetricsPerformancePage";
+import AdminMetricsPricingPage from "./pages/admin/metrics/AdminMetricsPricingPage";
 import AdminUserPurgePage from "./pages/AdminUserPurgePage";
+import { MetricsProvider } from "./admin/metrics/MetricsContext";
 import AboutKininPage from "./pages/AboutKininPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import ReviewEditChatsPage from "./pages/ReviewEditChatsPage";
@@ -33,6 +40,7 @@ import UnsubscribePage from "./pages/UnsubscribePage";
 import OnboardingPage from "./pages/OnboardingPage";
 import ExecutorAcceptPage from "./pages/ExecutorAcceptPage";
 import AdminThemeStudioPage from "./pages/AdminThemeStudioPage";
+import AdminEmailStudioPage from "./pages/AdminEmailStudioPage";
 import {
   Banner,
   Button,
@@ -70,8 +78,15 @@ const PAGE_TO_PATH = {
   "admin-onboarding-preview": "/admin/onboarding-preview",
   "admin-crm": "/admin/crm",
   "admin-metrics": "/admin/metrics",
+  "admin-metrics-overview": "/admin/metrics/overview",
+  "admin-metrics-cost": "/admin/metrics/cost",
+  "admin-metrics-engagement": "/admin/metrics/engagement",
+  "admin-metrics-users": "/admin/metrics/users",
+  "admin-metrics-performance": "/admin/metrics/performance",
+  "admin-metrics-pricing": "/admin/metrics/pricing",
   "admin-user-purge": "/admin/user-purge",
   "admin-theme": "/admin/theme",
+  "admin-email": "/admin/email",
   account: "/account",
   "danger-zone": "/danger-zone",
 };
@@ -383,8 +398,15 @@ export default function App() {
       activePage === "admin-onboarding-preview" ||
       activePage === "admin-crm" ||
       activePage === "admin-metrics" ||
+      activePage === "admin-metrics-overview" ||
+      activePage === "admin-metrics-cost" ||
+      activePage === "admin-metrics-engagement" ||
+      activePage === "admin-metrics-users" ||
+      activePage === "admin-metrics-performance" ||
+      activePage === "admin-metrics-pricing" ||
       activePage === "admin-user-purge" ||
-      activePage === "admin-theme";
+      activePage === "admin-theme" ||
+      activePage === "admin-email";
 
     if (isRestrictedAuthPage && !isAuthed) {
       navigate("/", { replace: true });
@@ -1512,6 +1534,12 @@ export default function App() {
         ) : null}
         {activePage === "admin-theme" ? (
           <AdminThemeStudioPage />
+        ) : activePage === "admin-email" ? (
+          <AdminEmailStudioPage
+            isAuthed={isAuthed}
+            getAccessToken={getAccessToken}
+            apiBase={API_BASE}
+          />
         ) : (
         <div
           style={{
@@ -1607,7 +1635,44 @@ export default function App() {
           apiBase={API_BASE}
         />
       ) : activePage === "admin-metrics" ? (
-        <AdminMetricsPage
+        <AdminMetricsIndexPage setActivePage={navigateToPage} />
+      ) : activePage === "admin-metrics-overview" ? (
+        <AdminMetricsOverviewPage
+          isAuthed={isAuthed}
+          getAccessToken={getAccessToken}
+          apiBase={API_BASE}
+          setActivePage={navigateToPage}
+        />
+      ) : activePage === "admin-metrics-cost" ? (
+        <AdminMetricsCostPage
+          isAuthed={isAuthed}
+          getAccessToken={getAccessToken}
+          apiBase={API_BASE}
+          setActivePage={navigateToPage}
+        />
+      ) : activePage === "admin-metrics-engagement" ? (
+        <AdminMetricsEngagementPage
+          isAuthed={isAuthed}
+          getAccessToken={getAccessToken}
+          apiBase={API_BASE}
+          setActivePage={navigateToPage}
+        />
+      ) : activePage === "admin-metrics-users" ? (
+        <AdminMetricsUsersPage
+          isAuthed={isAuthed}
+          getAccessToken={getAccessToken}
+          apiBase={API_BASE}
+          setActivePage={navigateToPage}
+        />
+      ) : activePage === "admin-metrics-performance" ? (
+        <AdminMetricsPerformancePage
+          isAuthed={isAuthed}
+          getAccessToken={getAccessToken}
+          apiBase={API_BASE}
+          setActivePage={navigateToPage}
+        />
+      ) : activePage === "admin-metrics-pricing" ? (
+        <AdminMetricsPricingPage
           isAuthed={isAuthed}
           getAccessToken={getAccessToken}
           apiBase={API_BASE}

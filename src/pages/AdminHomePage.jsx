@@ -492,6 +492,7 @@ export default function AdminHomePage({ isAuthed, getAccessToken, apiBase, setAc
     { key: "admin-metrics", label: "Metrics" },
     { key: "admin-user-purge", label: "User purge" },
     { key: "admin-theme", label: "Theme Studio" },
+    { key: "admin-email", label: "Email Studio" },
   ];
 
   return (
