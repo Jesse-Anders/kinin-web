@@ -47,6 +47,7 @@ export function ChartFrame({
             onClick={handleExport}
             title="Save as PNG"
             aria-label="Save as PNG"
+            data-png-exclude=""
           >
             <Download size={14} strokeWidth={1.5} />
           </button>

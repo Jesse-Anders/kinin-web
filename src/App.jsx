@@ -32,7 +32,6 @@ import AdminMetricsUsersPage from "./pages/admin/metrics/AdminMetricsUsersPage";
 import AdminMetricsPerformancePage from "./pages/admin/metrics/AdminMetricsPerformancePage";
 import AdminMetricsPricingPage from "./pages/admin/metrics/AdminMetricsPricingPage";
 import AdminUserPurgePage from "./pages/AdminUserPurgePage";
-import { MetricsProvider } from "./admin/metrics/MetricsContext";
 import AboutKininPage from "./pages/AboutKininPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import ReviewEditChatsPage from "./pages/ReviewEditChatsPage";

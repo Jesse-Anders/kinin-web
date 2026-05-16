@@ -1,4 +1,4 @@
-import { Eyebrow } from "../../theme";
+import { Banner, Eyebrow } from "../../theme";
 import { useMetrics } from "./MetricsContext";
 import { RangePresetBar } from "./RangePresetBar";
 
@@ -53,6 +53,15 @@ export function MetricsShell({
           </div>
         }
       />
+
+      {demoMode ? (
+        <Banner tone="info">
+          <span>
+            <strong>Demo mode is on.</strong> Numbers are scaled and labels masked for
+            screen-share. Toggle off in the controls above to see actuals.
+          </span>
+        </Banner>
+      ) : null}
 
       <div className="km-metrics-shell-body">{children}</div>
     </div>
