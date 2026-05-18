@@ -36,6 +36,17 @@ const SORTS = [
   { id: "cost", label: "Cost" },
 ];
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function classifyUser(u) {
+  const sub = (u?.user_id || "").trim();
+  const email = (u?.email || "").trim();
+  if (!sub) return "unknown";
+  if (!UUID_RE.test(sub)) return "system";
+  if (!email) return "deleted";
+  return "active";
+}
+
 export default function AdminMetricsUsersPage({ isAuthed, getAccessToken, apiBase, setActivePage }) {
   const { range, demoMode, revealEmails, aliasSalt } = useMetrics();
   const [sortBy, setSortBy] = useState("tokens");
@@ -166,6 +177,7 @@ export default function AdminMetricsUsersPage({ isAuthed, getAccessToken, apiBas
                   const emailLabel = revealEmails
                     ? (maybeObfuscateLabel(u.email, { demoMode }) || "—")
                     : "—";
+                  const kind = classifyUser(u);
                   return (
                     <tr
                       key={u.user_id}
@@ -174,7 +186,19 @@ export default function AdminMetricsUsersPage({ isAuthed, getAccessToken, apiBas
                     >
                       <td className="num">{idx + 1}</td>
                       <td style={{ fontFamily: "var(--font-mono)", fontSize: 12, wordBreak: "break-all", maxWidth: 280 }}>
-                        {subLabel}
+                        <span style={{ display: "inline-flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
+                          <span>{subLabel}</span>
+                          {kind === "deleted" ? (
+                            <span className="km-pill tone-warn" title="No live entitlement or CRM record. Likely a closed/purged account; historical metrics preserved.">
+                              deleted account
+                            </span>
+                          ) : null}
+                          {kind === "system" ? (
+                            <span className="km-pill" title="Non-user system id (worker scratch / anonymous traffic).">
+                              system
+                            </span>
+                          ) : null}
+                        </span>
                       </td>
                       <td style={{ fontFamily: "var(--font-mono)", fontSize: 12, wordBreak: "break-all", maxWidth: 240, color: revealEmails && u.email ? undefined : "var(--ink-faint)" }}>
                         {emailLabel}
@@ -263,6 +287,7 @@ function UserDrawer({ user, range, isAuthed, getAccessToken, apiBase, aliasSalt,
   const emailLine = revealEmails
     ? (maybeObfuscateLabel(user.email, { demoMode }) || null)
     : null;
+  const kind = classifyUser(user);
 
   const daySeries = useMemo(() => {
     return (detail?.day_series || []).map((r) => ({
@@ -281,7 +306,19 @@ function UserDrawer({ user, range, isAuthed, getAccessToken, apiBase, aliasSalt,
         </button>
         <header>
           <div className="km-chart-frame-eyebrow">User detail</div>
-          <h2 className="km-h2" style={{ margin: 0, fontStyle: "italic" }}>{label}</h2>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <h2 className="km-h2" style={{ margin: 0, fontStyle: "italic" }}>{label}</h2>
+            {kind === "deleted" ? (
+              <span className="km-pill tone-warn" title="No live entitlement or CRM record. Likely a closed/purged account; historical metrics preserved.">
+                deleted account
+              </span>
+            ) : null}
+            {kind === "system" ? (
+              <span className="km-pill" title="Non-user system id (worker scratch / anonymous traffic).">
+                system
+              </span>
+            ) : null}
+          </div>
           {emailLine ? (
             <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--ink-soft)", marginTop: 2 }}>
               {emailLine}

@@ -8,6 +8,8 @@ import {
   Menu,
   Quote,
   ScrollText,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import kininHomeIcon from "./assets/icons/kinin-icon-390sq.png";
 import {
@@ -53,6 +55,7 @@ import {
   TypingDots,
 } from "./theme";
 import { streamTurn } from "./services/turnStreamClient";
+import { synthesizeTts } from "./services/ttsClient";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const STREAM_WS_URL = import.meta.env.VITE_STREAM_WS_URL || "";
@@ -180,6 +183,14 @@ export default function App() {
     continuitySettings: { reminder_cadence_weeks: 2, reminder_channel: "email" },
   });
   const messageInputRef = useRef(null);
+  // Kinin voice (TTS) — per-session toggle, defaults off. Audio bytes
+  // come back from POST /tts and are played client-side as Blob URLs.
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [voiceBusy, setVoiceBusy] = useState(false);
+  const audioRef = useRef(null);
+  const currentObjectUrlRef = useRef(null);
+  const lastSpokenKeyRef = useRef(null);
+  const ttsAbortRef = useRef(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuOverflowOpen, setMenuOverflowOpen] = useState(false);
   const sidebarRef = useRef(null);
@@ -194,6 +205,127 @@ export default function App() {
     if (typeof window === "undefined") return;
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }, [location.pathname]);
+
+  const stopVoicePlayback = () => {
+    if (ttsAbortRef.current) {
+      try { ttsAbortRef.current.abort(); } catch { /* noop */ }
+      ttsAbortRef.current = null;
+    }
+    if (audioRef.current) {
+      try { audioRef.current.pause(); } catch { /* noop */ }
+      audioRef.current = null;
+    }
+    if (currentObjectUrlRef.current) {
+      try { URL.revokeObjectURL(currentObjectUrlRef.current); } catch { /* noop */ }
+      currentObjectUrlRef.current = null;
+    }
+    setVoiceBusy(false);
+  };
+
+  const playAssistantSpeech = async (text) => {
+    stopVoicePlayback();
+    setVoiceBusy(true);
+    const controller = new AbortController();
+    ttsAbortRef.current = controller;
+    let result = null;
+    try {
+      result = await synthesizeTts({ text, signal: controller.signal });
+    } catch (e) {
+      if (!controller.signal.aborted) {
+        console.warn("TTS synthesis failed:", e?.message || e);
+      }
+    } finally {
+      if (ttsAbortRef.current === controller) ttsAbortRef.current = null;
+    }
+    if (!result) {
+      setVoiceBusy(false);
+      return;
+    }
+    if (controller.signal.aborted) {
+      try { URL.revokeObjectURL(result.objectUrl); } catch { /* noop */ }
+      setVoiceBusy(false);
+      return;
+    }
+    currentObjectUrlRef.current = result.objectUrl;
+    const audio = new Audio(result.objectUrl);
+    audioRef.current = audio;
+    const cleanup = () => {
+      if (audioRef.current === audio) audioRef.current = null;
+      if (currentObjectUrlRef.current === result.objectUrl) {
+        try { URL.revokeObjectURL(currentObjectUrlRef.current); } catch { /* noop */ }
+        currentObjectUrlRef.current = null;
+      }
+    };
+    audio.addEventListener("ended", cleanup);
+    audio.addEventListener("error", () => {
+      console.warn("TTS audio playback error");
+      cleanup();
+    });
+    try {
+      await audio.play();
+    } catch (playErr) {
+      console.warn("TTS audio play() blocked:", playErr?.message || playErr);
+    } finally {
+      setVoiceBusy(false);
+    }
+  };
+
+  // Reset voice toggle and stop any playback when the session changes
+  // (new chat → voice resets to off, per product spec).
+  useEffect(() => {
+    setVoiceEnabled(false);
+    stopVoicePlayback();
+    lastSpokenKeyRef.current = null;
+  }, [sessionId]);
+
+  // Clean up audio on unmount.
+  useEffect(() => () => stopVoicePlayback(), []);
+
+  // Auto-play newly completed assistant messages when voice is on.
+  // Only fires once per message (tracked by id or content fingerprint),
+  // and waits until streaming has finished.
+  useEffect(() => {
+    if (!voiceEnabled) return;
+    if (isSendingTurn || isStartingSession) return;
+    if (!Array.isArray(chat) || chat.length === 0) return;
+    const lastIdx = chat.length - 1;
+    const last = chat[lastIdx];
+    if (!last || last.role !== "assistant") return;
+    const content = (last.content || "").trim();
+    if (!content) return;
+    const key = last.id ?? `idx-${lastIdx}:${content.slice(0, 64)}`;
+    if (key === lastSpokenKeyRef.current) return;
+    lastSpokenKeyRef.current = key;
+    void playAssistantSpeech(content);
+    // playAssistantSpeech / stopVoicePlayback are stable in behavior and
+    // intentionally excluded; including them would re-run on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chat, voiceEnabled, isSendingTurn, isStartingSession]);
+
+  const toggleVoice = () => {
+    if (voiceEnabled) {
+      setVoiceEnabled(false);
+      stopVoicePlayback();
+      return;
+    }
+    // Turning ON: don't retroactively read existing messages. Mark the
+    // current last assistant message as already spoken so only NEW
+    // assistant turns trigger playback.
+    let lastIdx = -1;
+    for (let i = chat.length - 1; i >= 0; i -= 1) {
+      const m = chat[i];
+      if (m?.role === "assistant" && (m?.content || "").trim()) {
+        lastIdx = i;
+        break;
+      }
+    }
+    if (lastIdx >= 0) {
+      const m = chat[lastIdx];
+      const content = (m.content || "").trim();
+      lastSpokenKeyRef.current = m.id ?? `idx-${lastIdx}:${content.slice(0, 64)}`;
+    }
+    setVoiceEnabled(true);
+  };
 
   const menuItems = [
     {
@@ -1824,6 +1956,27 @@ export default function App() {
           </div>
 
           <div className="km-chat-input-row">
+            <button
+              type="button"
+              onClick={toggleVoice}
+              disabled={!isAuthed}
+              title={
+                voiceEnabled
+                  ? "Turn Kinin's voice off"
+                  : "Turn Kinin's voice on"
+              }
+              aria-pressed={voiceEnabled}
+              aria-label={
+                voiceEnabled
+                  ? "Turn Kinin's voice off"
+                  : "Turn Kinin's voice on"
+              }
+              className={`km-voice-toggle${
+                voiceEnabled ? " km-voice-toggle-on" : ""
+              }${voiceBusy ? " km-voice-toggle-busy" : ""}`}
+            >
+              {voiceEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+            </button>
             <textarea
               ref={messageInputRef}
               value={message}

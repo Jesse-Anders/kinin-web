@@ -695,6 +695,38 @@ a:hover {
 .km-chat-input::placeholder { color: var(--ink-faint); font-style: italic; }
 .km-chat-input[disabled] { opacity: 0.6; cursor: not-allowed; }
 
+/* ─── Kinin voice toggle (per-session, defaults off) ─── */
+.km-voice-toggle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--thread);
+  background: var(--cream-warm);
+  color: var(--ink-faint);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast);
+}
+.km-voice-toggle:hover:not([disabled]) {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+.km-voice-toggle.km-voice-toggle-on {
+  color: var(--crimson);
+  border-color: var(--crimson);
+}
+.km-voice-toggle.km-voice-toggle-busy {
+  animation: km-voice-pulse 1.2s ease-in-out infinite;
+}
+.km-voice-toggle[disabled] { opacity: 0.5; cursor: not-allowed; }
+@keyframes km-voice-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
 /* ─── Two-column "philosophy lead" layout ─── */
 .km-twocol {
   display: grid;
