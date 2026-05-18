@@ -132,8 +132,8 @@ export default function AdminMetricsUsersPage({ isAuthed, getAccessToken, apiBas
         title={`Top users by ${sortBy}`}
         description={
           revealEmails
-            ? "Showing user IDs (truncated). Emails would require a Cognito lookup per row."
-            : "User IDs hashed to 6-char aliases. Toggle 'Reveal emails' in the header to show raw IDs."
+            ? "Showing full subs and emails (entitlements + CRM lookup)."
+            : "User IDs hashed to 6-char aliases. Toggle 'Reveal emails' in the header to show raw subs and emails."
         }
         exportName={`users-top-by-${sortBy}`}
       >
@@ -148,6 +148,7 @@ export default function AdminMetricsUsersPage({ isAuthed, getAccessToken, apiBas
                 <tr>
                   <th style={{ width: 36 }}>#</th>
                   <th>User</th>
+                  <th>Email</th>
                   <th className="num">Tokens</th>
                   <th className="num">Calls</th>
                   <th className="num">Words</th>
@@ -159,9 +160,12 @@ export default function AdminMetricsUsersPage({ isAuthed, getAccessToken, apiBas
               <tbody>
                 {users.map((u, idx) => {
                   const spark = (u.spark || []).map((v, i) => ({ y: v, day: i }));
-                  const label = revealEmails
+                  const subLabel = revealEmails
                     ? maybeObfuscateLabel(u.user_id, { demoMode }) || "—"
                     : aliasForUserSub(u.user_id, aliasSalt);
+                  const emailLabel = revealEmails
+                    ? (maybeObfuscateLabel(u.email, { demoMode }) || "—")
+                    : "—";
                   return (
                     <tr
                       key={u.user_id}
@@ -170,7 +174,10 @@ export default function AdminMetricsUsersPage({ isAuthed, getAccessToken, apiBas
                     >
                       <td className="num">{idx + 1}</td>
                       <td style={{ fontFamily: "var(--font-mono)", fontSize: 12, wordBreak: "break-all", maxWidth: 280 }}>
-                        {label}
+                        {subLabel}
+                      </td>
+                      <td style={{ fontFamily: "var(--font-mono)", fontSize: 12, wordBreak: "break-all", maxWidth: 240, color: revealEmails && u.email ? undefined : "var(--ink-faint)" }}>
+                        {emailLabel}
                       </td>
                       <td className="num">{fmtTokens(maybeObfuscateNumber(u.tokens, { demoMode }))}</td>
                       <td className="num">{fmtInt(maybeObfuscateNumber(u.calls, { demoMode }))}</td>
@@ -185,7 +192,7 @@ export default function AdminMetricsUsersPage({ isAuthed, getAccessToken, apiBas
                 })}
                 {!users.length ? (
                   <tr>
-                    <td colSpan={8} style={{ textAlign: "center", padding: 20, color: "var(--ink-faint)", fontStyle: "italic" }}>
+                    <td colSpan={9} style={{ textAlign: "center", padding: 20, color: "var(--ink-faint)", fontStyle: "italic" }}>
                       No active users in this range.
                     </td>
                   </tr>
@@ -253,6 +260,9 @@ function UserDrawer({ user, range, isAuthed, getAccessToken, apiBase, aliasSalt,
   const label = revealEmails
     ? user.user_id
     : aliasForUserSub(user.user_id, aliasSalt);
+  const emailLine = revealEmails
+    ? (maybeObfuscateLabel(user.email, { demoMode }) || null)
+    : null;
 
   const daySeries = useMemo(() => {
     return (detail?.day_series || []).map((r) => ({
@@ -272,6 +282,11 @@ function UserDrawer({ user, range, isAuthed, getAccessToken, apiBase, aliasSalt,
         <header>
           <div className="km-chart-frame-eyebrow">User detail</div>
           <h2 className="km-h2" style={{ margin: 0, fontStyle: "italic" }}>{label}</h2>
+          {emailLine ? (
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--ink-soft)", marginTop: 2 }}>
+              {emailLine}
+            </div>
+          ) : null}
           <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--ink-faint)", marginTop: 6 }}>
             {range.start} → {range.end} (UTC)
           </div>
