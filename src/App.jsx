@@ -7,6 +7,7 @@ import {
   Feather,
   Key,
   Menu,
+  Play,
   Quote,
   ScrollText,
 } from "lucide-react";
@@ -186,6 +187,7 @@ export default function App() {
   // come back from POST /tts and are played client-side as Blob URLs.
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voiceBusy, setVoiceBusy] = useState(false);
+  const [voiceNeedsUserGesture, setVoiceNeedsUserGesture] = useState(false);
   const audioRef = useRef(null);
   const currentObjectUrlRef = useRef(null);
   const lastSpokenKeyRef = useRef(null);
@@ -218,12 +220,29 @@ export default function App() {
       try { URL.revokeObjectURL(currentObjectUrlRef.current); } catch { /* noop */ }
       currentObjectUrlRef.current = null;
     }
+    setVoiceNeedsUserGesture(false);
     setVoiceBusy(false);
+  };
+
+  const resumeVoicePlayback = async () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    setVoiceBusy(true);
+    try {
+      await audio.play();
+      setVoiceNeedsUserGesture(false);
+    } catch (playErr) {
+      console.warn("TTS manual play failed:", playErr?.message || playErr);
+      setVoiceNeedsUserGesture(true);
+    } finally {
+      setVoiceBusy(false);
+    }
   };
 
   const playAssistantSpeech = async (text) => {
     stopVoicePlayback();
     setVoiceBusy(true);
+    setVoiceNeedsUserGesture(false);
     const controller = new AbortController();
     ttsAbortRef.current = controller;
     let result = null;
@@ -250,6 +269,7 @@ export default function App() {
     audioRef.current = audio;
     const cleanup = () => {
       if (audioRef.current === audio) audioRef.current = null;
+      setVoiceNeedsUserGesture(false);
       if (currentObjectUrlRef.current === result.objectUrl) {
         try { URL.revokeObjectURL(currentObjectUrlRef.current); } catch { /* noop */ }
         currentObjectUrlRef.current = null;
@@ -264,6 +284,7 @@ export default function App() {
       await audio.play();
     } catch (playErr) {
       console.warn("TTS audio play() blocked:", playErr?.message || playErr);
+      setVoiceNeedsUserGesture(true);
     } finally {
       setVoiceBusy(false);
     }
@@ -1983,6 +2004,19 @@ export default function App() {
               Right-aligned so the first toggle sits under the Send button;
               additional toggles fan out leftward. */}
           <div className="km-chat-controls">
+            {voiceEnabled && voiceNeedsUserGesture ? (
+              <button
+                type="button"
+                onClick={() => { void resumeVoicePlayback(); }}
+                disabled={!isAuthed || voiceBusy}
+                title="Kinin Voice blocked by browser autoplay — tap to play"
+                aria-label="Play Kinin voice now"
+                className="km-chat-toggle-fallback"
+              >
+                <Play size={14} />
+                <span>Tap to play</span>
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={toggleVoice}

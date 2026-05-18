@@ -739,6 +739,31 @@ a:hover {
   animation: km-chat-toggle-pulse 1.2s ease-in-out infinite;
 }
 .km-chat-toggle[disabled] { opacity: 0.3; cursor: not-allowed; }
+.km-chat-toggle-fallback {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--thread);
+  border-radius: 999px;
+  background: var(--cream-warm);
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--t-fast), border-color var(--t-fast), opacity var(--t-fast);
+}
+.km-chat-toggle-fallback:hover:not([disabled]) {
+  color: var(--crimson-deep);
+  border-color: var(--crimson);
+}
+.km-chat-toggle-fallback[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 @keyframes km-chat-toggle-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.45; }
