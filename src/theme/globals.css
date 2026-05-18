@@ -695,36 +695,53 @@ a:hover {
 .km-chat-input::placeholder { color: var(--ink-faint); font-style: italic; }
 .km-chat-input[disabled] { opacity: 0.6; cursor: not-allowed; }
 
-/* ─── Kinin voice toggle (per-session, defaults off) ─── */
-.km-voice-toggle {
-  flex: 0 0 auto;
+/* ─── Chat-session controls strip ─────────────────────────────────────────
+   Right-aligned row that sits beneath the chat input. Holds per-session
+   toggles (voice, and future preferences like autoplay, transcript-only,
+   etc.). New toggles fan out leftward from the right edge so the
+   primary/most-recent control stays directly under the Send button.
+   ─────────────────────────────────────────────────────────────────────── */
+.km-chat-controls {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  margin: -8px 0 16px;
+}
+.km-chat-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  border: 1px solid var(--thread);
-  background: var(--cream-warm);
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
   color: var(--ink-faint);
-  border-radius: var(--radius);
+  border-radius: 50%;
   cursor: pointer;
-  transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast);
+  opacity: 0.6;
+  transition: color var(--t-fast), background var(--t-fast), opacity var(--t-fast);
 }
-.km-voice-toggle:hover:not([disabled]) {
+.km-chat-toggle:hover:not([disabled]) {
   color: var(--ink);
-  border-color: var(--ink);
+  background: var(--cream-warm);
+  opacity: 1;
 }
-.km-voice-toggle.km-voice-toggle-on {
+.km-chat-toggle.km-chat-toggle-active {
   color: var(--crimson);
-  border-color: var(--crimson);
+  opacity: 1;
 }
-.km-voice-toggle.km-voice-toggle-busy {
-  animation: km-voice-pulse 1.2s ease-in-out infinite;
+.km-chat-toggle.km-chat-toggle-active:hover:not([disabled]) {
+  color: var(--crimson-deep);
+  background: var(--cream-warm);
 }
-.km-voice-toggle[disabled] { opacity: 0.5; cursor: not-allowed; }
-@keyframes km-voice-pulse {
+.km-chat-toggle.km-chat-toggle-busy {
+  animation: km-chat-toggle-pulse 1.2s ease-in-out infinite;
+}
+.km-chat-toggle[disabled] { opacity: 0.3; cursor: not-allowed; }
+@keyframes km-chat-toggle-pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.55; }
+  50% { opacity: 0.45; }
 }
 
 /* ─── Two-column "philosophy lead" layout ─── */

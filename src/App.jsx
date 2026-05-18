@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  AudioLines,
   BookOpen,
   CircleUserRound,
   CirclePlus,
@@ -8,8 +9,6 @@ import {
   Menu,
   Quote,
   ScrollText,
-  Volume2,
-  VolumeX,
 } from "lucide-react";
 import kininHomeIcon from "./assets/icons/kinin-icon-390sq.png";
 import {
@@ -1956,27 +1955,6 @@ export default function App() {
           </div>
 
           <div className="km-chat-input-row">
-            <button
-              type="button"
-              onClick={toggleVoice}
-              disabled={!isAuthed}
-              title={
-                voiceEnabled
-                  ? "Turn Kinin's voice off"
-                  : "Turn Kinin's voice on"
-              }
-              aria-pressed={voiceEnabled}
-              aria-label={
-                voiceEnabled
-                  ? "Turn Kinin's voice off"
-                  : "Turn Kinin's voice on"
-              }
-              className={`km-voice-toggle${
-                voiceEnabled ? " km-voice-toggle-on" : ""
-              }${voiceBusy ? " km-voice-toggle-busy" : ""}`}
-            >
-              {voiceEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
-            </button>
             <textarea
               ref={messageInputRef}
               value={message}
@@ -1999,6 +1977,29 @@ export default function App() {
             >
               {isSendingTurn ? "Sending..." : "Send"}
             </Button>
+          </div>
+          {/* Chat-session control strip. New per-session toggles
+              (voice, future autoplay, transcript-only, etc.) live here.
+              Right-aligned so the first toggle sits under the Send button;
+              additional toggles fan out leftward. */}
+          <div className="km-chat-controls">
+            <button
+              type="button"
+              onClick={toggleVoice}
+              disabled={!isAuthed}
+              title={
+                voiceEnabled ? "Kinin Voice — Active" : "Kinin Voice — Muted"
+              }
+              aria-pressed={voiceEnabled}
+              aria-label={
+                voiceEnabled ? "Kinin Voice — Active" : "Kinin Voice — Muted"
+              }
+              className={`km-chat-toggle${
+                voiceEnabled ? " km-chat-toggle-active" : ""
+              }${voiceBusy ? " km-chat-toggle-busy" : ""}`}
+            >
+              <AudioLines size={20} />
+            </button>
           </div>
           {!IS_BETA_LITE ? (
             <details className="km-details">
