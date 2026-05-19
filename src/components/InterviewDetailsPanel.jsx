@@ -1,4 +1,6 @@
+import { useCallback, useEffect, useState } from "react";
 import { Button, DetailRow, Spinner } from "../theme";
+import { listTtsPresets } from "../services/ttsPresetsClient";
 
 const LABEL_GROUPS = [
   { key: "user_focus_labels", label: "User focus" },
@@ -27,18 +29,49 @@ export default function InterviewDetailsPanel({
   setTtsModel,
   ttsVoiceUuid,
   setTtsVoiceUuid,
-  ttsVoicePrompt,
-  setTtsVoicePrompt,
+  ttsPresetUuid,
+  setTtsPresetUuid,
 }) {
+  // Note: ttsVoicePrompt / setTtsVoicePrompt are no longer consumed here
+  // (Resemble silently ignores inline `description`; we use preset_uuid
+  // instead). Wiring remains intact in App.jsx in case Resemble's
+  // synthesize endpoint ever honors inline descriptions.
   const showTtsToggle = typeof setTtsModel === "function";
   const currentTtsModel =
     typeof ttsModel === "string" ? ttsModel : "chatterbox-turbo";
   const showVoiceUuidInput = typeof setTtsVoiceUuid === "function";
   const currentVoiceUuid = typeof ttsVoiceUuid === "string" ? ttsVoiceUuid : "";
-  const showVoicePromptInput = typeof setTtsVoicePrompt === "function";
-  const currentVoicePrompt =
-    typeof ttsVoicePrompt === "string" ? ttsVoicePrompt : "";
-  const VOICE_PROMPT_MAX = 1000;
+  const showPresetPicker = typeof setTtsPresetUuid === "function";
+  const currentPresetUuid =
+    typeof ttsPresetUuid === "string" ? ttsPresetUuid : "";
+
+  const [presets, setPresets] = useState({ custom: [], default: [] });
+  const [presetsLoading, setPresetsLoading] = useState(false);
+  const [presetsError, setPresetsError] = useState("");
+
+  const fetchPresets = useCallback(async () => {
+    if (!isAuthed || !showPresetPicker) return;
+    setPresetsLoading(true);
+    setPresetsError("");
+    try {
+      const data = await listTtsPresets();
+      setPresets({
+        custom: data.customPresets || [],
+        default: data.defaultPresets || [],
+      });
+    } catch (e) {
+      setPresetsError(e?.message || String(e));
+    } finally {
+      setPresetsLoading(false);
+    }
+  }, [isAuthed, showPresetPicker]);
+
+  useEffect(() => {
+    void fetchPresets();
+  }, [fetchPresets]);
+
+  const allPresets = [...(presets.custom || []), ...(presets.default || [])];
+  const selectedPreset = allPresets.find((p) => p?.uuid === currentPresetUuid);
   return (
     <div className="km-stack" style={{ gap: 18 }}>
       <div className="km-row" style={{ justifyContent: "space-between" }}>
@@ -124,58 +157,89 @@ export default function InterviewDetailsPanel({
         </div>
       ) : null}
 
-      {showVoicePromptInput ? (
+      {showPresetPicker ? (
         <div>
           <div className="km-mono-label" style={{ marginBottom: 6 }}>
-            Kinin Voice · Style prompt
+            Kinin Voice · Voice Settings Preset
           </div>
-          <textarea
-            value={currentVoicePrompt}
-            onChange={(e) =>
-              setTtsVoicePrompt(e.target.value.slice(0, VOICE_PROMPT_MAX))
-            }
-            placeholder={
-              'e.g. "Speak in a calm, warm tone. Pause slightly between sentences."'
-            }
-            className="km-input-compact"
-            style={{
-              width: "100%",
-              minHeight: 64,
-              resize: "vertical",
-              fontFamily: "inherit",
-              lineHeight: 1.4,
-            }}
-            spellCheck
-            maxLength={VOICE_PROMPT_MAX}
-          />
-          <div
-            className="km-row"
-            style={{ justifyContent: "space-between", marginTop: 4 }}
-          >
+          <div className="km-row" style={{ gap: 6, alignItems: "stretch" }}>
+            <select
+              value={currentPresetUuid}
+              onChange={(e) => setTtsPresetUuid(e.target.value)}
+              className="km-input-compact"
+              style={{ flex: 1 }}
+              disabled={presetsLoading}
+            >
+              <option value="">— None (voice default) —</option>
+              {(presets.custom || []).length ? (
+                <optgroup label="Custom presets">
+                  {(presets.custom || []).map((p) => (
+                    <option key={p.uuid} value={p.uuid}>
+                      {p.name || p.uuid}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : null}
+              {(presets.default || []).length ? (
+                <optgroup label="Default presets">
+                  {(presets.default || []).map((p) => (
+                    <option key={p.uuid} value={p.uuid}>
+                      {p.name || p.uuid}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : null}
+            </select>
             <button
               type="button"
-              onClick={() => setTtsVoicePrompt("")}
-              disabled={!currentVoicePrompt}
+              onClick={() => { void fetchPresets(); }}
+              disabled={!isAuthed || presetsLoading}
               className="km-tts-model-pill"
-              title="Clear prompt"
+              title="Refresh preset list from Resemble"
+            >
+              {presetsLoading ? "…" : "Refresh"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setTtsPresetUuid("")}
+              disabled={!currentPresetUuid}
+              className="km-tts-model-pill"
+              title="Clear selection"
             >
               Reset
             </button>
-            <span
+          </div>
+          {presetsError ? (
+            <div
               className="km-muted"
-              style={{ fontSize: 11, fontFamily: "var(--font-mono)" }}
+              style={{ marginTop: 6, fontSize: 12, color: "var(--crimson)" }}
             >
-              {currentVoicePrompt.length} / {VOICE_PROMPT_MAX}
-            </span>
-          </div>
-          <div className="km-muted" style={{ marginTop: 6, fontSize: 12 }}>
-            Free-text style prompt sent to Resemble per synthesis (their
-            "description" field). May add ~100–400 ms per call. Empty =
-            no prompt. Note: Resemble officially supports this field on
-            Voice Settings Presets; we send it inline, so it may be
-            ignored depending on backend behavior — check CloudWatch
-            elapsed_ms and listen for tonal change after toggling.
-          </div>
+              Failed to load presets: {presetsError}
+            </div>
+          ) : null}
+          {selectedPreset?.settings ? (
+            <div
+              className="km-muted"
+              style={{ marginTop: 6, fontSize: 12, lineHeight: 1.5 }}
+            >
+              {selectedPreset.settings.description
+                ? `“${selectedPreset.settings.description}”`
+                : ""}
+              {selectedPreset.settings.description ? <br /> : null}
+              <span style={{ fontFamily: "var(--font-mono)" }}>
+                pace {selectedPreset.settings.pace ?? "1"} · temp{" "}
+                {selectedPreset.settings.temperature ?? "0.8"} · exag{" "}
+                {selectedPreset.settings.exaggeration ?? "0.5"}
+              </span>
+            </div>
+          ) : (
+            <div className="km-muted" style={{ marginTop: 6, fontSize: 12 }}>
+              Voice Settings Presets are managed in Resemble's dashboard.
+              This list is fetched live via the Resemble API. Selected
+              preset's settings (pace/temperature/exaggeration/description)
+              are applied to every synthesis call.
+            </div>
+          )}
         </div>
       ) : null}
 

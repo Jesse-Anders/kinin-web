@@ -226,6 +226,10 @@ export default function App() {
   // Dev-only free-text voice style prompt (Resemble "description"). Sent
   // inline per /tts call. Empty = no prompt. Capped to 1000 chars (matches
   // Resemble's preset spec; backend enforces the same limit).
+  // NOTE: Resemble silently ignores this field on /synthesize; kept around
+  // only because the wiring is harmless and may be useful if Resemble's
+  // synthesize endpoint ever honors inline descriptions. The user-facing
+  // textarea is hidden in the dev panel — preset_uuid is the working path.
   const [ttsVoicePrompt, setTtsVoicePrompt] = useState(
     () => localStorage.getItem("tts_voice_prompt") || ""
   );
@@ -238,6 +242,22 @@ export default function App() {
       localStorage.removeItem("tts_voice_prompt");
     }
   }, [ttsVoicePrompt]);
+  // Resemble Voice Settings Preset UUID. When non-empty, every /tts call
+  // includes preset_uuid, and Resemble applies the preset's settings
+  // (pace/temperature/exaggeration/description). This is the officially
+  // supported style-control path.
+  const [ttsPresetUuid, setTtsPresetUuid] = useState(
+    () => localStorage.getItem("tts_preset_uuid") || ""
+  );
+  const ttsPresetUuidRef = useRef(ttsPresetUuid);
+  useEffect(() => {
+    ttsPresetUuidRef.current = ttsPresetUuid;
+    if (ttsPresetUuid) {
+      localStorage.setItem("tts_preset_uuid", ttsPresetUuid);
+    } else {
+      localStorage.removeItem("tts_preset_uuid");
+    }
+  }, [ttsPresetUuid]);
   // Reusable single <audio> element. Created lazily on first toggle-ON
   // (during a real user gesture) so the browser "blesses" it for
   // subsequent programmatic play() calls. Reusing the same element
@@ -376,6 +396,7 @@ export default function App() {
         model: ttsModelRef.current || undefined,
         voiceUuid: ttsVoiceUuidRef.current || undefined,
         voicePrompt: ttsVoicePromptRef.current || undefined,
+        presetUuid: ttsPresetUuidRef.current || undefined,
         signal: controller.signal,
       });
     } catch (e) {
@@ -1249,6 +1270,7 @@ export default function App() {
                 model,
                 voiceUuid: ttsVoiceUuidRef.current || undefined,
                 voicePrompt: ttsVoicePromptRef.current || undefined,
+                presetUuid: ttsPresetUuidRef.current || undefined,
                 signal,
               }),
             getModel: () => ttsModelRef.current || undefined,
@@ -2274,6 +2296,8 @@ export default function App() {
                   setTtsVoiceUuid={setTtsVoiceUuid}
                   ttsVoicePrompt={ttsVoicePrompt}
                   setTtsVoicePrompt={setTtsVoicePrompt}
+                  ttsPresetUuid={ttsPresetUuid}
+                  setTtsPresetUuid={setTtsPresetUuid}
                 />
               </Frame>
             </details>

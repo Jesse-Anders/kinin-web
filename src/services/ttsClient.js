@@ -33,6 +33,7 @@ export async function synthesizeTts({
   voiceUuid,
   model,
   voicePrompt,
+  presetUuid,
   signal,
 } = {}) {
   if (!API_BASE) throw new Error("VITE_API_BASE_URL is not set");
@@ -45,6 +46,7 @@ export async function synthesizeTts({
   if (voiceUuid) body.voice_uuid = voiceUuid;
   if (model) body.model = model;
   if (voicePrompt) body.voice_prompt = voicePrompt;
+  if (presetUuid) body.preset_uuid = presetUuid;
 
   const res = await fetch(`${API_BASE}/tts`, {
     method: "POST",
