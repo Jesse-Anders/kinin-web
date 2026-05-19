@@ -223,6 +223,21 @@ export default function App() {
       localStorage.removeItem("tts_voice_uuid");
     }
   }, [ttsVoiceUuid]);
+  // Dev-only free-text voice style prompt (Resemble "description"). Sent
+  // inline per /tts call. Empty = no prompt. Capped to 1000 chars (matches
+  // Resemble's preset spec; backend enforces the same limit).
+  const [ttsVoicePrompt, setTtsVoicePrompt] = useState(
+    () => localStorage.getItem("tts_voice_prompt") || ""
+  );
+  const ttsVoicePromptRef = useRef(ttsVoicePrompt);
+  useEffect(() => {
+    ttsVoicePromptRef.current = ttsVoicePrompt;
+    if (ttsVoicePrompt) {
+      localStorage.setItem("tts_voice_prompt", ttsVoicePrompt);
+    } else {
+      localStorage.removeItem("tts_voice_prompt");
+    }
+  }, [ttsVoicePrompt]);
   // Reusable single <audio> element. Created lazily on first toggle-ON
   // (during a real user gesture) so the browser "blesses" it for
   // subsequent programmatic play() calls. Reusing the same element
@@ -360,6 +375,7 @@ export default function App() {
         text,
         model: ttsModelRef.current || undefined,
         voiceUuid: ttsVoiceUuidRef.current || undefined,
+        voicePrompt: ttsVoicePromptRef.current || undefined,
         signal: controller.signal,
       });
     } catch (e) {
@@ -1232,6 +1248,7 @@ export default function App() {
                 text,
                 model,
                 voiceUuid: ttsVoiceUuidRef.current || undefined,
+                voicePrompt: ttsVoicePromptRef.current || undefined,
                 signal,
               }),
             getModel: () => ttsModelRef.current || undefined,
@@ -2255,6 +2272,8 @@ export default function App() {
                   setTtsModel={setTtsModel}
                   ttsVoiceUuid={ttsVoiceUuid}
                   setTtsVoiceUuid={setTtsVoiceUuid}
+                  ttsVoicePrompt={ttsVoicePrompt}
+                  setTtsVoicePrompt={setTtsVoicePrompt}
                 />
               </Frame>
             </details>

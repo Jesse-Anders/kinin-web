@@ -28,7 +28,13 @@ function base64ToBlob(base64, contentType) {
  * Callers are responsible for revoking `objectUrl` via URL.revokeObjectURL
  * once playback finishes, to free memory.
  */
-export async function synthesizeTts({ text, voiceUuid, model, signal } = {}) {
+export async function synthesizeTts({
+  text,
+  voiceUuid,
+  model,
+  voicePrompt,
+  signal,
+} = {}) {
   if (!API_BASE) throw new Error("VITE_API_BASE_URL is not set");
   if (typeof text !== "string" || !text.trim()) {
     throw new Error("text is required");
@@ -38,6 +44,7 @@ export async function synthesizeTts({ text, voiceUuid, model, signal } = {}) {
   const body = { text };
   if (voiceUuid) body.voice_uuid = voiceUuid;
   if (model) body.model = model;
+  if (voicePrompt) body.voice_prompt = voicePrompt;
 
   const res = await fetch(`${API_BASE}/tts`, {
     method: "POST",
