@@ -769,6 +769,31 @@ a:hover {
   50% { opacity: 0.45; }
 }
 
+/* TTS model A/B toggle pills (dev-only, inside Interview Details). */
+.km-tts-model-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border: 1px solid var(--thread);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast);
+}
+.km-tts-model-pill:hover:not([disabled]) {
+  color: var(--ink);
+  border-color: var(--ink-faint);
+}
+.km-tts-model-pill.km-tts-model-pill-active {
+  color: var(--crimson);
+  border-color: var(--crimson);
+  background: var(--cream-warm);
+}
+
 /* ─── Two-column "philosophy lead" layout ─── */
 .km-twocol {
   display: grid;

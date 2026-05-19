@@ -55,7 +55,8 @@ import {
   TypingDots,
 } from "./theme";
 import { streamTurn } from "./services/turnStreamClient";
-import { synthesizeTts } from "./services/ttsClient";
+import { synthesizeTts, warmTts } from "./services/ttsClient";
+import { createTtsStreamQueue } from "./services/ttsStreamQueue";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const STREAM_WS_URL = import.meta.env.VITE_STREAM_WS_URL || "";
@@ -188,6 +189,23 @@ export default function App() {
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voiceBusy, setVoiceBusy] = useState(false);
   const [voiceNeedsUserGesture, setVoiceNeedsUserGesture] = useState(false);
+  // Dev-only A/B for Resemble TTS model. Default is "chatterbox-turbo" for
+  // sub-second time-to-first-audio; toggle to "" (Resemble default,
+  // Chatterbox standard) to compare voice quality. Persisted in
+  // localStorage so dev choice survives reloads.
+  const [ttsModel, setTtsModel] = useState(() => {
+    const raw = localStorage.getItem("tts_model");
+    return raw === null ? "chatterbox-turbo" : raw;
+  });
+  const ttsModelRef = useRef(ttsModel);
+  useEffect(() => {
+    ttsModelRef.current = ttsModel;
+    if (ttsModel) {
+      localStorage.setItem("tts_model", ttsModel);
+    } else {
+      localStorage.setItem("tts_model", "");
+    }
+  }, [ttsModel]);
   // Reusable single <audio> element. Created lazily on first toggle-ON
   // (during a real user gesture) so the browser "blesses" it for
   // subsequent programmatic play() calls. Reusing the same element
@@ -199,6 +217,9 @@ export default function App() {
   const currentObjectUrlRef = useRef(null);
   const lastSpokenKeyRef = useRef(null);
   const ttsAbortRef = useRef(null);
+  // Per-turn streaming TTS queue. Created on each new turn when voice is
+  // enabled, torn down on stream end, abort, voice-off, or new session.
+  const ttsQueueRef = useRef(null);
   // 1-sample silent WAV used to "warm up" the <audio> element during
   // the user gesture (toggle-ON) so later programmatic plays succeed.
   const SILENT_WAV_DATA_URI =
@@ -269,6 +290,10 @@ export default function App() {
   };
 
   const stopVoicePlayback = () => {
+    if (ttsQueueRef.current) {
+      try { ttsQueueRef.current.abort(); } catch { /* noop */ }
+      ttsQueueRef.current = null;
+    }
     if (ttsAbortRef.current) {
       try { ttsAbortRef.current.abort(); } catch { /* noop */ }
       ttsAbortRef.current = null;
@@ -290,6 +315,11 @@ export default function App() {
     if (!audio) return;
     setVoiceBusy(true);
     try {
+      if (ttsQueueRef.current) {
+        await ttsQueueRef.current.resumePlayback();
+        setVoiceNeedsUserGesture(false);
+        return;
+      }
       audio.muted = false;
       await audio.play();
       setVoiceNeedsUserGesture(false);
@@ -309,7 +339,11 @@ export default function App() {
     ttsAbortRef.current = controller;
     let result = null;
     try {
-      result = await synthesizeTts({ text, signal: controller.signal });
+      result = await synthesizeTts({
+        text,
+        model: ttsModelRef.current || undefined,
+        signal: controller.signal,
+      });
     } catch (e) {
       if (!controller.signal.aborted) {
         console.warn("TTS synthesis failed:", e?.message || e);
@@ -378,10 +412,14 @@ export default function App() {
 
   // Auto-play newly completed assistant messages when voice is on.
   // Only fires once per message (tracked by id or content fingerprint),
-  // and waits until streaming has finished.
+  // and waits until streaming has finished. Streamed turns are handled
+  // sentence-by-sentence by the per-turn TTS queue (see sendTurn); when
+  // that queue ran for the latest assistant message, we mark it spoken
+  // here so this fallback doesn't re-speak the whole turn.
   useEffect(() => {
     if (!voiceEnabled) return;
     if (isSendingTurn || isStartingSession) return;
+    if (ttsQueueRef.current) return;
     if (!Array.isArray(chat) || chat.length === 0) return;
     const lastIdx = chat.length - 1;
     const last = chat[lastIdx];
@@ -407,6 +445,10 @@ export default function App() {
     // play() calls (after async TTS) are not blocked by browser
     // autoplay policy on Chrome/Firefox/desktop Safari.
     primeAudio();
+    // Pre-warm the /tts Lambda container (no Resemble call, no audio).
+    // Fire-and-forget; the goal is to absorb the ~1s of cold-start init
+    // before the first real synthesis is requested.
+    void warmTts();
     // Turning ON: don't retroactively read existing messages. Mark the
     // current last assistant message as already spoken so only NEW
     // assistant turns trigger playback.
@@ -1151,6 +1193,53 @@ export default function App() {
         );
       };
 
+      // If voice is on AND we have a WS stream, build a sentence-by-sentence
+      // TTS queue. Each completed sentence is sent to /tts in parallel as
+      // text streams in; audio plays in order through the persistent
+      // primed <audio> element. This turns ~9s of post-stream silence
+      // into ~1-2s while still keeping prosody natural.
+      let streamQueue = null;
+      const shouldStreamVoice = voiceEnabled && STREAM_WS_URL && accessToken;
+      if (shouldStreamVoice) {
+        if (ttsQueueRef.current) {
+          try { ttsQueueRef.current.abort(); } catch { /* noop */ }
+          ttsQueueRef.current = null;
+        }
+        try {
+          const audioEl = ensureAudioElement();
+          streamQueue = createTtsStreamQueue({
+            audioEl,
+            synthesize: ({ text, model, signal }) =>
+              synthesizeTts({ text, model, signal }),
+            getModel: () => ttsModelRef.current || undefined,
+            onPlaybackBlocked: () => setVoiceNeedsUserGesture(true),
+            onPlaybackStarted: () => {
+              setVoiceNeedsUserGesture(false);
+              setVoiceBusy(true);
+            },
+            onAllDone: () => setVoiceBusy(false),
+            onError: (err) =>
+              console.warn("Streaming TTS error:", err?.message || err),
+          });
+          ttsQueueRef.current = streamQueue;
+          // Mark this assistant message as already-spoken so the
+          // post-stream auto-play effect doesn't fire a second synthesis
+          // for the full text.
+          lastSpokenKeyRef.current = assistantMessageId;
+          setVoiceBusy(true);
+        } catch (e) {
+          console.warn("Streaming TTS init failed:", e?.message || e);
+          streamQueue = null;
+        }
+      }
+
+      const onStreamDelta = (delta) => {
+        appendAssistantDelta(delta);
+        if (streamQueue) {
+          try { streamQueue.feed(delta); } catch { /* noop */ }
+        }
+      };
+
       let completed = false;
       if (STREAM_WS_URL && accessToken) {
         try {
@@ -1161,15 +1250,22 @@ export default function App() {
             sessionId: sessionId || undefined,
             clientRequestId,
             mode: uiState?.mode,
-            onDelta: appendAssistantDelta,
+            onDelta: onStreamDelta,
           });
           applyTurnResponse(streamed, sessionId);
           if (typeof streamed.assistant === "string") {
             setAssistantFinal(streamed.assistant);
           }
+          if (streamQueue) {
+            try { streamQueue.finalize(); } catch { /* noop */ }
+          }
           setMessage("");
           completed = true;
         } catch {
+          if (streamQueue) {
+            try { streamQueue.abort(); } catch { /* noop */ }
+            if (ttsQueueRef.current === streamQueue) ttsQueueRef.current = null;
+          }
           completed = false;
         }
       }
@@ -2132,6 +2228,8 @@ export default function App() {
                   labelGroups={labelGroups}
                   progressForDisplay={progressForDisplay}
                   uiState={uiState}
+                  ttsModel={ttsModel}
+                  setTtsModel={setTtsModel}
                 />
               </Frame>
             </details>

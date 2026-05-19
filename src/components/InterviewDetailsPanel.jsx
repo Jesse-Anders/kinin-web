@@ -7,6 +7,11 @@ const LABEL_GROUPS = [
   { key: "handle_lightly_topics", label: "Handle lightly topics" },
 ];
 
+const TTS_MODEL_OPTIONS = [
+  { value: "chatterbox-turbo", label: "Turbo (low latency)" },
+  { value: "", label: "Standard (default quality)" },
+];
+
 export default function InterviewDetailsPanel({
   isAuthed,
   busy,
@@ -18,7 +23,12 @@ export default function InterviewDetailsPanel({
   labelGroups,
   progressForDisplay,
   uiState,
+  ttsModel,
+  setTtsModel,
 }) {
+  const showTtsToggle = typeof setTtsModel === "function";
+  const currentTtsModel =
+    typeof ttsModel === "string" ? ttsModel : "chatterbox-turbo";
   return (
     <div className="km-stack" style={{ gap: 18 }}>
       <div className="km-row" style={{ justifyContent: "space-between" }}>
@@ -37,6 +47,37 @@ export default function InterviewDetailsPanel({
         </Button>
         <span className="km-mono-label">Manual refresh</span>
       </div>
+
+      {showTtsToggle ? (
+        <div>
+          <div className="km-mono-label" style={{ marginBottom: 6 }}>
+            Kinin Voice · TTS model (A/B)
+          </div>
+          <div
+            className="km-row"
+            style={{ gap: 6, flexWrap: "wrap", alignItems: "stretch" }}
+          >
+            {TTS_MODEL_OPTIONS.map((opt) => {
+              const isActive = currentTtsModel === opt.value;
+              return (
+                <button
+                  key={opt.value || "default"}
+                  type="button"
+                  onClick={() => setTtsModel(opt.value)}
+                  className={`km-tts-model-pill${
+                    isActive ? " km-tts-model-pill-active" : ""
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="km-muted" style={{ marginTop: 6, fontSize: 12 }}>
+            Applies to the next sentence/turn synthesized.
+          </div>
+        </div>
+      ) : null}
 
       <DetailRow label="Journey version" value={journeyVersion || "—"} />
 

@@ -72,3 +72,32 @@ export async function synthesizeTts({ text, voiceUuid, model, signal } = {}) {
     elapsedMs: parsed.elapsed_ms ?? null,
   };
 }
+
+/**
+ * Fire a "warm" /tts request that returns immediately on the backend
+ * without invoking Resemble. Used to wake the Lambda container during
+ * the user's toggle-ON gesture so the next real synthesis avoids
+ * paying ~1s of cold-start. Errors are swallowed (best-effort).
+ */
+export async function warmTts({ signal } = {}) {
+  if (!API_BASE) return;
+  let idToken;
+  try {
+    idToken = await getIdToken();
+  } catch {
+    return;
+  }
+  try {
+    await fetch(`${API_BASE}/tts`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({ warm: true }),
+      signal,
+    });
+  } catch {
+    // Best-effort pre-warm; ignore failures.
+  }
+}
