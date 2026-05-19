@@ -57,6 +57,8 @@ import {
 import { streamTurn } from "./services/turnStreamClient";
 import { synthesizeTts, warmTts } from "./services/ttsClient";
 import { createTtsStreamQueue } from "./services/ttsStreamQueue";
+import { isIOS } from "./services/platform";
+import { ensureRunning, playArrayBuffer } from "./services/webAudioPlayer";
 import {
   DEFAULT_VOICE_UUID,
   QUICK_SWITCH_UUIDS,
@@ -273,11 +275,21 @@ export default function App() {
   // Reusable single <audio> element. Created lazily on first toggle-ON
   // (during a real user gesture) so the browser "blesses" it for
   // subsequent programmatic play() calls. Reusing the same element
-  // across turns helps autoplay policy on Chrome / Firefox / Safari.
+  // across turns helps autoplay policy on Chrome / Firefox / desktop
+  // Safari. iOS uses Web Audio instead (see audioCtxRef).
   const audioRef = useRef(null);
-  // Web Audio context used solely to unlock audio output during the
-  // user gesture (resume() + play a silent buffer).
+  // Web Audio context. On desktop browsers we only use it to "unlock"
+  // audio output during the toggle-ON gesture and then fall back to the
+  // <audio> element. On iOS — where the <audio> element is unreliable
+  // for autoplay — this context becomes the playback path: each TTS
+  // chunk is decoded via decodeAudioData and scheduled on a fresh
+  // AudioBufferSourceNode. Once resumed inside a user gesture, the
+  // context stays unlocked for the rest of the session.
   const audioCtxRef = useRef(null);
+  // Tracks an in-flight Web Audio playback (the controller returned by
+  // playArrayBuffer). Used so stopVoicePlayback can interrupt the
+  // single-shot fallback path on iOS.
+  const webAudioCtrlRef = useRef(null);
   const currentObjectUrlRef = useRef(null);
   const lastSpokenKeyRef = useRef(null);
   const ttsAbortRef = useRef(null);
@@ -313,14 +325,23 @@ export default function App() {
   };
 
   // Called during a real user gesture (toggle-ON click) to unlock
-  // programmatic audio playback for the rest of the session.
-  // Combines two techniques for max browser coverage:
-  //   1. Web Audio: create/resume an AudioContext and play a 1-sample
-  //      silent buffer through it. Unblocks Web Audio output.
-  //   2. <audio> element: play a 1-sample silent WAV via the same
-  //      element we will reuse for TTS playback, then pause. The
-  //      element is now "blessed" for later programmatic plays.
+  // programmatic audio playback for the rest of the session. The
+  // approach depends on which playback path the session will use:
+  //
+  //   • iOS: We rely on Web Audio for all TTS playback. Creating and
+  //     resuming the AudioContext here, plus scheduling a 1-sample
+  //     silent buffer, is the canonical iOS unlock and is sufficient
+  //     for the entire session. We deliberately do NOT poke the
+  //     <audio> element — a muted .play() on iOS does not actually
+  //     unlock that element, and pretending it does has historically
+  //     made things worse.
+  //
+  //   • Other browsers: Same Web Audio resume (so any Web Audio code
+  //     elsewhere works), plus a muted .play() on the persistent
+  //     <audio> element to bless it for later programmatic plays.
   const primeAudio = () => {
+    const ios = isIOS();
+
     try {
       if (!audioCtxRef.current) {
         const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -338,6 +359,8 @@ export default function App() {
         source.start(0);
       }
     } catch { /* noop */ }
+
+    if (ios) return; // iOS playback is Web Audio only — skip <audio>.
 
     try {
       const audio = ensureAudioElement();
@@ -362,6 +385,10 @@ export default function App() {
       try { ttsAbortRef.current.abort(); } catch { /* noop */ }
       ttsAbortRef.current = null;
     }
+    if (webAudioCtrlRef.current) {
+      try { webAudioCtrlRef.current.stop(); } catch { /* noop */ }
+      webAudioCtrlRef.current = null;
+    }
     if (audioRef.current) {
       try { audioRef.current.pause(); } catch { /* noop */ }
       // Do NOT null the element — we keep it primed for future plays.
@@ -375,17 +402,28 @@ export default function App() {
   };
 
   const resumeVoicePlayback = async () => {
-    const audio = audioRef.current;
-    if (!audio) return;
     setVoiceBusy(true);
     try {
+      // On iOS we may end up here because the AudioContext got
+      // suspended (tab backgrounded, screen locked, incoming call).
+      // Resuming the context inside the user's tap is the recovery.
+      if (isIOS() && audioCtxRef.current) {
+        const ok = await ensureRunning(audioCtxRef.current);
+        if (!ok) {
+          setVoiceNeedsUserGesture(true);
+          return;
+        }
+      }
       if (ttsQueueRef.current) {
         await ttsQueueRef.current.resumePlayback();
         setVoiceNeedsUserGesture(false);
         return;
       }
-      audio.muted = false;
-      await audio.play();
+      const audio = audioRef.current;
+      if (audio) {
+        audio.muted = false;
+        await audio.play();
+      }
       setVoiceNeedsUserGesture(false);
     } catch (playErr) {
       console.warn("TTS manual play failed:", playErr?.message || playErr);
@@ -428,6 +466,41 @@ export default function App() {
       setVoiceBusy(false);
       return;
     }
+
+    // iOS path: route through Web Audio. The <audio> element is
+    // unreliable for autoplay even after priming, and src swaps can
+    // re-lock it. Once the AudioContext is resumed (done during
+    // toggle-ON), playing decoded buffers is rock solid.
+    if (isIOS() && audioCtxRef.current && result.arrayBuffer) {
+      try { URL.revokeObjectURL(result.objectUrl); } catch { /* noop */ }
+      try {
+        const ctx = audioCtxRef.current;
+        if (ctx.state === "suspended") {
+          await ensureRunning(ctx);
+        }
+        if (ctx.state !== "running") {
+          setVoiceNeedsUserGesture(true);
+          setVoiceBusy(false);
+          return;
+        }
+        const ctrl = await playArrayBuffer(ctx, result.arrayBuffer);
+        webAudioCtrlRef.current = ctrl;
+        ctrl.ended.then(() => {
+          if (webAudioCtrlRef.current === ctrl) {
+            webAudioCtrlRef.current = null;
+          }
+          setVoiceNeedsUserGesture(false);
+        });
+      } catch (e) {
+        console.warn("TTS Web Audio playback failed:", e?.message || e);
+        setVoiceNeedsUserGesture(true);
+      } finally {
+        setVoiceBusy(false);
+      }
+      return;
+    }
+
+    // <audio> element path (desktop / Android).
     currentObjectUrlRef.current = result.objectUrl;
     const audio = ensureAudioElement();
     audio.muted = false;
@@ -1282,9 +1355,16 @@ export default function App() {
           ttsQueueRef.current = null;
         }
         try {
-          const audioEl = ensureAudioElement();
+          // On iOS, hand the queue our AudioContext so it plays via
+          // BufferSource (the <audio> element is unreliable on iOS even
+          // after priming). On every other browser, the persistent
+          // <audio> element works fine and lets the browser handle
+          // buffering/decoding for us.
+          const queueOptions = isIOS() && audioCtxRef.current
+            ? { audioCtx: audioCtxRef.current }
+            : { audioEl: ensureAudioElement() };
           streamQueue = createTtsStreamQueue({
-            audioEl,
+            ...queueOptions,
             synthesize: ({ text, model, signal }) => {
               const presetVal = ttsPresetUuidRef.current;
               return synthesizeTts({

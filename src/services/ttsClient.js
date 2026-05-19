@@ -9,24 +9,28 @@ async function getIdToken() {
   return idToken;
 }
 
-function base64ToBlob(base64, contentType) {
+function base64ToBytes(base64) {
   const binary = atob(base64);
   const len = binary.length;
   const bytes = new Uint8Array(len);
   for (let i = 0; i < len; i += 1) {
     bytes[i] = binary.charCodeAt(i);
   }
-  return new Blob([bytes], { type: contentType || "audio/mpeg" });
+  return bytes;
 }
 
 /**
  * Synthesize Kinin's text to speech via the /tts endpoint.
  *
- * Returns an object with a playable object URL plus metadata:
- *   { objectUrl, contentType, durationS, elapsedMs }
+ * Returns an object with both an `<audio>`-ready object URL AND the raw
+ * ArrayBuffer (needed for the Web Audio playback path on iOS):
+ *   { objectUrl, arrayBuffer, contentType, durationS, elapsedMs }
  *
  * Callers are responsible for revoking `objectUrl` via URL.revokeObjectURL
- * once playback finishes, to free memory.
+ * once playback finishes, to free memory. `arrayBuffer` is plain data and
+ * is reclaimed by GC; note that `AudioContext.decodeAudioData` detaches the
+ * buffer it receives, so pass a `.slice(0)` copy if you also need the data
+ * for another purpose.
  */
 export async function synthesizeTts({
   text,
@@ -72,11 +76,18 @@ export async function synthesizeTts({
     throw err;
   }
 
-  const blob = base64ToBlob(parsed.audio_base64, parsed.content_type);
+  const bytes = base64ToBytes(parsed.audio_base64);
+  const contentType = parsed.content_type || "audio/mpeg";
+  const blob = new Blob([bytes], { type: contentType });
   const objectUrl = URL.createObjectURL(blob);
+  // Hand the underlying ArrayBuffer to callers as well. `bytes.buffer` is
+  // the same memory the blob was created from; the blob retains its own
+  // reference so revoking the object URL doesn't free this ArrayBuffer
+  // prematurely.
   return {
     objectUrl,
-    contentType: parsed.content_type,
+    arrayBuffer: bytes.buffer,
+    contentType,
     durationS: parsed.duration_s ?? null,
     elapsedMs: parsed.elapsed_ms ?? null,
   };

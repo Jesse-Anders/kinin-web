@@ -3,18 +3,35 @@
  *
  * Designed to be fed character deltas from a live LLM stream. Each time a
  * complete sentence (or paragraph-ending) is detected, a /tts request is
- * fired in parallel. Returned audio is played in original order through a
- * single persistent <audio> element supplied by the caller, so the user
- * hears Kinin's voice begin a couple of seconds after the first text
+ * fired in parallel. Returned audio is played in original order so the
+ * user hears Kinin's voice begin a couple of seconds after the first text
  * appears — instead of waiting for the entire turn to finish before any
  * synthesis starts.
  *
+ * Two playback backends are supported, picked at construction time:
+ *
+ *   1. <audio> element (desktop / Android / non-iOS browsers).
+ *        Pass `audioEl`. The element should already be "blessed" by a
+ *        prior user gesture so that programmatic .play() calls don't
+ *        hit browser autoplay restrictions.
+ *
+ *   2. Web Audio API (iOS Safari and any other engine where the <audio>
+ *        element is unreliable).
+ *        Pass `audioCtx` — an AudioContext that has already been resumed
+ *        inside a user gesture. The queue will decode each chunk via
+ *        decodeAudioData and schedule it on the context's destination
+ *        with an AudioBufferSourceNode.
+ *
+ * If both are passed, `audioCtx` wins.
+ *
  * Lifecycle:
  *   const queue = createTtsStreamQueue({
- *     audioEl,                // persistent <audio>, already user-primed
- *     synthesize,             // ({ text, model, signal }) => { objectUrl, ... }
+ *     audioEl OR audioCtx,    // exactly one playback backend
+ *     synthesize,             // ({ text, model, signal }) =>
+ *                             //   { objectUrl, arrayBuffer, ... }
  *     getModel,               // () => string | undefined
- *     onPlaybackBlocked,      // optional: () => void  (autoplay rejected)
+ *     onPlaybackBlocked,      // optional: () => void  (autoplay rejected
+ *                             //   on <audio>, or AudioContext suspended)
  *     onPlaybackStarted,      // optional: () => void
  *     onAllDone,              // optional: () => void  (queue drained)
  *     onError,                // optional: (err) => void
@@ -136,6 +153,7 @@ function findForcedBoundary(buffer) {
 
 export function createTtsStreamQueue({
   audioEl,
+  audioCtx,
   synthesize,
   getModel,
   onPlaybackBlocked,
@@ -143,10 +161,18 @@ export function createTtsStreamQueue({
   onAllDone,
   onError,
 } = {}) {
-  if (!audioEl) throw new Error("createTtsStreamQueue: audioEl is required");
+  if (!audioEl && !audioCtx) {
+    throw new Error(
+      "createTtsStreamQueue: either audioEl or audioCtx is required",
+    );
+  }
   if (typeof synthesize !== "function") {
     throw new Error("createTtsStreamQueue: synthesize() is required");
   }
+  // Web Audio wins if both are provided. Lets the host (App.jsx) pass both
+  // an element and a context and have the queue pick the right backend
+  // without per-platform branching at the call site.
+  const useWebAudio = !!audioCtx;
 
   let buffer = "";
   let nextSubmitIdx = 0;
@@ -158,6 +184,10 @@ export function createTtsStreamQueue({
   let isPlaying = false;
   const inflightControllers = new Set();
   let blockedNotified = false;
+  // Web Audio backend: the currently-playing AudioBufferSourceNode (if
+  // any). Held so abort() can call .stop() on it. We never reuse a
+  // BufferSource; each chunk gets a fresh one.
+  let currentSource = null;
 
   const fail = (err) => {
     if (typeof onError === "function") {
@@ -182,6 +212,25 @@ export function createTtsStreamQueue({
     }
   };
 
+  const advanceAndContinue = (job, statusAfter) => {
+    if (job.objectUrl) {
+      revoke(job.objectUrl);
+      job.objectUrl = null;
+    }
+    job.audioBuffer = null;
+    job.status = statusAfter;
+    nextPlayIdx += 1;
+    isPlaying = false;
+    currentSource = null;
+    if (aborted) return;
+    void playNextIfReady();
+  };
+
+  const isReadyForPlayback = (job) => {
+    if (job.status !== "ready") return false;
+    return useWebAudio ? !!job.audioBuffer : !!job.objectUrl;
+  };
+
   const playNextIfReady = async () => {
     if (aborted) return;
     if (isPlaying) return;
@@ -192,9 +241,7 @@ export function createTtsStreamQueue({
         nextPlayIdx += 1;
         continue;
       }
-      if (job.status === "ready" && job.objectUrl) {
-        break;
-      }
+      if (isReadyForPlayback(job)) break;
       nextPlayIdx += 1;
     }
     if (nextPlayIdx >= jobs.length) {
@@ -202,28 +249,56 @@ export function createTtsStreamQueue({
       return;
     }
     const job = jobs[nextPlayIdx];
-    if (!job || !job.objectUrl) return;
+    if (!job || !isReadyForPlayback(job)) return;
 
     isPlaying = true;
+
+    if (useWebAudio) {
+      // Web Audio path: schedule the pre-decoded AudioBuffer on the
+      // context's destination via a fresh BufferSource. iOS handles this
+      // reliably across the whole session once the context is resumed.
+      try {
+        if (audioCtx.state === "suspended") {
+          try {
+            await audioCtx.resume();
+          } catch {
+            // Will surface via the catch below if it ultimately fails.
+          }
+        }
+        if (audioCtx.state !== "running") {
+          throw new Error("AudioContext is not running");
+        }
+        const source = audioCtx.createBufferSource();
+        source.buffer = job.audioBuffer;
+        source.connect(audioCtx.destination);
+        source.onended = () => {
+          // onended fires for both natural end and forced .stop(). If we
+          // were aborted, abort() already cleaned up — skip here.
+          if (aborted) return;
+          advanceAndContinue(job, "played");
+        };
+        currentSource = source;
+        source.start(0);
+        if (typeof onPlaybackStarted === "function") {
+          try { onPlaybackStarted(); } catch { /* noop */ }
+        }
+      } catch (playErr) {
+        isPlaying = false;
+        currentSource = null;
+        if (!blockedNotified) {
+          blockedNotified = true;
+          if (typeof onPlaybackBlocked === "function") {
+            try { onPlaybackBlocked(playErr); } catch { /* noop */ }
+          }
+        }
+      }
+      return;
+    }
+
+    // <audio> element path (desktop / Android).
     try {
-      audioEl.onended = () => {
-        revoke(job.objectUrl);
-        job.objectUrl = null;
-        job.status = "played";
-        nextPlayIdx += 1;
-        isPlaying = false;
-        if (aborted) return;
-        void playNextIfReady();
-      };
-      audioEl.onerror = () => {
-        revoke(job.objectUrl);
-        job.objectUrl = null;
-        job.status = "failed";
-        nextPlayIdx += 1;
-        isPlaying = false;
-        if (aborted) return;
-        void playNextIfReady();
-      };
+      audioEl.onended = () => advanceAndContinue(job, "played");
+      audioEl.onerror = () => advanceAndContinue(job, "failed");
       audioEl.muted = false;
       audioEl.src = job.objectUrl;
       await audioEl.play();
@@ -249,6 +324,7 @@ export function createTtsStreamQueue({
       text: trimmed,
       status: "pending",
       objectUrl: null,
+      audioBuffer: null,
     };
     jobs.push(job);
 
@@ -259,15 +335,40 @@ export function createTtsStreamQueue({
     const model = typeof getModel === "function" ? getModel() : undefined;
 
     synthesize({ text: trimmed, model, signal: controller.signal })
-      .then((result) => {
+      .then(async (result) => {
         inflightControllers.delete(controller);
         if (aborted) {
           revoke(result?.objectUrl);
           job.status = "aborted";
           return;
         }
-        job.status = "ready";
-        job.objectUrl = result?.objectUrl || null;
+        if (useWebAudio) {
+          // Decode eagerly so the buffer is ready by the time playback
+          // catches up. We can throw out the objectUrl/Blob in this
+          // branch — the Web Audio path doesn't use it. decodeAudioData
+          // detaches its input ArrayBuffer, so we pass a copy and leave
+          // the caller's reference untouched.
+          revoke(result?.objectUrl);
+          try {
+            const arrayBuffer = result?.arrayBuffer;
+            if (!arrayBuffer) throw new Error("missing arrayBuffer");
+            const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
+            if (aborted) {
+              job.status = "aborted";
+              return;
+            }
+            job.audioBuffer = audioBuffer;
+            job.status = "ready";
+          } catch (decodeErr) {
+            job.status = "failed";
+            fail(decodeErr);
+            void playNextIfReady();
+            return;
+          }
+        } else {
+          job.status = "ready";
+          job.objectUrl = result?.objectUrl || null;
+        }
         void playNextIfReady();
       })
       .catch((err) => {
@@ -336,12 +437,22 @@ export function createTtsStreamQueue({
         try { c.abort(); } catch { /* noop */ }
       }
       inflightControllers.clear();
-      try { audioEl.pause(); } catch { /* noop */ }
-      audioEl.onended = null;
-      audioEl.onerror = null;
+      if (useWebAudio) {
+        if (currentSource) {
+          try { currentSource.onended = null; } catch { /* noop */ }
+          try { currentSource.stop(0); } catch { /* noop */ }
+          try { currentSource.disconnect(); } catch { /* noop */ }
+          currentSource = null;
+        }
+      } else {
+        try { audioEl.pause(); } catch { /* noop */ }
+        audioEl.onended = null;
+        audioEl.onerror = null;
+      }
       for (const job of jobs) {
         if (job.objectUrl) revoke(job.objectUrl);
         job.objectUrl = null;
+        job.audioBuffer = null;
         if (job.status !== "played") job.status = "aborted";
       }
       isPlaying = false;
@@ -349,6 +460,24 @@ export function createTtsStreamQueue({
     async resumePlayback() {
       if (aborted) return;
       blockedNotified = false;
+      if (useWebAudio) {
+        // The Web Audio path can only end up "blocked" if the
+        // AudioContext got suspended (tab backgrounded, screen lock,
+        // call coming in). Resuming the context inside a user gesture
+        // is the recovery; we then resume scheduling chunks. There's
+        // no in-flight BufferSource to "unpause" — Web Audio sources
+        // are fire-and-forget — so we just nudge the queue forward.
+        if (audioCtx.state === "suspended") {
+          try {
+            await audioCtx.resume();
+          } catch {
+            // Fall through; playNextIfReady will surface the failure
+            // via onPlaybackBlocked again.
+          }
+        }
+        await playNextIfReady();
+        return;
+      }
       if (isPlaying) {
         try {
           audioEl.muted = false;
