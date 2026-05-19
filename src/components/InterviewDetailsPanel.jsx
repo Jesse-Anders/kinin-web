@@ -25,10 +25,14 @@ export default function InterviewDetailsPanel({
   uiState,
   ttsModel,
   setTtsModel,
+  ttsVoiceUuid,
+  setTtsVoiceUuid,
 }) {
   const showTtsToggle = typeof setTtsModel === "function";
   const currentTtsModel =
     typeof ttsModel === "string" ? ttsModel : "chatterbox-turbo";
+  const showVoiceUuidInput = typeof setTtsVoiceUuid === "function";
+  const currentVoiceUuid = typeof ttsVoiceUuid === "string" ? ttsVoiceUuid : "";
   return (
     <div className="km-stack" style={{ gap: 18 }}>
       <div className="km-row" style={{ justifyContent: "space-between" }}>
@@ -75,6 +79,41 @@ export default function InterviewDetailsPanel({
           </div>
           <div className="km-muted" style={{ marginTop: 6, fontSize: 12 }}>
             Applies to the next sentence/turn synthesized.
+          </div>
+        </div>
+      ) : null}
+
+      {showVoiceUuidInput ? (
+        <div>
+          <div className="km-mono-label" style={{ marginBottom: 6 }}>
+            Kinin Voice · Voice UUID override
+          </div>
+          <div className="km-row" style={{ gap: 6, alignItems: "stretch" }}>
+            <input
+              value={currentVoiceUuid}
+              onChange={(e) => setTtsVoiceUuid(e.target.value.trim())}
+              placeholder="Leave blank to use server default"
+              className="km-input-compact"
+              style={{ flex: 1 }}
+              spellCheck={false}
+              autoCapitalize="off"
+              autoCorrect="off"
+            />
+            <button
+              type="button"
+              onClick={() => setTtsVoiceUuid("")}
+              disabled={!currentVoiceUuid}
+              className="km-tts-model-pill"
+              title="Clear override and use server default"
+            >
+              Reset
+            </button>
+          </div>
+          <div className="km-muted" style={{ marginTop: 6, fontSize: 12 }}>
+            Override the Resemble voice for this browser. Refresh after
+            pasting a new UUID is not required — it applies to the next
+            synthesis. Note: some voices are model-specific (e.g. a
+            standard Chatterbox voice may not work with Turbo).
           </div>
         </div>
       ) : null}

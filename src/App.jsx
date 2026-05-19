@@ -206,6 +206,23 @@ export default function App() {
       localStorage.setItem("tts_model", "");
     }
   }, [ttsModel]);
+  // Dev-only voice UUID override. When empty, the backend falls back to
+  // RESEMBLE_DEFAULT_VOICE_UUID. Used to try different Resemble voices
+  // (notably: some voices are only compatible with specific models —
+  // e.g. a standard-Chatterbox voice may not work under chatterbox-turbo).
+  // Persisted in localStorage so the override survives reloads.
+  const [ttsVoiceUuid, setTtsVoiceUuid] = useState(
+    () => localStorage.getItem("tts_voice_uuid") || ""
+  );
+  const ttsVoiceUuidRef = useRef(ttsVoiceUuid);
+  useEffect(() => {
+    ttsVoiceUuidRef.current = ttsVoiceUuid;
+    if (ttsVoiceUuid) {
+      localStorage.setItem("tts_voice_uuid", ttsVoiceUuid);
+    } else {
+      localStorage.removeItem("tts_voice_uuid");
+    }
+  }, [ttsVoiceUuid]);
   // Reusable single <audio> element. Created lazily on first toggle-ON
   // (during a real user gesture) so the browser "blesses" it for
   // subsequent programmatic play() calls. Reusing the same element
@@ -342,6 +359,7 @@ export default function App() {
       result = await synthesizeTts({
         text,
         model: ttsModelRef.current || undefined,
+        voiceUuid: ttsVoiceUuidRef.current || undefined,
         signal: controller.signal,
       });
     } catch (e) {
@@ -1210,7 +1228,12 @@ export default function App() {
           streamQueue = createTtsStreamQueue({
             audioEl,
             synthesize: ({ text, model, signal }) =>
-              synthesizeTts({ text, model, signal }),
+              synthesizeTts({
+                text,
+                model,
+                voiceUuid: ttsVoiceUuidRef.current || undefined,
+                signal,
+              }),
             getModel: () => ttsModelRef.current || undefined,
             onPlaybackBlocked: () => setVoiceNeedsUserGesture(true),
             onPlaybackStarted: () => {
@@ -2230,6 +2253,8 @@ export default function App() {
                   uiState={uiState}
                   ttsModel={ttsModel}
                   setTtsModel={setTtsModel}
+                  ttsVoiceUuid={ttsVoiceUuid}
+                  setTtsVoiceUuid={setTtsVoiceUuid}
                 />
               </Frame>
             </details>
