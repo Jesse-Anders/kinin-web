@@ -60,6 +60,10 @@ import { createTtsStreamQueue } from "./services/ttsStreamQueue";
 import { isIOS } from "./services/platform";
 import { ensureRunning, playArrayBuffer } from "./services/webAudioPlayer";
 import {
+  startIosAudioSession,
+  stopIosAudioSession,
+} from "./services/iosAudioSession";
+import {
   DEFAULT_VOICE_UUID,
   QUICK_SWITCH_UUIDS,
   VOICE_OPTIONS,
@@ -574,6 +578,9 @@ export default function App() {
     setVoiceEnabled(false);
     setVoiceError("");
     stopVoicePlayback();
+    if (isIOS()) {
+      stopIosAudioSession();
+    }
     lastSpokenKeyRef.current = null;
   }, [sessionId]);
 
@@ -586,6 +593,7 @@ export default function App() {
         try { void audioCtxRef.current.close(); } catch { /* noop */ }
         audioCtxRef.current = null;
       }
+      stopIosAudioSession();
     },
     [],
   );
@@ -620,9 +628,23 @@ export default function App() {
       setVoiceEnabled(false);
       setVoiceError("");
       stopVoicePlayback();
+      // Tear down the iOS silent loop on toggle-off so we don't keep
+      // a hidden <audio> element running indefinitely.
+      if (isIOS()) {
+        stopIosAudioSession();
+      }
       return;
     }
     setVoiceError("");
+    // On iOS, start a silent looping <audio> element inside this user
+    // gesture. While it plays, iOS classifies the page as media-active
+    // and Web Audio output is actually routed to the speaker. Without
+    // this, source.start() can run "successfully" but produce no
+    // audible output and never fire onended — the failure mode we saw
+    // where the voice icon pulses indefinitely.
+    if (isIOS()) {
+      startIosAudioSession();
+    }
     // Prime audio during this user gesture so later programmatic
     // play() calls (after async TTS) are not blocked by browser
     // autoplay policy on Chrome/Firefox/desktop Safari.

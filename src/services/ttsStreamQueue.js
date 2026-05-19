@@ -188,6 +188,10 @@ export function createTtsStreamQueue({
   // any). Held so abort() can call .stop() on it. We never reuse a
   // BufferSource; each chunk gets a fresh one.
   let currentSource = null;
+  // Companion to currentSource: a setTimeout id used as a watchdog for
+  // source.onended (see playNextIfReady). Cleared on natural end or
+  // on abort.
+  let currentSafetyTimer = null;
 
   const fail = (err) => {
     if (typeof onError === "function") {
@@ -271,9 +275,38 @@ export function createTtsStreamQueue({
         const source = audioCtx.createBufferSource();
         source.buffer = job.audioBuffer;
         source.connect(audioCtx.destination);
+
+        // Safety timeout. If the host audio engine is in a degraded
+        // state (notably: iOS Safari, where source.start() can run
+        // "successfully" without producing audible output and onended
+        // never fires), we'd otherwise hang here forever — leaving
+        // voiceBusy stuck true and the toggle icon pulsing. Force an
+        // advance after duration + 4 s. We never call this timeout's
+        // path on a healthy playback because the normal onended path
+        // clears the timer first.
+        const expectedMs = Math.max(
+          250,
+          Math.floor((job.audioBuffer.duration || 0) * 1000) + 4000,
+        );
+        currentSafetyTimer = setTimeout(() => {
+          if (aborted) return;
+          if (currentSource !== source) return;
+          currentSafetyTimer = null;
+          try { source.onended = null; } catch { /* noop */ }
+          try { source.stop(0); } catch { /* noop */ }
+          try { source.disconnect(); } catch { /* noop */ }
+          // Treat as failed rather than played so the host UI can
+          // surface an error message instead of silently moving on
+          // (the user heard nothing — that is a failure).
+          fail(new Error("web_audio_playback_timeout"));
+          advanceAndContinue(job, "failed");
+        }, expectedMs);
+
         source.onended = () => {
-          // onended fires for both natural end and forced .stop(). If we
-          // were aborted, abort() already cleaned up — skip here.
+          if (currentSafetyTimer) {
+            clearTimeout(currentSafetyTimer);
+            currentSafetyTimer = null;
+          }
           if (aborted) return;
           advanceAndContinue(job, "played");
         };
@@ -438,6 +471,10 @@ export function createTtsStreamQueue({
       }
       inflightControllers.clear();
       if (useWebAudio) {
+        if (currentSafetyTimer) {
+          clearTimeout(currentSafetyTimer);
+          currentSafetyTimer = null;
+        }
         if (currentSource) {
           try { currentSource.onended = null; } catch { /* noop */ }
           try { currentSource.stop(0); } catch { /* noop */ }
