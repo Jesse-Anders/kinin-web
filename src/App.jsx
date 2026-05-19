@@ -197,13 +197,38 @@ export default function App() {
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voiceBusy, setVoiceBusy] = useState(false);
   const [voiceNeedsUserGesture, setVoiceNeedsUserGesture] = useState(false);
-  // Dev-only A/B for Resemble TTS model. Default is "chatterbox-turbo" for
-  // sub-second time-to-first-audio; toggle to "" (Resemble default,
-  // Chatterbox standard) to compare voice quality. Persisted in
-  // localStorage so dev choice survives reloads.
+  // Last user-facing TTS error message. Surfaced as a small note near
+  // the AudioLines toggle so users can see when synthesis is failing
+  // without checking the console (especially important on iOS, where
+  // the console isn't easily accessible). Cleared on toggle-off, new
+  // turn, or new session.
+  const [voiceError, setVoiceError] = useState("");
+  // Dev-only A/B for Resemble TTS model. Default is "" (Resemble's
+  // standard Chatterbox), which is what our curated voices are tuned
+  // for. "chatterbox-turbo" is kept as a dev toggle for latency testing,
+  // but most voices in our catalog are incompatible with it
+  // (template_id=110 errors) and Resemble's turbo workers OOM on it
+  // intermittently (HTTP 503 ResourcesExhausted). Persisted in
+  // localStorage so a dev choice survives reloads.
+  //
+  // Migration: any browser that previously persisted "chatterbox-turbo"
+  // (the old default) gets reset to standard on next load. This runs
+  // once per browser, gated by `tts_model_default_migrated_v2`.
   const [ttsModel, setTtsModel] = useState(() => {
+    try {
+      if (
+        !localStorage.getItem("tts_model_default_migrated_v2") &&
+        localStorage.getItem("tts_model") === "chatterbox-turbo"
+      ) {
+        localStorage.setItem("tts_model", "");
+        localStorage.setItem("tts_model_default_migrated_v2", "1");
+      }
+    } catch {
+      // Ignore: privacy-mode / unavailable localStorage, fall through
+      // to the default below.
+    }
     const raw = localStorage.getItem("tts_model");
-    return raw === null ? "chatterbox-turbo" : raw;
+    return raw === null ? "" : raw;
   });
   const ttsModelRef = useRef(ttsModel);
   useEffect(() => {
@@ -437,6 +462,7 @@ export default function App() {
     stopVoicePlayback();
     setVoiceBusy(true);
     setVoiceNeedsUserGesture(false);
+    setVoiceError("");
     const controller = new AbortController();
     ttsAbortRef.current = controller;
     let result = null;
@@ -452,7 +478,19 @@ export default function App() {
       });
     } catch (e) {
       if (!controller.signal.aborted) {
-        console.warn("TTS synthesis failed:", e?.message || e);
+        const msg = e?.message || String(e);
+        console.warn("TTS synthesis failed:", msg);
+        if (/tts_http_5\d\d/.test(msg)) {
+          setVoiceError(
+            "Voice service is temporarily unavailable. Try again in a moment.",
+          );
+        } else if (/tts_http_4\d\d/.test(msg)) {
+          setVoiceError(
+            "Voice could not be generated (model/voice mismatch).",
+          );
+        } else {
+          setVoiceError("Voice playback failed.");
+        }
       }
     } finally {
       if (ttsAbortRef.current === controller) ttsAbortRef.current = null;
@@ -534,6 +572,7 @@ export default function App() {
   // (new chat → voice resets to off, per product spec).
   useEffect(() => {
     setVoiceEnabled(false);
+    setVoiceError("");
     stopVoicePlayback();
     lastSpokenKeyRef.current = null;
   }, [sessionId]);
@@ -579,9 +618,11 @@ export default function App() {
   const toggleVoice = () => {
     if (voiceEnabled) {
       setVoiceEnabled(false);
+      setVoiceError("");
       stopVoicePlayback();
       return;
     }
+    setVoiceError("");
     // Prime audio during this user gesture so later programmatic
     // play() calls (after async TTS) are not blocked by browser
     // autoplay policy on Chrome/Firefox/desktop Safari.
@@ -1363,6 +1404,9 @@ export default function App() {
           const queueOptions = isIOS() && audioCtxRef.current
             ? { audioCtx: audioCtxRef.current }
             : { audioEl: ensureAudioElement() };
+          // Clear any stale error so a recovering Resemble doesn't keep
+          // a "voice unavailable" banner from a prior turn pinned.
+          setVoiceError("");
           streamQueue = createTtsStreamQueue({
             ...queueOptions,
             synthesize: ({ text, model, signal }) => {
@@ -1379,13 +1423,29 @@ export default function App() {
             },
             getModel: () => ttsModelRef.current || undefined,
             onPlaybackBlocked: () => setVoiceNeedsUserGesture(true),
+            onError: (err) => {
+              const msg = err?.message || String(err);
+              console.warn("Streaming TTS error:", msg);
+              // Resemble's structured errors come through as
+              // "tts_http_503", "tts_http_500" etc. — translate to
+              // user-friendly text without exposing internals.
+              if (/tts_http_5\d\d/.test(msg)) {
+                setVoiceError(
+                  "Voice service is temporarily unavailable. Try again in a moment.",
+                );
+              } else if (/tts_http_4\d\d/.test(msg)) {
+                setVoiceError(
+                  "Voice could not be generated (model/voice mismatch).",
+                );
+              } else {
+                setVoiceError("Voice playback failed.");
+              }
+            },
             onPlaybackStarted: () => {
               setVoiceNeedsUserGesture(false);
               setVoiceBusy(true);
             },
             onAllDone: () => setVoiceBusy(false),
-            onError: (err) =>
-              console.warn("Streaming TTS error:", err?.message || err),
           });
           ttsQueueRef.current = streamQueue;
           // Mark this assistant message as already-spoken so the
@@ -2445,6 +2505,15 @@ export default function App() {
               <AudioLines size={20} />
             </button>
           </div>
+          {voiceEnabled && voiceError ? (
+            <div
+              className="km-voice-error-note"
+              role="status"
+              aria-live="polite"
+            >
+              {voiceError}
+            </div>
+          ) : null}
           {!IS_BETA_LITE ? (
             <details className="km-details">
               <summary className="km-details-summary">

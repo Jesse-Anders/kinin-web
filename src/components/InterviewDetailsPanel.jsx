@@ -10,9 +10,14 @@ const LABEL_GROUPS = [
   { key: "handle_lightly_topics", label: "Handle lightly topics" },
 ];
 
+// Order matters — first entry is the product default (used when no
+// localStorage value is set). Standard is the safe default: most of our
+// curated voices aren't compatible with chatterbox-turbo, and Resemble's
+// turbo workers periodically OOM (HTTP 503 ResourcesExhausted). Turbo
+// remains as a dev toggle for latency comparison.
 const TTS_MODEL_OPTIONS = [
-  { value: "chatterbox-turbo", label: "Turbo (low latency)" },
-  { value: "", label: "Standard (default quality)" },
+  { value: "", label: "Standard (default)" },
+  { value: "chatterbox-turbo", label: "Turbo (low latency, voice-restricted)" },
 ];
 
 const PRESET_NONE_VALUE = "none";
@@ -40,8 +45,7 @@ export default function InterviewDetailsPanel({
   // instead). Wiring remains intact in App.jsx in case Resemble's
   // synthesize endpoint ever honors inline descriptions.
   const showTtsToggle = typeof setTtsModel === "function";
-  const currentTtsModel =
-    typeof ttsModel === "string" ? ttsModel : "chatterbox-turbo";
+  const currentTtsModel = typeof ttsModel === "string" ? ttsModel : "";
   const showVoiceUuidInput = typeof setTtsVoiceUuid === "function";
   const currentVoiceUuid = typeof ttsVoiceUuid === "string" ? ttsVoiceUuid : "";
   const showPresetPicker = typeof setTtsPresetUuid === "function";

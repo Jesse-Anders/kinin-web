@@ -2001,3 +2001,21 @@ a:hover {
 }
 .km-voice-quickbtn[disabled] { opacity: 0.3; cursor: not-allowed; }
 
+/* Inline voice-error note. Lives directly under the chat-controls strip
+   so users see why audio went silent (Resemble outage, voice/model
+   mismatch, etc.) without having to open dev tools — important on iOS
+   Safari where the console isn't readily accessible. */
+.km-voice-error-note {
+  margin: -6px 0 12px;
+  padding: 6px 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--crimson-deep);
+  background: var(--cream-warm);
+  border: 1px solid var(--thread);
+  border-radius: 4px;
+  text-align: right;
+  align-self: flex-end;
+}
+
