@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button, DetailRow, Spinner } from "../theme";
 import { listTtsPresets } from "../services/ttsPresetsClient";
-import { VOICE_OPTIONS } from "../services/voiceCatalog";
+import { VOICE_OPTIONS, findVoice } from "../services/voiceCatalog";
 
 const LABEL_GROUPS = [
   { key: "user_focus_labels", label: "User focus" },
@@ -172,6 +172,20 @@ export default function InterviewDetailsPanel({
           <div className="km-mono-label" style={{ marginBottom: 6 }}>
             Kinin Voice · Voice Settings Preset
           </div>
+          {(() => {
+            const v = findVoice(currentVoiceUuid);
+            return v?.noPreset ? (
+              <div
+                className="km-muted"
+                style={{ marginBottom: 8, fontSize: 12, fontStyle: "italic" }}
+              >
+                Preset is ignored for <strong>{v.name}</strong> — this
+                voice doesn&rsquo;t combine well with our current presets
+                (it loses its character). Selection below has no effect
+                until you switch to a preset-compatible voice.
+              </div>
+            ) : null;
+          })()}
           <div className="km-row" style={{ gap: 6, alignItems: "stretch" }}>
             <select
               value={currentPresetUuid}

@@ -14,6 +14,14 @@
 // rendered with Resemble's default (non-turbo) model, matching what the
 // chat actually uses at runtime.
 
+// Voice-level overrides:
+//   - noPreset: when true, the TTS call drops any preset_uuid the user
+//     has set. Some Resemble presets (notably Warmth) carry pitch /
+//     cadence parameters tuned for a feminine voice and audibly override
+//     a masculine voice's character (e.g. Richard ends up sounding like
+//     a woman when synthesized with Warmth). We surface this as a flag
+//     so we can opt voices out per-case as we find them, without ripping
+//     out the presets entirely for everyone.
 export const VOICE_OPTIONS = [
   {
     uuid: "55592656",
@@ -36,7 +44,17 @@ export const VOICE_OPTIONS = [
     slug: "emmanuel",
     silhouette: "man",
   },
-  { uuid: "85ba84f2", name: "Richard", slug: "richard", silhouette: "man" },
+  {
+    uuid: "85ba84f2",
+    name: "Richard",
+    slug: "richard",
+    silhouette: "man",
+    // Warmth (and likely other Resemble presets) override Richard's
+    // baseline voice character so strongly the result reads as
+    // feminine. Until we find a preset that complements him, run
+    // Richard without one.
+    noPreset: true,
+  },
 ];
 
 // The voice we ship as the product default before a user makes a choice.
@@ -55,4 +73,23 @@ export function findVoice(uuid) {
 export function voicePreviewUrl(slug) {
   if (!slug) return null;
   return `/voice-previews/${slug}.mp3`;
+}
+
+/**
+ * Decide what preset_uuid (if any) should accompany a TTS request,
+ * given the user's selected preset and the voice they're using.
+ *
+ * Returns `undefined` when:
+ *   - the user has cleared the preset (`presetUuid` falsy or "none"),
+ *   - the active voice has `noPreset: true` set in the catalog above.
+ *
+ * Otherwise returns the supplied `presetUuid` unchanged. Centralising
+ * this here means every TTS call site stays in sync — App.jsx's
+ * one-shot path and sendTurn's streaming queue both consume it.
+ */
+export function resolveEffectivePresetUuid(voiceUuid, presetUuid) {
+  if (!presetUuid || presetUuid === "none") return undefined;
+  const v = findVoice(voiceUuid);
+  if (v && v.noPreset) return undefined;
+  return presetUuid;
 }

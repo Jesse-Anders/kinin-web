@@ -67,6 +67,7 @@ import {
   DEFAULT_VOICE_UUID,
   QUICK_SWITCH_UUIDS,
   VOICE_OPTIONS,
+  resolveEffectivePresetUuid,
 } from "./services/voiceCatalog";
 import VoiceSilhouette from "./components/VoiceSilhouette";
 
@@ -471,13 +472,15 @@ export default function App() {
     ttsAbortRef.current = controller;
     let result = null;
     try {
-      const presetVal = ttsPresetUuidRef.current;
       result = await synthesizeTts({
         text,
         model: ttsModelRef.current || undefined,
         voiceUuid: ttsVoiceUuidRef.current || undefined,
         voicePrompt: ttsVoicePromptRef.current || undefined,
-        presetUuid: presetVal && presetVal !== "none" ? presetVal : undefined,
+        presetUuid: resolveEffectivePresetUuid(
+          ttsVoiceUuidRef.current,
+          ttsPresetUuidRef.current,
+        ),
         signal: controller.signal,
       });
     } catch (e) {
@@ -1432,14 +1435,15 @@ export default function App() {
           streamQueue = createTtsStreamQueue({
             ...queueOptions,
             synthesize: ({ text, model, signal }) => {
-              const presetVal = ttsPresetUuidRef.current;
               return synthesizeTts({
                 text,
                 model,
                 voiceUuid: ttsVoiceUuidRef.current || undefined,
                 voicePrompt: ttsVoicePromptRef.current || undefined,
-                presetUuid:
-                  presetVal && presetVal !== "none" ? presetVal : undefined,
+                presetUuid: resolveEffectivePresetUuid(
+                  ttsVoiceUuidRef.current,
+                  ttsPresetUuidRef.current,
+                ),
                 signal,
               });
             },
