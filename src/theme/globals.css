@@ -1834,3 +1834,154 @@ a:hover {
 }
 .km-drawer-close:hover { color: var(--ink); border-color: var(--ink); }
 
+/* ───────────────────────────────────────────────────────────────────────
+   Voice picker (Kinin Settings → Voice).
+   Visually echoes .km-radio-list but each row has a silhouette + preview
+   play button on the right. The whole row is a <label> so clicking the
+   text selects the radio; the preview button stops propagation so it
+   stays an independent affordance.
+   ─────────────────────────────────────────────────────────────────────── */
+.km-voice-list {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--cream);
+  border: 1px solid var(--thread);
+}
+.km-voice-row {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 6px;
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: var(--ink);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background var(--t-fast);
+}
+.km-voice-row:hover { background: var(--cream-warm); }
+.km-voice-row-selected { background: var(--cream-warm); }
+.km-voice-row input[type="radio"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 1px solid var(--ink);
+  background: var(--cream);
+  display: inline-grid;
+  place-items: center;
+  margin: 0;
+  cursor: pointer;
+  transition: border-color var(--t-fast);
+}
+.km-voice-row input[type="radio"]:checked { border-color: var(--crimson); }
+.km-voice-row input[type="radio"]:checked::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--crimson);
+}
+.km-voice-row input[type="radio"]:disabled { opacity: 0.5; cursor: not-allowed; }
+.km-voice-silhouette {
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--cream-warm);
+  color: var(--ink-soft);
+  border: 1px solid var(--thread);
+}
+.km-voice-row-selected .km-voice-silhouette {
+  color: var(--crimson);
+  border-color: var(--crimson);
+}
+.km-voice-meta {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.km-voice-name { color: var(--ink); }
+.km-voice-default-tag {
+  color: var(--ink-soft);
+  font-style: italic;
+  font-size: 14px;
+}
+.km-voice-error {
+  font-size: 12px;
+  color: var(--crimson-deep);
+}
+.km-voice-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--thread);
+  border-radius: 999px;
+  background: var(--cream);
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast);
+}
+.km-voice-preview:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+.km-voice-preview-playing {
+  color: var(--crimson);
+  border-color: var(--crimson);
+  background: var(--cream-warm);
+}
+.km-voice-preview-label { line-height: 1; }
+
+/* ───────────────────────────────────────────────────────────────────────
+   Chat-strip voice quick-switch.
+   Two tiny silhouette buttons next to the AudioLines toggle. Selected
+   one gets a soft crimson ring; the other reads as a low-emphasis swap
+   target. Sized to align with the 36px voice toggle.
+   ─────────────────────────────────────────────────────────────────────── */
+.km-voice-quickswitch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 4px;
+}
+.km-voice-quickbtn {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+  opacity: 0.55;
+  transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast), opacity var(--t-fast);
+}
+.km-voice-quickbtn:hover:not([disabled]) {
+  color: var(--ink);
+  background: var(--cream-warm);
+  opacity: 1;
+}
+.km-voice-quickbtn-selected {
+  color: var(--crimson);
+  border-color: var(--crimson);
+  opacity: 1;
+}
+.km-voice-quickbtn-selected:hover:not([disabled]) {
+  color: var(--crimson-deep);
+  border-color: var(--crimson-deep);
+}
+.km-voice-quickbtn[disabled] { opacity: 0.3; cursor: not-allowed; }
+

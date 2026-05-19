@@ -1,5 +1,6 @@
 import { Banner, Button, FormRow, Frame, Section, Skeleton, Spinner, TextInput } from "../theme";
 import InterviewDetailsPanel from "../components/InterviewDetailsPanel";
+import VoicePickerSection from "../components/VoicePickerSection";
 
 function deriveAgeFromDateOfBirth(dateOfBirth) {
   const text = String(dateOfBirth || "").trim();
@@ -40,6 +41,8 @@ export default function KininSettingsPage({
   onOpenDangerZone,
   onClose,
   interviewDetails,
+  ttsVoiceUuid,
+  setTtsVoiceUuid,
 }) {
   const cadenceValue = String(continuitySettings?.reminder_cadence_weeks ?? 2);
   const showInitialLoader = profileBusy && !profileSchema;
@@ -185,6 +188,21 @@ export default function KininSettingsPage({
               </label>
             </div>
           </div>
+        </Frame>
+
+        <Frame label="Voice">
+          <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
+            <p>
+              Choose the voice Kinin uses when reading turns aloud. Each
+              option has a preview clip so you can audition before you commit.
+              You can change this anytime.
+            </p>
+          </div>
+          <VoicePickerSection
+            ttsVoiceUuid={ttsVoiceUuid}
+            setTtsVoiceUuid={setTtsVoiceUuid}
+            disabled={profileBusy}
+          />
         </Frame>
 
         <Frame label="Account executor">

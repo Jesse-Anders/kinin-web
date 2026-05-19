@@ -57,6 +57,12 @@ import {
 import { streamTurn } from "./services/turnStreamClient";
 import { synthesizeTts, warmTts } from "./services/ttsClient";
 import { createTtsStreamQueue } from "./services/ttsStreamQueue";
+import {
+  DEFAULT_VOICE_UUID,
+  QUICK_SWITCH_UUIDS,
+  VOICE_OPTIONS,
+} from "./services/voiceCatalog";
+import VoiceSilhouette from "./components/VoiceSilhouette";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const STREAM_WS_URL = import.meta.env.VITE_STREAM_WS_URL || "";
@@ -211,8 +217,12 @@ export default function App() {
   // (notably: some voices are only compatible with specific models —
   // e.g. a standard-Chatterbox voice may not work under chatterbox-turbo).
   // Persisted in localStorage so the override survives reloads.
+  // Kinin's out-of-the-box voice + preset. The frontend always sends
+  // these to /tts so the experience is identical regardless of whether
+  // backend env vars are set. Reset buttons in the dev panel return to
+  // these defaults (not to empty).
   const [ttsVoiceUuid, setTtsVoiceUuid] = useState(
-    () => localStorage.getItem("tts_voice_uuid") || ""
+    () => localStorage.getItem("tts_voice_uuid") || DEFAULT_VOICE_UUID
   );
   const ttsVoiceUuidRef = useRef(ttsVoiceUuid);
   useEffect(() => {
@@ -247,7 +257,9 @@ export default function App() {
   // (pace/temperature/exaggeration/description). This is the officially
   // supported style-control path.
   const [ttsPresetUuid, setTtsPresetUuid] = useState(
-    () => localStorage.getItem("tts_preset_uuid") || ""
+    () =>
+      localStorage.getItem("tts_preset_uuid") ||
+      "6b6bfa07-e246-42ed-9362-4641b85bac79" // Warmth
   );
   const ttsPresetUuidRef = useRef(ttsPresetUuid);
   useEffect(() => {
@@ -391,12 +403,13 @@ export default function App() {
     ttsAbortRef.current = controller;
     let result = null;
     try {
+      const presetVal = ttsPresetUuidRef.current;
       result = await synthesizeTts({
         text,
         model: ttsModelRef.current || undefined,
         voiceUuid: ttsVoiceUuidRef.current || undefined,
         voicePrompt: ttsVoicePromptRef.current || undefined,
-        presetUuid: ttsPresetUuidRef.current || undefined,
+        presetUuid: presetVal && presetVal !== "none" ? presetVal : undefined,
         signal: controller.signal,
       });
     } catch (e) {
@@ -828,6 +841,14 @@ export default function App() {
     const continuity = parsed?.continuity_settings || {};
     const onboarding = parsed?.onboarding || {};
     const executor = parsed?.account_executor || {};
+    const voicePrefs = parsed?.voice_preferences;
+    if (voicePrefs && typeof voicePrefs === "object") {
+      const savedVoice = voicePrefs.voice_uuid;
+      const known = VOICE_OPTIONS.some((v) => v.uuid === savedVoice);
+      if (known && savedVoice !== ttsVoiceUuidRef.current) {
+        setTtsVoiceUuid(savedVoice);
+      }
+    }
     setBioProfile({
       preferred_name: bp.preferred_name || "",
       date_of_birth: bp.date_of_birth || "",
@@ -1264,15 +1285,18 @@ export default function App() {
           const audioEl = ensureAudioElement();
           streamQueue = createTtsStreamQueue({
             audioEl,
-            synthesize: ({ text, model, signal }) =>
-              synthesizeTts({
+            synthesize: ({ text, model, signal }) => {
+              const presetVal = ttsPresetUuidRef.current;
+              return synthesizeTts({
                 text,
                 model,
                 voiceUuid: ttsVoiceUuidRef.current || undefined,
                 voicePrompt: ttsVoicePromptRef.current || undefined,
-                presetUuid: ttsPresetUuidRef.current || undefined,
+                presetUuid:
+                  presetVal && presetVal !== "none" ? presetVal : undefined,
                 signal,
-              }),
+              });
+            },
             getModel: () => ttsModelRef.current || undefined,
             onPlaybackBlocked: () => setVoiceNeedsUserGesture(true),
             onPlaybackStarted: () => {
@@ -1485,6 +1509,9 @@ export default function App() {
                 send_invite: !!executorSendInvite,
               }
             : null,
+        voice_preferences: ttsVoiceUuid
+          ? { voice_uuid: ttsVoiceUuid }
+          : null,
       };
 
       const res = await fetch(`${API_BASE}/profile`, {
@@ -1518,6 +1545,37 @@ export default function App() {
       return false;
     } finally {
       setProfileBusy(false);
+    }
+  }
+
+  // Persist a single voice choice without going through the full saveProfile
+  // pipeline. Used by the chat-strip quick-switch and the Settings page voice
+  // picker so the user's pick survives across devices. Fire-and-forget: a
+  // failure is logged but does not surface a top error (the UI already
+  // reflects the new state via optimistic update).
+  async function saveVoicePreferences(voiceUuid) {
+    if (!isAuthed) return false;
+    const next = (voiceUuid || "").trim();
+    if (!next) return false;
+    try {
+      const session = await fetchAuthSession();
+      const idToken = session.tokens?.idToken?.toString();
+      if (!idToken) return false;
+      const res = await fetch(`${API_BASE}/profile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ voice_preferences: { voice_uuid: next } }),
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
+      applyProfilePayload(parsed);
+      return true;
+    } catch {
+      return false;
     }
   }
 
@@ -2151,6 +2209,8 @@ export default function App() {
           profileBusy={profileBusy}
           profileNotice={profileNotice}
           saveProfile={saveProfile}
+          ttsVoiceUuid={ttsVoiceUuid}
+          setTtsVoiceUuid={setTtsVoiceUuid}
           resendAccountExecutorInvite={resendAccountExecutorInvite}
           removeAccountExecutor={removeAccountExecutor}
           onOpenDangerZone={() => navigateToPage("danger-zone")}
@@ -2241,6 +2301,36 @@ export default function App() {
               Right-aligned so the first toggle sits under the Send button;
               additional toggles fan out leftward. */}
           <div className="km-chat-controls">
+            <div
+              className="km-voice-quickswitch"
+              role="group"
+              aria-label="Kinin voice quick switch"
+            >
+              {QUICK_SWITCH_UUIDS.map((uuid) => {
+                const v = VOICE_OPTIONS.find((opt) => opt.uuid === uuid);
+                if (!v) return null;
+                const selected = ttsVoiceUuid === v.uuid;
+                return (
+                  <button
+                    key={v.uuid}
+                    type="button"
+                    disabled={!isAuthed}
+                    onClick={() => {
+                      setTtsVoiceUuid(v.uuid);
+                      void saveVoicePreferences(v.uuid);
+                    }}
+                    title={`Kinin voice — ${v.name}`}
+                    aria-label={`Switch Kinin voice to ${v.name}`}
+                    aria-pressed={selected}
+                    className={`km-voice-quickbtn${
+                      selected ? " km-voice-quickbtn-selected" : ""
+                    }`}
+                  >
+                    <VoiceSilhouette type={v.silhouette} size={22} />
+                  </button>
+                );
+              })}
+            </div>
             {voiceEnabled && voiceNeedsUserGesture ? (
               <button
                 type="button"

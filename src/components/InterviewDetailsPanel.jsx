@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button, DetailRow, Spinner } from "../theme";
 import { listTtsPresets } from "../services/ttsPresetsClient";
+import { VOICE_OPTIONS } from "../services/voiceCatalog";
 
 const LABEL_GROUPS = [
   { key: "user_focus_labels", label: "User focus" },
@@ -13,6 +14,8 @@ const TTS_MODEL_OPTIONS = [
   { value: "chatterbox-turbo", label: "Turbo (low latency)" },
   { value: "", label: "Standard (default quality)" },
 ];
+
+const PRESET_NONE_VALUE = "none";
 
 export default function InterviewDetailsPanel({
   isAuthed,
@@ -125,34 +128,37 @@ export default function InterviewDetailsPanel({
       {showVoiceUuidInput ? (
         <div>
           <div className="km-mono-label" style={{ marginBottom: 6 }}>
-            Kinin Voice · Voice UUID override
+            Kinin Voice · Voice
           </div>
-          <div className="km-row" style={{ gap: 6, alignItems: "stretch" }}>
-            <input
-              value={currentVoiceUuid}
-              onChange={(e) => setTtsVoiceUuid(e.target.value.trim())}
-              placeholder="Leave blank to use server default"
-              className="km-input-compact"
-              style={{ flex: 1 }}
-              spellCheck={false}
-              autoCapitalize="off"
-              autoCorrect="off"
-            />
-            <button
-              type="button"
-              onClick={() => setTtsVoiceUuid("")}
-              disabled={!currentVoiceUuid}
-              className="km-tts-model-pill"
-              title="Clear override and use server default"
-            >
-              Reset
-            </button>
-          </div>
+          <select
+            value={currentVoiceUuid}
+            onChange={(e) => setTtsVoiceUuid(e.target.value)}
+            className="km-input-compact"
+            style={{ width: "100%" }}
+          >
+            {VOICE_OPTIONS.map((v) => (
+              <option key={v.uuid} value={v.uuid}>
+                {v.name}
+                {v.isDefault ? " (default)" : ""} — {v.uuid}
+              </option>
+            ))}
+            {/*
+              If the stored UUID isn't in our curated list (e.g. legacy
+              localStorage value), render it as a fallback option so the
+              dropdown still reflects state instead of silently switching.
+            */}
+            {currentVoiceUuid &&
+            !VOICE_OPTIONS.find((v) => v.uuid === currentVoiceUuid) ? (
+              <option value={currentVoiceUuid}>
+                Custom — {currentVoiceUuid}
+              </option>
+            ) : null}
+          </select>
           <div className="km-muted" style={{ marginTop: 6, fontSize: 12 }}>
-            Override the Resemble voice for this browser. Refresh after
-            pasting a new UUID is not required — it applies to the next
-            synthesis. Note: some voices are model-specific (e.g. a
-            standard Chatterbox voice may not work with Turbo).
+            Choose Kinin&rsquo;s Resemble voice. Picking <em>Ember</em>{" "}
+            restores the product default. Note: some voices are
+            model-specific (e.g. a standard Chatterbox voice may not work
+            with Turbo).
           </div>
         </div>
       ) : null}
@@ -170,7 +176,9 @@ export default function InterviewDetailsPanel({
               style={{ flex: 1 }}
               disabled={presetsLoading}
             >
-              <option value="">— None (voice default) —</option>
+              <option value={PRESET_NONE_VALUE}>
+                — None (no preset applied) —
+              </option>
               {(presets.custom || []).length ? (
                 <optgroup label="Custom presets">
                   {(presets.custom || []).map((p) => (
@@ -201,12 +209,16 @@ export default function InterviewDetailsPanel({
             </button>
             <button
               type="button"
-              onClick={() => setTtsPresetUuid("")}
-              disabled={!currentPresetUuid}
+              onClick={() =>
+                setTtsPresetUuid("6b6bfa07-e246-42ed-9362-4641b85bac79")
+              }
+              disabled={
+                currentPresetUuid === "6b6bfa07-e246-42ed-9362-4641b85bac79"
+              }
               className="km-tts-model-pill"
-              title="Clear selection"
+              title="Restore Kinin default (Warmth)"
             >
-              Reset
+              Default
             </button>
           </div>
           {presetsError ? (
