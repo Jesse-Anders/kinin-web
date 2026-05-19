@@ -720,20 +720,31 @@ a:hover {
   border-radius: 50%;
   cursor: pointer;
   opacity: 0.6;
+  /* Suppress iOS Safari's gray tap-flash; we manage our own active state. */
+  -webkit-tap-highlight-color: transparent;
   transition: color var(--t-fast), background var(--t-fast), opacity var(--t-fast);
 }
-.km-chat-toggle:hover:not([disabled]) {
-  color: var(--ink);
-  background: var(--cream-warm);
-  opacity: 1;
+/* Only apply hover-driven darkening on devices that actually support hover.
+   iOS Safari treats a tap as a hover and then leaves the button stuck in
+   the hover state until the user taps somewhere else — which made inactive
+   icons appear locked to the dark-ink color. Gating on `hover: hover`
+   restores the soft-gray resting state on touch. */
+@media (hover: hover) {
+  .km-chat-toggle:hover:not([disabled]) {
+    color: var(--ink);
+    background: var(--cream-warm);
+    opacity: 1;
+  }
 }
 .km-chat-toggle.km-chat-toggle-active {
-  color: var(--crimson);
+  color: var(--sage);
   opacity: 1;
 }
-.km-chat-toggle.km-chat-toggle-active:hover:not([disabled]) {
-  color: var(--crimson-deep);
-  background: var(--cream-warm);
+@media (hover: hover) {
+  .km-chat-toggle.km-chat-toggle-active:hover:not([disabled]) {
+    color: var(--sage-deep);
+    background: var(--cream-warm);
+  }
 }
 .km-chat-toggle.km-chat-toggle-busy {
   animation: km-chat-toggle-pulse 1.2s ease-in-out infinite;
@@ -1967,21 +1978,26 @@ a:hover {
   color: var(--ink-faint);
   cursor: pointer;
   opacity: 0.55;
+  -webkit-tap-highlight-color: transparent;
   transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast), opacity var(--t-fast);
 }
-.km-voice-quickbtn:hover:not([disabled]) {
-  color: var(--ink);
-  background: var(--cream-warm);
-  opacity: 1;
+@media (hover: hover) {
+  .km-voice-quickbtn:hover:not([disabled]) {
+    color: var(--ink);
+    background: var(--cream-warm);
+    opacity: 1;
+  }
 }
 .km-voice-quickbtn-selected {
-  color: var(--crimson);
-  border-color: var(--crimson);
+  color: var(--sage);
+  border-color: var(--sage);
   opacity: 1;
 }
-.km-voice-quickbtn-selected:hover:not([disabled]) {
-  color: var(--crimson-deep);
-  border-color: var(--crimson-deep);
+@media (hover: hover) {
+  .km-voice-quickbtn-selected:hover:not([disabled]) {
+    color: var(--sage-deep);
+    border-color: var(--sage-deep);
+  }
 }
 .km-voice-quickbtn[disabled] { opacity: 0.3; cursor: not-allowed; }
 

@@ -2301,36 +2301,39 @@ export default function App() {
               Right-aligned so the first toggle sits under the Send button;
               additional toggles fan out leftward. */}
           <div className="km-chat-controls">
-            <div
-              className="km-voice-quickswitch"
-              role="group"
-              aria-label="Kinin voice quick switch"
-            >
-              {QUICK_SWITCH_UUIDS.map((uuid) => {
-                const v = VOICE_OPTIONS.find((opt) => opt.uuid === uuid);
-                if (!v) return null;
-                const selected = ttsVoiceUuid === v.uuid;
-                return (
-                  <button
-                    key={v.uuid}
-                    type="button"
-                    disabled={!isAuthed}
-                    onClick={() => {
-                      setTtsVoiceUuid(v.uuid);
-                      void saveVoicePreferences(v.uuid);
-                    }}
-                    title={`Kinin voice — ${v.name}`}
-                    aria-label={`Switch Kinin voice to ${v.name}`}
-                    aria-pressed={selected}
-                    className={`km-voice-quickbtn${
-                      selected ? " km-voice-quickbtn-selected" : ""
-                    }`}
-                  >
-                    <VoiceSilhouette type={v.silhouette} size={22} />
-                  </button>
-                );
-              })}
-            </div>
+            {voiceEnabled ? (
+              <div
+                className="km-voice-quickswitch"
+                role="group"
+                aria-label="Kinin voice"
+              >
+                {QUICK_SWITCH_UUIDS.map((uuid) => {
+                  const v = VOICE_OPTIONS.find((opt) => opt.uuid === uuid);
+                  if (!v) return null;
+                  const selected = ttsVoiceUuid === v.uuid;
+                  const label = `Kinin Voice - ${v.name}`;
+                  return (
+                    <button
+                      key={v.uuid}
+                      type="button"
+                      disabled={!isAuthed}
+                      onClick={() => {
+                        setTtsVoiceUuid(v.uuid);
+                        void saveVoicePreferences(v.uuid);
+                      }}
+                      title={label}
+                      aria-label={label}
+                      aria-pressed={selected}
+                      className={`km-voice-quickbtn${
+                        selected ? " km-voice-quickbtn-selected" : ""
+                      }`}
+                    >
+                      <VoiceSilhouette type={v.silhouette} size={22} decorative />
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
             {voiceEnabled && voiceNeedsUserGesture ? (
               <button
                 type="button"
@@ -2349,11 +2352,11 @@ export default function App() {
               onClick={toggleVoice}
               disabled={!isAuthed}
               title={
-                voiceEnabled ? "Kinin Voice — Active" : "Kinin Voice — Muted"
+                voiceEnabled ? "Kinin Voice - Active" : "Kinin Voice - Muted"
               }
               aria-pressed={voiceEnabled}
               aria-label={
-                voiceEnabled ? "Kinin Voice — Active" : "Kinin Voice — Muted"
+                voiceEnabled ? "Kinin Voice - Active" : "Kinin Voice - Muted"
               }
               className={`km-chat-toggle${
                 voiceEnabled ? " km-chat-toggle-active" : ""
