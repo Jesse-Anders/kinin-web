@@ -188,10 +188,21 @@ export default function App() {
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voiceBusy, setVoiceBusy] = useState(false);
   const [voiceNeedsUserGesture, setVoiceNeedsUserGesture] = useState(false);
+  // Reusable single <audio> element. Created lazily on first toggle-ON
+  // (during a real user gesture) so the browser "blesses" it for
+  // subsequent programmatic play() calls. Reusing the same element
+  // across turns helps autoplay policy on Chrome / Firefox / Safari.
   const audioRef = useRef(null);
+  // Web Audio context used solely to unlock audio output during the
+  // user gesture (resume() + play a silent buffer).
+  const audioCtxRef = useRef(null);
   const currentObjectUrlRef = useRef(null);
   const lastSpokenKeyRef = useRef(null);
   const ttsAbortRef = useRef(null);
+  // 1-sample silent WAV used to "warm up" the <audio> element during
+  // the user gesture (toggle-ON) so later programmatic plays succeed.
+  const SILENT_WAV_DATA_URI =
+    "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=";
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuOverflowOpen, setMenuOverflowOpen] = useState(false);
   const sidebarRef = useRef(null);
@@ -207,6 +218,56 @@ export default function App() {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }, [location.pathname]);
 
+  const ensureAudioElement = () => {
+    if (!audioRef.current) {
+      const a = new Audio();
+      a.preload = "auto";
+      audioRef.current = a;
+    }
+    return audioRef.current;
+  };
+
+  // Called during a real user gesture (toggle-ON click) to unlock
+  // programmatic audio playback for the rest of the session.
+  // Combines two techniques for max browser coverage:
+  //   1. Web Audio: create/resume an AudioContext and play a 1-sample
+  //      silent buffer through it. Unblocks Web Audio output.
+  //   2. <audio> element: play a 1-sample silent WAV via the same
+  //      element we will reuse for TTS playback, then pause. The
+  //      element is now "blessed" for later programmatic plays.
+  const primeAudio = () => {
+    try {
+      if (!audioCtxRef.current) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (Ctx) audioCtxRef.current = new Ctx();
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx) {
+        if (ctx.state === "suspended") {
+          void ctx.resume();
+        }
+        const buffer = ctx.createBuffer(1, 1, 22050);
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+        source.start(0);
+      }
+    } catch { /* noop */ }
+
+    try {
+      const audio = ensureAudioElement();
+      audio.muted = true;
+      if (!audio.src) audio.src = SILENT_WAV_DATA_URI;
+      const p = audio.play();
+      if (p && typeof p.then === "function") {
+        p.then(() => {
+          try { audio.pause(); } catch { /* noop */ }
+          try { audio.currentTime = 0; } catch { /* noop */ }
+        }).catch(() => { /* noop */ });
+      }
+    } catch { /* noop */ }
+  };
+
   const stopVoicePlayback = () => {
     if (ttsAbortRef.current) {
       try { ttsAbortRef.current.abort(); } catch { /* noop */ }
@@ -214,7 +275,7 @@ export default function App() {
     }
     if (audioRef.current) {
       try { audioRef.current.pause(); } catch { /* noop */ }
-      audioRef.current = null;
+      // Do NOT null the element — we keep it primed for future plays.
     }
     if (currentObjectUrlRef.current) {
       try { URL.revokeObjectURL(currentObjectUrlRef.current); } catch { /* noop */ }
@@ -229,6 +290,7 @@ export default function App() {
     if (!audio) return;
     setVoiceBusy(true);
     try {
+      audio.muted = false;
       await audio.play();
       setVoiceNeedsUserGesture(false);
     } catch (playErr) {
@@ -265,21 +327,24 @@ export default function App() {
       return;
     }
     currentObjectUrlRef.current = result.objectUrl;
-    const audio = new Audio(result.objectUrl);
-    audioRef.current = audio;
+    const audio = ensureAudioElement();
+    audio.muted = false;
+    const objectUrl = result.objectUrl;
     const cleanup = () => {
-      if (audioRef.current === audio) audioRef.current = null;
       setVoiceNeedsUserGesture(false);
-      if (currentObjectUrlRef.current === result.objectUrl) {
+      if (currentObjectUrlRef.current === objectUrl) {
         try { URL.revokeObjectURL(currentObjectUrlRef.current); } catch { /* noop */ }
         currentObjectUrlRef.current = null;
       }
     };
-    audio.addEventListener("ended", cleanup);
-    audio.addEventListener("error", () => {
+    // Assignment-style listeners overwrite previous handlers on the
+    // reused element, avoiding accumulation across turns.
+    audio.onended = cleanup;
+    audio.onerror = () => {
       console.warn("TTS audio playback error");
       cleanup();
-    });
+    };
+    audio.src = objectUrl;
     try {
       await audio.play();
     } catch (playErr) {
@@ -298,8 +363,18 @@ export default function App() {
     lastSpokenKeyRef.current = null;
   }, [sessionId]);
 
-  // Clean up audio on unmount.
-  useEffect(() => () => stopVoicePlayback(), []);
+  // Clean up audio + Web Audio context on unmount.
+  useEffect(
+    () => () => {
+      stopVoicePlayback();
+      audioRef.current = null;
+      if (audioCtxRef.current) {
+        try { void audioCtxRef.current.close(); } catch { /* noop */ }
+        audioCtxRef.current = null;
+      }
+    },
+    [],
+  );
 
   // Auto-play newly completed assistant messages when voice is on.
   // Only fires once per message (tracked by id or content fingerprint),
@@ -328,6 +403,10 @@ export default function App() {
       stopVoicePlayback();
       return;
     }
+    // Prime audio during this user gesture so later programmatic
+    // play() calls (after async TTS) are not blocked by browser
+    // autoplay policy on Chrome/Firefox/desktop Safari.
+    primeAudio();
     // Turning ON: don't retroactively read existing messages. Mark the
     // current last assistant message as already spoken so only NEW
     // assistant turns trigger playback.
