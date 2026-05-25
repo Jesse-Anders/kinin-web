@@ -41,6 +41,7 @@ import ReviewEditChatsPage from "./pages/ReviewEditChatsPage";
 import UnsubscribePage from "./pages/UnsubscribePage";
 import OnboardingPage from "./pages/OnboardingPage";
 import ExecutorAcceptPage from "./pages/ExecutorAcceptPage";
+import ConfirmEmailPage from "./pages/ConfirmEmailPage";
 import AdminThemeStudioPage from "./pages/AdminThemeStudioPage";
 import AdminEmailStudioPage from "./pages/AdminEmailStudioPage";
 import InterviewDetailsPanel from "./components/InterviewDetailsPanel";
@@ -90,6 +91,7 @@ const PAGE_TO_PATH = {
   privacy: "/privacy",
   unsubscribe: "/unsubscribe",
   "executor-accept": "/executor/accept",
+  confirm: "/confirm",
   onboarding: "/onboarding",
   admin: "/admin",
   "admin-onboarding-preview": "/admin/onboarding-preview",
@@ -2258,6 +2260,8 @@ export default function App() {
         <UnsubscribePage apiBase={API_BASE} />
       ) : activePage === "executor-accept" ? (
         <ExecutorAcceptPage apiBase={API_BASE} />
+      ) : activePage === "confirm" ? (
+        <ConfirmEmailPage />
       ) : activePage === "admin-crm" ? (
         <AdminCrmPage
           isAuthed={isAuthed}
