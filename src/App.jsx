@@ -9,6 +9,7 @@ import {
   Menu,
   Play,
   Quote,
+  Radio,
   ScrollText,
 } from "lucide-react";
 import kininHomeIcon from "./assets/icons/kinin-icon-390sq.png";
@@ -38,6 +39,7 @@ import AdminUserPurgePage from "./pages/AdminUserPurgePage";
 import AboutKininPage from "./pages/AboutKininPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import ReviewEditChatsPage from "./pages/ReviewEditChatsPage";
+import EchoPage from "./pages/EchoPage";
 import UnsubscribePage from "./pages/UnsubscribePage";
 import OnboardingPage from "./pages/OnboardingPage";
 import ExecutorAcceptPage from "./pages/ExecutorAcceptPage";
@@ -87,6 +89,7 @@ const PAGE_TO_PATH = {
   faq: "/faq",
   feedback: "/feedback",
   "review-chats": "/review-chats",
+  echo: "/echo",
   contact: "/contact",
   privacy: "/privacy",
   unsubscribe: "/unsubscribe",
@@ -707,6 +710,13 @@ export default function App() {
       onClick: () => navigateToPage("review-chats"),
     },
     {
+      id: "echo",
+      label: "Echo",
+      icon: Radio,
+      requiresAuth: true,
+      onClick: () => navigateToPage("echo"),
+    },
+    {
       id: "admin",
       label: "Admin",
       icon: Key,
@@ -874,7 +884,8 @@ export default function App() {
       activePage === "danger-zone" ||
       activePage === "onboarding" ||
       activePage === "feedback" ||
-      activePage === "review-chats";
+      activePage === "review-chats" ||
+      activePage === "echo";
     const isAdminPage =
       activePage === "admin" ||
       activePage === "admin-onboarding-preview" ||
@@ -2255,6 +2266,12 @@ export default function App() {
           getAccessToken={getAccessToken}
           apiBase={API_BASE}
           userDisplayName={navDisplayName || "You"}
+        />
+      ) : activePage === "echo" ? (
+        <EchoPage
+          isAuthed={isAuthed}
+          getAccessToken={getAccessToken}
+          apiBase={API_BASE}
         />
       ) : activePage === "unsubscribe" ? (
         <UnsubscribePage apiBase={API_BASE} />

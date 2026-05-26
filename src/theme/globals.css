@@ -2019,3 +2019,32 @@ a:hover {
   align-self: flex-end;
 }
 
+/* ─── Echo mode (Listener) ─── */
+.km-echo-bio {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  background: var(--cream);
+  border: 1px solid var(--thread);
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+.km-echo-bio:hover:not(:disabled) {
+  background: var(--cream-warm);
+  border-color: var(--ink-faint);
+}
+.km-echo-bio:disabled { opacity: 0.6; cursor: default; }
+.km-echo-bio[data-selected="true"] {
+  border-color: var(--ink);
+  background: var(--cream-warm);
+}
+.km-echo-surface {
+  min-height: 240px;
+  max-height: 520px;
+  overflow-y: auto;
+}
+
