@@ -43,10 +43,10 @@ export default function KininSettingsPage({
   interviewDetails,
   ttsVoiceUuid,
   setTtsVoiceUuid,
-  echoSettings,
-  saveEchoEnabled,
+  reunionSettings,
+  saveReunionEnabled,
 }) {
-  const echoEnabled = echoSettings?.enabled !== false;
+  const reunionEnabled = reunionSettings?.enabled !== false;
   const cadenceValue = String(continuitySettings?.reminder_cadence_weeks ?? 2);
   const showInitialLoader = profileBusy && !profileSchema;
   const executorStatus = accountExecutor?.status || "";
@@ -208,17 +208,17 @@ export default function KininSettingsPage({
           />
         </Frame>
 
-        <Frame label="Echo">
+        <Frame label="Reunion">
           <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
             <p>
-              Echo lets family members you've invited talk directly with your
-              interview memories &mdash; asking questions and hearing answers
-              in your voice, grounded in what you've already shared with
-              Kinin. New memories become available to Echo as soon as you
-              finish each turn.
+              Reunion lets family members you've invited talk directly with
+              your interview memories &mdash; asking questions and hearing
+              answers in your voice, grounded in what you've already shared
+              with Kinin. New memories become available to Reunion as soon as
+              you finish each turn.
             </p>
             <p>
-              You control access. Turn Echo off any time to pause it for
+              You control access. Turn Reunion off any time to pause it for
               everyone; turn it back on when you're ready. Individual
               per-listener controls will come later &mdash; this is a blanket
               switch for now.
@@ -227,16 +227,18 @@ export default function KininSettingsPage({
           <label className="km-checkbox">
             <input
               type="checkbox"
-              checked={echoEnabled}
-              onChange={(e) => saveEchoEnabled && saveEchoEnabled(e.target.checked)}
-              disabled={profileBusy || !saveEchoEnabled}
+              checked={reunionEnabled}
+              onChange={(e) =>
+                saveReunionEnabled && saveReunionEnabled(e.target.checked)
+              }
+              disabled={profileBusy || !saveReunionEnabled}
             />
             <span>
-              <strong>Echo is {echoEnabled ? "on" : "paused"}.</strong>
+              <strong>Reunion is {reunionEnabled ? "on" : "paused"}.</strong>
               {" "}
-              {echoEnabled
-                ? "Family members you've granted access can reach you through Echo."
-                : "No one can reach you through Echo right now, even if you've granted them access."}
+              {reunionEnabled
+                ? "Family members you've granted access can reach you through Reunion."
+                : "No one can reach you through Reunion right now, even if you've granted them access."}
             </span>
           </label>
         </Frame>

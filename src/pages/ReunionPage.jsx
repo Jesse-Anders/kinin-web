@@ -44,7 +44,7 @@ function autoResizeTextarea(el) {
 }
 
 /**
- * Echo mode — the Listener experience.
+ * Reunion mode — the Listener experience.
  *
  * Layout: single-column chat. Citation badges under each assistant reply
  * open a bottom sheet (iOS UISheetPresentationController pattern) that
@@ -52,7 +52,7 @@ function autoResizeTextarea(el) {
  * when the user taps a citation. Dismiss via backdrop tap, close button, or
  * Escape key.
  */
-export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
+export default function ReunionPage({ isAuthed, getAccessToken, apiBase }) {
   const [bios, setBios] = useState([]);
   const [biosLoading, setBiosLoading] = useState(false);
   const [biosError, setBiosError] = useState("");
@@ -63,7 +63,7 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
   const [sending, setSending] = useState(false);
   const [chatError, setChatError] = useState("");
   // "danger" for real errors; "info" for expected soft states (no memories
-  // yet, interviewee paused Echo) so listeners aren't greeted with a red
+  // yet, interviewee paused Reunion) so listeners aren't greeted with a red
   // banner for something benign.
   const [chatErrorTone, setChatErrorTone] = useState("danger");
 
@@ -79,7 +79,7 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
     [bios, selectedOwnerId],
   );
 
-  const speakerTag = selectedBio?.display_name || "Echo";
+  const speakerTag = selectedBio?.display_name || "Reunion";
   const sendDisabled =
     !isAuthed || sending || !selectedOwnerId || !(draft || "").trim();
 
@@ -99,7 +99,7 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
       setBiosError("");
       try {
         const token = await getAccessToken();
-        const res = await fetch(`${apiBase}/echo/biographies`, {
+        const res = await fetch(`${apiBase}/reunion/biographies`, {
           method: "GET",
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -194,7 +194,7 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
     setSending(true);
     try {
       const token = await getAccessToken();
-      const res = await fetch(`${apiBase}/echo/chat`, {
+      const res = await fetch(`${apiBase}/reunion/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -219,21 +219,21 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
           setChatErrorTone("info");
           setChatError(
             isSelf
-              ? "You haven't shared any memories with Kinin yet. Have your first interview session, then come back to preview your Echo."
+              ? "You haven't shared any memories with Kinin yet. Have your first interview session, then come back to preview your Reunion."
               : `${speaker} hasn't shared any memories with Kinin yet. Check back after their next session.`,
           );
           return;
         }
-        if (code === "echo_disabled_by_owner") {
+        if (code === "reunion_disabled_by_owner") {
           setChatErrorTone("info");
           setChatError(
             isSelf
-              ? "You've paused Echo. Turn it back on in Settings to preview or share your biography."
-              : `${speaker} has paused Echo access for now. You'll be able to reach them again once they turn it back on.`,
+              ? "You've paused Reunion. Turn it back on in Settings to preview or share your biography."
+              : `${speaker} has paused Reunion access for now. You'll be able to reach them again once they turn it back on.`,
           );
           return;
         }
-        if (code === "echo_access_denied") {
+        if (code === "reunion_access_denied") {
           setChatErrorTone("danger");
           setChatError(
             "You don't have access to this biography anymore. Ask an administrator to restore it.",
@@ -297,7 +297,7 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
 
   return (
     <Section
-      eyebrow="Echo"
+      eyebrow="Reunion"
       title={
         <>
           Talk with those <br /><em>who came before.</em>
@@ -306,16 +306,16 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
     >
       <div className="km-prose" style={{ maxWidth: 680, marginBottom: 32 }}>
         <p>
-          Echo lets you speak with the people whose stories Kinin has captured.
-          The voice you hear is built from the interviewee&apos;s own recorded
-          memories — what they actually said, in their own words. Choose a
-          biography below to begin.
+          Reunion lets you speak with the people whose stories Kinin has
+          captured. The voice you hear is built from the interviewee&apos;s own
+          recorded memories — what they actually said, in their own words.
+          Choose a biography below to begin.
         </p>
       </div>
 
       {!isAuthed ? (
         <Banner tone="info">
-          <span>Sign in to use Echo.</span>
+          <span>Sign in to use Reunion.</span>
         </Banner>
       ) : null}
 
@@ -350,7 +350,7 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
                   type="button"
                   onClick={() => selectBio(b.biography_owner_user_id)}
                   disabled={sending}
-                  className="km-echo-bio"
+                  className="km-reunion-bio"
                   data-selected={isSelected ? "true" : "false"}
                 >
                   <div className="km-row" style={{ alignItems: "center", gap: 12 }}>
@@ -361,7 +361,7 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
                       </div>
                       {isSelf ? (
                         <div className="km-form-help" style={{ marginTop: 2 }}>
-                          Preview what listeners will hear from your Echo.
+                          Preview what listeners will hear from your Reunion.
                         </div>
                       ) : b.date_of_birth ? (
                         <div className="km-form-help" style={{ marginTop: 2 }}>
@@ -389,7 +389,7 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
           >
             <div className="km-mono-label">
               {selectedBio.is_self
-                ? "Previewing your Echo"
+                ? "Previewing your Reunion"
                 : `Talking with ${selectedBio.display_name || selectedBio.biography_owner_user_id}`}
             </div>
             {messages.length > 0 ? (
@@ -399,11 +399,11 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
             ) : null}
           </div>
 
-          <div ref={surfaceRef} className="km-chat-surface km-chat km-echo-surface">
+          <div ref={surfaceRef} className="km-chat-surface km-chat km-reunion-surface">
             {messages.length === 0 ? (
               <div className="km-chat-empty">
                 {selectedBio.is_self
-                  ? "Ask anything a family member might ask — try questions about your childhood, work, or the things you care about — and see how Echo replies."
+                  ? "Ask anything a family member might ask — try questions about your childhood, work, or the things you care about — and see how Reunion replies."
                   : "Ask anything — about their family, their work, the things they cared about."}
               </div>
             ) : (
@@ -421,11 +421,11 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
                       {m.role === "assistant" &&
                       Array.isArray(m.memories_used) &&
                       m.memories_used.length > 0 ? (
-                        <div className="km-echo-citations">
-                          <div className="km-mono-label km-echo-citations-label">
+                        <div className="km-reunion-citations">
+                          <div className="km-mono-label km-reunion-citations-label">
                             Sources
                           </div>
-                          <div className="km-echo-citations-row">
+                          <div className="km-reunion-citations-row">
                             {m.memories_used.map((mem, i) => {
                               const isActive =
                                 activeSource?.memory_id === mem.memory_id;
@@ -433,7 +433,7 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
                                 <button
                                   key={mem.memory_id}
                                   type="button"
-                                  className="km-echo-citation"
+                                  className="km-reunion-citation"
                                   data-active={isActive ? "true" : "false"}
                                   onClick={() => openSource(mem)}
                                   title={`View original passage (${mem.memory_id})`}
@@ -486,7 +486,7 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
                 !isAuthed
                   ? "Sign in to chat..."
                   : selectedBio?.is_self
-                    ? "Ask your Echo something..."
+                    ? "Ask your Reunion something..."
                     : `Ask ${speakerTag} something...`
               }
               className="km-chat-input"
@@ -506,7 +506,7 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
             className="km-form-help"
             style={{ marginTop: 8, fontStyle: "italic" }}
           >
-            Echo is a faithful AI reconstruction. Responses are grounded in
+            Reunion is a faithful AI reconstruction. Responses are grounded in
             recorded memories — never invented.
           </div>
         </div>
@@ -516,26 +516,26 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
           (UISheetPresentationController): slides up from bottom, backdrop
           dims chat, dismiss via backdrop tap, close button, or Escape. */}
       <div
-        className="km-echo-sheet-backdrop"
+        className="km-reunion-sheet-backdrop"
         data-open={sheetOpen ? "true" : "false"}
         onClick={closeSource}
         aria-hidden={!sheetOpen}
       />
       <div
-        className="km-echo-sheet"
+        className="km-reunion-sheet"
         data-open={sheetOpen ? "true" : "false"}
         role="dialog"
         aria-modal="true"
         aria-label="Original source passage"
         aria-hidden={!sheetOpen}
       >
-        <div className="km-echo-sheet-handle" aria-hidden="true" />
-        <div className="km-echo-sheet-header">
+        <div className="km-reunion-sheet-handle" aria-hidden="true" />
+        <div className="km-reunion-sheet-header">
           <span className="km-mono-label">Original source</span>
           <button
             ref={sheetCloseRef}
             type="button"
-            className="km-echo-source-close"
+            className="km-reunion-source-close"
             onClick={closeSource}
             aria-label="Close source"
             title="Close (Esc)"
@@ -544,11 +544,11 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
           </button>
         </div>
         {activeSource ? (
-          <div className="km-echo-sheet-body">
-            <div className="km-echo-source-id">
+          <div className="km-reunion-sheet-body">
+            <div className="km-reunion-source-id">
               <code>{activeSource.memory_id}</code>
             </div>
-            <div className="km-echo-source-body">{activeSource.content}</div>
+            <div className="km-reunion-source-body">{activeSource.content}</div>
           </div>
         ) : null}
       </div>

@@ -41,7 +41,7 @@ import AboutKininPage from "./pages/AboutKininPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import ReviewEditChatsPage from "./pages/ReviewEditChatsPage";
 import PinsPage from "./pages/PinsPage";
-import EchoPage from "./pages/EchoPage";
+import ReunionPage from "./pages/ReunionPage";
 import UnsubscribePage from "./pages/UnsubscribePage";
 import OnboardingPage from "./pages/OnboardingPage";
 import ExecutorAcceptPage from "./pages/ExecutorAcceptPage";
@@ -92,7 +92,7 @@ const PAGE_TO_PATH = {
   feedback: "/feedback",
   "review-chats": "/review-chats",
   pins: "/pins",
-  echo: "/echo",
+  reunion: "/reunion",
   contact: "/contact",
   privacy: "/privacy",
   unsubscribe: "/unsubscribe",
@@ -179,9 +179,9 @@ export default function App() {
   const [profileSchema, setProfileSchema] = useState(null);
   const [bioProfile, setBioProfile] = useState({ preferred_name: "", date_of_birth: "" });
   // Blanket privacy switch: when false, listeners can't reach this interviewee
-  // via Echo. Defaults to true so legacy users stay accessible until they
+  // via Reunion. Defaults to true so legacy users stay accessible until they
   // explicitly opt out.
-  const [echoSettings, setEchoSettings] = useState({ enabled: true });
+  const [reunionSettings, setReunionSettings] = useState({ enabled: true });
   const [continuitySettings, setContinuitySettings] = useState({
     reminder_cadence_weeks: 2,
     reminder_channel: "email",
@@ -725,11 +725,11 @@ export default function App() {
       onClick: () => navigateToPage("pins"),
     },
     {
-      id: "echo",
-      label: "Echo",
+      id: "reunion",
+      label: "Reunion",
       icon: Radio,
       requiresAuth: true,
-      onClick: () => navigateToPage("echo"),
+      onClick: () => navigateToPage("reunion"),
     },
     {
       id: "admin",
@@ -901,7 +901,7 @@ export default function App() {
       activePage === "feedback" ||
       activePage === "review-chats" ||
       activePage === "pins" ||
-      activePage === "echo";
+      activePage === "reunion";
     const isAdminPage =
       activePage === "admin" ||
       activePage === "admin-onboarding-preview" ||
@@ -1041,9 +1041,12 @@ export default function App() {
       confirmed_at: executor.confirmed_at || null,
       last_invite_sent_at: executor.last_invite_sent_at || null,
     });
-    const echo = parsed?.echo_settings;
-    setEchoSettings({
-      enabled: echo && typeof echo === "object" && echo.enabled === false ? false : true,
+    const reunion = parsed?.reunion_settings;
+    setReunionSettings({
+      enabled:
+        reunion && typeof reunion === "object" && reunion.enabled === false
+          ? false
+          : true,
     });
   }
 
@@ -1730,8 +1733,8 @@ export default function App() {
         voice_preferences: ttsVoiceUuid
           ? { voice_uuid: ttsVoiceUuid }
           : null,
-        echo_settings: {
-          enabled: echoSettings?.enabled !== false,
+        reunion_settings: {
+          enabled: reunionSettings?.enabled !== false,
         },
       };
 
@@ -1769,15 +1772,15 @@ export default function App() {
     }
   }
 
-  // Persist the Echo on/off privacy switch immediately, without waiting for
-  // the user to hit "Save" on the Settings page. Optimistic: local state
+  // Persist the Reunion on/off privacy switch immediately, without waiting
+  // for the user to hit "Save" on the Settings page. Optimistic: local state
   // flips first, then we PUT. On failure we revert and surface a banner —
   // this is a privacy control so silent failure is unacceptable.
-  async function saveEchoEnabled(nextEnabled) {
+  async function saveReunionEnabled(nextEnabled) {
     if (!isAuthed) return false;
     const desired = !!nextEnabled;
-    const previous = echoSettings?.enabled !== false;
-    setEchoSettings({ enabled: desired });
+    const previous = reunionSettings?.enabled !== false;
+    setReunionSettings({ enabled: desired });
     try {
       const session = await fetchAuthSession();
       const idToken = session.tokens?.idToken?.toString();
@@ -1788,7 +1791,7 @@ export default function App() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${idToken}`,
         },
-        body: JSON.stringify({ echo_settings: { enabled: desired } }),
+        body: JSON.stringify({ reunion_settings: { enabled: desired } }),
       });
       await ensureApiOk(res);
       const data = await res.json();
@@ -1796,12 +1799,12 @@ export default function App() {
       applyProfilePayload(parsed);
       setProfileNotice(
         desired
-          ? "Echo is on. Family members you've granted access can talk with your interview memories."
-          : "Echo is paused. Listeners won't see your biography until you turn it back on.",
+          ? "Reunion is on. Family members you've granted access can talk with your interview memories."
+          : "Reunion is paused. Listeners won't see your biography until you turn it back on.",
       );
       return true;
     } catch (e) {
-      setEchoSettings({ enabled: previous });
+      setReunionSettings({ enabled: previous });
       setTopErrorFromException(e);
       return false;
     }
@@ -2311,7 +2314,7 @@ export default function App() {
           setActivePage={navigateToPage}
         />
       ) : activePage === "faq" ? (
-        <FaqPage />
+        <FaqPage isAuthed={isAuthed} navigateToPage={navigateToPage} />
       ) : activePage === "feedback" ? (
         <FeedbackPage
           feedbackName={feedbackName}
@@ -2355,8 +2358,8 @@ export default function App() {
           onStartChatFromPin={startChatFromPin}
           startingPinId={startingPinId}
         />
-      ) : activePage === "echo" ? (
-        <EchoPage
+      ) : activePage === "reunion" ? (
+        <ReunionPage
           isAuthed={isAuthed}
           getAccessToken={getAccessToken}
           apiBase={API_BASE}
@@ -2486,8 +2489,8 @@ export default function App() {
           saveProfile={saveProfile}
           ttsVoiceUuid={ttsVoiceUuid}
           setTtsVoiceUuid={setTtsVoiceUuid}
-          echoSettings={echoSettings}
-          saveEchoEnabled={saveEchoEnabled}
+          reunionSettings={reunionSettings}
+          saveReunionEnabled={saveReunionEnabled}
           resendAccountExecutorInvite={resendAccountExecutorInvite}
           removeAccountExecutor={removeAccountExecutor}
           onOpenDangerZone={() => navigateToPage("danger-zone")}

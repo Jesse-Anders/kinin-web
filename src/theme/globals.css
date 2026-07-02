@@ -2019,8 +2019,8 @@ a:hover {
   align-self: flex-end;
 }
 
-/* ─── Echo mode (Listener) ─── */
-.km-echo-bio {
+/* ─── Reunion mode (Listener) ─── */
+.km-reunion-bio {
   display: block;
   width: 100%;
   text-align: left;
@@ -2033,40 +2033,40 @@ a:hover {
   color: inherit;
   transition: border-color 0.12s ease, background 0.12s ease;
 }
-.km-echo-bio:hover:not(:disabled) {
+.km-reunion-bio:hover:not(:disabled) {
   background: var(--cream-warm);
   border-color: var(--ink-faint);
 }
-.km-echo-bio:disabled { opacity: 0.6; cursor: default; }
-.km-echo-bio[data-selected="true"] {
+.km-reunion-bio:disabled { opacity: 0.6; cursor: default; }
+.km-reunion-bio[data-selected="true"] {
   border-color: var(--ink);
   background: var(--cream-warm);
 }
 
-.km-echo-surface {
+.km-reunion-surface {
   min-height: 240px;
   max-height: 520px;
   overflow-y: auto;
 }
 
 /* Numbered citation badges under assistant replies. */
-.km-echo-citations {
+.km-reunion-citations {
   margin-top: 12px;
   padding-top: 10px;
   border-top: 1px solid var(--thread);
 }
-.km-echo-citations-label {
+.km-reunion-citations-label {
   display: block;
   margin-bottom: 6px;
   color: var(--ink-faint);
 }
-.km-echo-citations-row {
+.km-reunion-citations-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
 }
-.km-echo-citation {
+.km-reunion-citation {
   font-family: var(--font-mono);
   font-size: 11px;
   line-height: 1;
@@ -2079,11 +2079,11 @@ a:hover {
   cursor: pointer;
   transition: border-color 0.12s ease, background 0.12s ease;
 }
-.km-echo-citation:hover {
+.km-reunion-citation:hover {
   background: var(--cream-warm);
   border-color: var(--ink-faint);
 }
-.km-echo-citation[data-active="true"] {
+.km-reunion-citation[data-active="true"] {
   background: var(--ink);
   color: var(--cream);
   border-color: var(--ink);
@@ -2094,7 +2094,7 @@ a:hover {
    dimmed backdrop above the chat, grab-handle affordance at top, close via
    backdrop tap / X button / Escape. On desktop it's centered and capped in
    width for readability; on mobile it takes the full viewport width. */
-.km-echo-sheet-backdrop {
+.km-reunion-sheet-backdrop {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.35);
@@ -2103,11 +2103,11 @@ a:hover {
   transition: opacity 220ms ease;
   z-index: 90;
 }
-.km-echo-sheet-backdrop[data-open="true"] {
+.km-reunion-sheet-backdrop[data-open="true"] {
   opacity: 1;
   pointer-events: auto;
 }
-.km-echo-sheet {
+.km-reunion-sheet {
   position: fixed;
   left: 50%;
   bottom: 0;
@@ -2127,10 +2127,10 @@ a:hover {
   z-index: 100;
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
-.km-echo-sheet[data-open="true"] {
+.km-reunion-sheet[data-open="true"] {
   transform: translate(-50%, 0);
 }
-.km-echo-sheet-handle {
+.km-reunion-sheet-handle {
   width: 40px;
   height: 4px;
   border-radius: 999px;
@@ -2139,7 +2139,7 @@ a:hover {
   margin: 8px auto 6px;
   flex: 0 0 auto;
 }
-.km-echo-sheet-header {
+.km-reunion-sheet-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -2148,14 +2148,14 @@ a:hover {
   border-bottom: 1px solid var(--thread);
   flex: 0 0 auto;
 }
-.km-echo-sheet-body {
+.km-reunion-sheet-body {
   padding: 14px 16px 20px;
   overflow-y: auto;
   flex: 1 1 auto;
   min-height: 0;
   -webkit-overflow-scrolling: touch;
 }
-.km-echo-source-close {
+.km-reunion-source-close {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2169,20 +2169,20 @@ a:hover {
   padding: 0;
   transition: color 0.12s ease, border-color 0.12s ease;
 }
-.km-echo-source-close:hover,
-.km-echo-source-close:focus-visible {
+.km-reunion-source-close:hover,
+.km-reunion-source-close:focus-visible {
   color: var(--ink);
   border-color: var(--ink-faint);
   outline: none;
 }
-.km-echo-source-id {
+.km-reunion-source-id {
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--ink-faint);
   margin-bottom: 10px;
   word-break: break-all;
 }
-.km-echo-source-body {
+.km-reunion-source-body {
   white-space: pre-wrap;
   font-family: var(--font-body, inherit);
   color: var(--ink);
