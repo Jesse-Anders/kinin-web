@@ -50,3 +50,9 @@ export async function updatePin({ apiBase, token, pinId, updates } = {}) {
     body: updates,
   });
 }
+
+export async function deletePin({ apiBase, token, pinId } = {}) {
+  return request(apiBase, token, `/pins/${encodeURIComponent(pinId)}`, {
+    method: "DELETE",
+  });
+}

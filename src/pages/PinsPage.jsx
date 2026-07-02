@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { Archive, ArchiveRestore, Check, MapPin, MessageCircle, RotateCcw } from "lucide-react";
+import { Check, MapPin, MessageCircle, RotateCcw, Trash2 } from "lucide-react";
 import { Banner, Button, Frame, Section, Spinner, TextArea } from "../theme";
-import { createPin, listPins, updatePin } from "../services/pinsClient";
+import { createPin, deletePin, listPins, updatePin } from "../services/pinsClient";
 
 const PIN_TEXT_MAX_CHARS = 2000;
 
 const STATUS_TABS = [
   { id: "active", label: "Active" },
-  { id: "completed", label: "Shared" },
-  { id: "archived", label: "Archived" },
+  { id: "completed", label: "Completed" },
 ];
 
 function formatDate(value) {
@@ -98,6 +97,27 @@ export default function PinsPage({
     }
   }
 
+  async function handleDelete(pin) {
+    if (!pin?.pin_id) return;
+    const confirmed = window.confirm(
+      "You are about to delete this pin. This action cannot be undone."
+    );
+    if (!confirmed) return;
+    setError("");
+    setStatus("");
+    setUpdatingPinId(pin.pin_id);
+    try {
+      const token = await getAccessToken();
+      await deletePin({ apiBase, token, pinId: pin.pin_id });
+      setPins((prev) => prev.filter((p) => p.pin_id !== pin.pin_id));
+      setStatus("Pin deleted.");
+    } catch (e) {
+      setError(e?.message || String(e));
+    } finally {
+      setUpdatingPinId("");
+    }
+  }
+
   function handleStartChat(pin) {
     if (!pin) return;
     if (typeof onStartChatFromPin === "function") {
@@ -110,8 +130,7 @@ export default function PinsPage({
 
   const emptyCopy = {
     active: "No pins yet. Add one above to remember a story for later.",
-    completed: "No shared stories yet. Mark a pin as shared once you've told it.",
-    archived: "Nothing archived yet.",
+    completed: "No completed pins yet. Mark a pin complete once you've shared its story.",
   }[filter];
 
   return (
@@ -128,8 +147,8 @@ export default function PinsPage({
       <div className="km-prose" style={{ maxWidth: 680, marginBottom: 32 }}>
         <p>
           Jot down a memory you want to share later. When you have time, tap a
-          pin and Kinin will help you tell that story. Mark it as shared when
-          you're done, then archive it to tuck it away.
+          pin and Kinin will help you tell that story. Mark it complete once
+          you're done, or delete pins you no longer need.
         </p>
       </div>
 
@@ -207,44 +226,37 @@ export default function PinsPage({
                       <div className="km-mono-label" style={{ marginTop: 8 }}>
                         Pinned {formatDate(pin.created_at)}
                         {pin.status === "completed" && pin.completed_at
-                          ? ` · Shared ${formatDate(pin.completed_at)}`
-                          : ""}
-                        {pin.status === "archived" && pin.archived_at
-                          ? ` · Archived ${formatDate(pin.archived_at)}`
+                          ? ` · Completed ${formatDate(pin.completed_at)}`
                           : ""}
                       </div>
 
                       <div className="km-row" style={{ gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-                        {filter !== "archived" ? (
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => handleStartChat(pin)}
-                            disabled={!isAuthed || rowBusy}
-                          >
-                            {isLaunching ? (
-                              <>
-                                <Spinner /> Starting chat...
-                              </>
-                            ) : (
-                              <>
-                                <MessageCircle size={16} strokeWidth={1.5} /> Start chat from pin
-                              </>
-                            )}
-                          </Button>
-                        ) : null}
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => handleStartChat(pin)}
+                          disabled={!isAuthed || rowBusy}
+                        >
+                          {isLaunching ? (
+                            <>
+                              <Spinner /> Starting chat...
+                            </>
+                          ) : (
+                            <>
+                              <MessageCircle size={16} strokeWidth={1.5} /> Start chat from pin
+                            </>
+                          )}
+                        </Button>
 
                         {filter === "active" ? (
                           <Button
                             size="sm"
-                            onClick={() => changeStatus(pin, "completed", "Marked as shared.")}
+                            onClick={() => changeStatus(pin, "completed", "Marked complete.")}
                             disabled={!isAuthed || rowBusy}
                           >
-                            <Check size={16} strokeWidth={1.5} /> Mark shared
+                            <Check size={16} strokeWidth={1.5} /> Mark complete
                           </Button>
-                        ) : null}
-
-                        {filter === "completed" ? (
+                        ) : (
                           <Button
                             size="sm"
                             onClick={() => changeStatus(pin, "active", "Reopened pin.")}
@@ -252,25 +264,16 @@ export default function PinsPage({
                           >
                             <RotateCcw size={16} strokeWidth={1.5} /> Reopen
                           </Button>
-                        ) : null}
-
-                        {filter !== "archived" ? (
-                          <Button
-                            size="sm"
-                            onClick={() => changeStatus(pin, "archived", "Pin archived.")}
-                            disabled={!isAuthed || rowBusy}
-                          >
-                            <Archive size={16} strokeWidth={1.5} /> Archive
-                          </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            onClick={() => changeStatus(pin, "active", "Pin restored.")}
-                            disabled={!isAuthed || rowBusy}
-                          >
-                            <ArchiveRestore size={16} strokeWidth={1.5} /> Restore
-                          </Button>
                         )}
+
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={() => handleDelete(pin)}
+                          disabled={!isAuthed || rowBusy}
+                        >
+                          <Trash2 size={16} strokeWidth={1.5} /> Delete
+                        </Button>
                       </div>
                     </div>
                   </div>
