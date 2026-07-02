@@ -2363,6 +2363,7 @@ export default function App() {
           isAuthed={isAuthed}
           getAccessToken={getAccessToken}
           apiBase={API_BASE}
+          onUpgraded={() => navigateToPage("interview")}
         />
       ) : activePage === "unsubscribe" ? (
         <UnsubscribePage apiBase={API_BASE} />

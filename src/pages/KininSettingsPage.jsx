@@ -62,6 +62,7 @@ export default function KininSettingsPage({
   const canManageShares = !!apiBase && typeof getAccessToken === "function";
 
   const [shares, setShares] = useState([]);
+  const [pendingInvites, setPendingInvites] = useState([]);
   const [sharesLoading, setSharesLoading] = useState(false);
   const [sharesError, setSharesError] = useState("");
   const [shareBusy, setShareBusy] = useState(false);
@@ -85,6 +86,7 @@ export default function KininSettingsPage({
         throw new Error(parsed?.detail || parsed?.error || `Request failed (${res.status})`);
       }
       setShares(Array.isArray(parsed?.shares) ? parsed.shares : []);
+      setPendingInvites(Array.isArray(parsed?.pending_invites) ? parsed.pending_invites : []);
     } catch (e) {
       setSharesError(e?.message || String(e));
     } finally {
@@ -121,15 +123,21 @@ export default function KininSettingsPage({
       const text = await res.text();
       const parsed = parseSharesPayload(text);
       if (!res.ok) {
-        if (parsed?.error === "no_account_for_email") {
+        if (parsed?.error === "invite_limit_reached") {
           throw new Error(
-            "No Kinin account uses that email yet. Email invitations for people who haven't joined are coming soon.",
+            parsed?.detail || "You've reached the limit of pending invitations. Cancel one or wait for someone to join.",
           );
         }
         throw new Error(parsed?.detail || parsed?.error || `Request failed (${res.status})`);
       }
-      const name = parsed?.share?.display_name || email;
-      setShareNotice(`${name} can now hear your story in Reunion.`);
+      if (parsed?.pending) {
+        setShareNotice(
+          `Invitation sent to ${email}. They'll be able to hear your story as soon as they join Kinin.`,
+        );
+      } else {
+        const name = parsed?.share?.display_name || email;
+        setShareNotice(`${name} can now hear your story in Reunion.`);
+      }
       setShareEmail("");
       setShareRelationship("");
       await loadShares();
@@ -161,6 +169,35 @@ export default function KininSettingsPage({
         throw new Error(parsed?.detail || parsed?.error || `Request failed (${res.status})`);
       }
       setShareNotice(`${name || "That person"}'s access has been removed.`);
+      await loadShares();
+    } catch (err) {
+      setSharesError(err?.message || String(err));
+    } finally {
+      setShareBusy(false);
+    }
+  }
+
+  async function cancelInvite(email) {
+    if (!canManageShares || shareBusy || !email) return;
+    setShareBusy(true);
+    setSharesError("");
+    setShareNotice("");
+    try {
+      const token = await getAccessToken();
+      const res = await fetch(`${apiBase}/reunion/shares`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ invitee_email: email }),
+      });
+      const text = await res.text();
+      const parsed = parseSharesPayload(text);
+      if (!res.ok) {
+        throw new Error(parsed?.detail || parsed?.error || `Request failed (${res.status})`);
+      }
+      setShareNotice(`Invitation to ${email} has been cancelled.`);
       await loadShares();
     } catch (err) {
       setSharesError(err?.message || String(err));
@@ -453,6 +490,30 @@ export default function KininSettingsPage({
                   </ul>
                 )}
               </div>
+
+              {pendingInvites.length > 0 ? (
+                <div style={{ marginTop: 20 }}>
+                  <div className="km-mono-label" style={{ marginBottom: 10 }}>
+                    Invited · not joined yet
+                  </div>
+                  <ul className="km-share-list">
+                    {pendingInvites.map((p) => (
+                      <li key={p.invitee_email} className="km-share-row">
+                        <div>
+                          <strong>{p.invitee_email}</strong>
+                          {p.relationship ? (
+                            <span className="km-muted"> · {p.relationship}</span>
+                          ) : null}
+                          <span className="km-muted"> · awaiting sign-up</span>
+                        </div>
+                        <Button onClick={() => cancelInvite(p.invitee_email)} disabled={shareBusy}>
+                          Cancel
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </Frame>

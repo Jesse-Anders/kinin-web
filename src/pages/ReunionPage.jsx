@@ -52,11 +52,14 @@ function autoResizeTextarea(el) {
  * when the user taps a citation. Dismiss via backdrop tap, close button, or
  * Escape key.
  */
-export default function ReunionPage({ isAuthed, getAccessToken, apiBase }) {
+export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgraded }) {
   const [bios, setBios] = useState([]);
   const [biosLoading, setBiosLoading] = useState(false);
   const [biosError, setBiosError] = useState("");
   const [selectedOwnerId, setSelectedOwnerId] = useState("");
+  const [viewer, setViewer] = useState(null);
+  const [upgrading, setUpgrading] = useState(false);
+  const [upgradeError, setUpgradeError] = useState("");
 
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState("");
@@ -91,6 +94,7 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase }) {
       setSelectedOwnerId("");
       setMessages([]);
       setActiveSource(null);
+      setViewer(null);
       return;
     }
     let cancelled = false;
@@ -113,6 +117,7 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase }) {
         const list = Array.isArray(parsed?.biographies) ? parsed.biographies : [];
         if (cancelled) return;
         setBios(list);
+        setViewer(parsed?.viewer || null);
         if (list.length === 1) setSelectedOwnerId(list[0].biography_owner_user_id);
       } catch (e) {
         if (cancelled) return;
@@ -169,6 +174,30 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase }) {
     setDraft("");
     setActiveSource(null);
     requestAnimationFrame(() => inputRef.current?.focus());
+  }
+
+  async function upgradeAccount() {
+    if (upgrading) return;
+    setUpgrading(true);
+    setUpgradeError("");
+    try {
+      const token = await getAccessToken();
+      const res = await fetch(`${apiBase}/reunion/upgrade`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const text = await res.text();
+      const parsed = parseApiPayload(text);
+      if (!res.ok) {
+        throw new Error(parsed?.detail || parsed?.error || `Request failed (${res.status})`);
+      }
+      setViewer((v) => ({ ...(v || {}), plan_state: parsed?.plan_state || "beta_invited", can_upgrade: false }));
+      if (typeof onUpgraded === "function") onUpgraded();
+    } catch (e) {
+      setUpgradeError(e?.message || String(e));
+    } finally {
+      setUpgrading(false);
+    }
   }
 
   async function sendMessage() {
@@ -317,6 +346,33 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase }) {
         <Banner tone="info">
           <span>Sign in to use Reunion.</span>
         </Banner>
+      ) : null}
+
+      {isAuthed && viewer?.can_upgrade ? (
+        <div style={{ marginBottom: 24 }}>
+          <Frame label="Start your own Kinin">
+            <div className="km-prose" style={{ maxWidth: 620, marginBottom: 16 }}>
+              <p style={{ margin: 0 }}>
+                You&apos;re here as a listener — but you have a story too. Start
+                your own Kinin interview and let your family talk with your
+                memories one day. You&apos;ll keep access to everyone who&apos;s
+                shared their Reunion with you.
+              </p>
+            </div>
+            {upgradeError ? (
+              <div style={{ marginBottom: 12 }}>
+                <Banner tone="danger"><span>{upgradeError}</span></Banner>
+              </div>
+            ) : null}
+            <Button variant="primary" onClick={upgradeAccount} disabled={upgrading}>
+              {upgrading ? (
+                <><Spinner /> Setting up...</>
+              ) : (
+                "Start telling my story"
+              )}
+            </Button>
+          </Frame>
+        </div>
       ) : null}
 
       <Frame label="Choose a biography">
