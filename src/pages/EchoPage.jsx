@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Radio, X } from "lucide-react";
 import {
   Banner,
@@ -46,14 +46,11 @@ function autoResizeTextarea(el) {
 /**
  * Echo mode — the Listener experience.
  *
- * Stateless backend: every POST /echo/chat call is independent. We maintain
- * the conversation buffer client-side; not persisted anywhere (intentional).
- *
- * Two-column layout when a biography is selected:
- *   left  — chat surface + input
- *   right — "Original source" panel; clicking any cited memory badge under
- *           an assistant reply populates this panel with the full paragraph
- *           text (which the backend included as `memories_used`).
+ * Layout: single-column chat. Citation badges under each assistant reply
+ * open a bottom sheet (iOS UISheetPresentationController pattern) that
+ * shows the original passage. The sheet is hidden by default and comes up
+ * when the user taps a citation. Dismiss via backdrop tap, close button, or
+ * Escape key.
  */
 export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
   const [bios, setBios] = useState([]);
@@ -66,12 +63,12 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
   const [sending, setSending] = useState(false);
   const [chatError, setChatError] = useState("");
 
-  // The memory object currently shown in the right-hand source panel:
-  //   { memory_id, content }
+  // The memory currently open in the bottom sheet, or null when hidden.
   const [activeSource, setActiveSource] = useState(null);
 
   const inputRef = useRef(null);
   const surfaceRef = useRef(null);
+  const sheetCloseRef = useRef(null);
 
   const selectedBio = useMemo(
     () => bios.find((b) => b.biography_owner_user_id === selectedOwnerId) || null,
@@ -81,6 +78,8 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
   const speakerTag = selectedBio?.display_name || "Echo";
   const sendDisabled =
     !isAuthed || sending || !selectedOwnerId || !(draft || "").trim();
+
+  const closeSource = useCallback(() => setActiveSource(null), []);
 
   useEffect(() => {
     if (!isAuthed) {
@@ -128,6 +127,21 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
     const el = surfaceRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, sending]);
+
+  useEffect(() => {
+    // Close the sheet on Escape.
+    if (!activeSource) return undefined;
+    function onKey(e) {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        closeSource();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    // Move focus to the close button so keyboard users can dismiss it.
+    requestAnimationFrame(() => sheetCloseRef.current?.focus());
+    return () => window.removeEventListener("keydown", onKey);
+  }, [activeSource, closeSource]);
 
   function selectBio(owner) {
     if (sending) return;
@@ -236,9 +250,7 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
     setActiveSource({ memory_id: memory.memory_id, content: memory.content });
   }
 
-  function closeSource() {
-    setActiveSource(null);
-  }
+  const sheetOpen = activeSource != null;
 
   return (
     <Section
@@ -333,153 +345,156 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
             ) : null}
           </div>
 
-          <div className="km-echo-workspace">
-            <div className="km-echo-chat-col">
-              <div ref={surfaceRef} className="km-chat-surface km-chat km-echo-surface">
-                {messages.length === 0 ? (
-                  <div className="km-chat-empty">
-                    Ask anything — about their family, their work, the things
-                    they cared about.
-                  </div>
-                ) : (
-                  messages.map((m) => (
-                    <ChatRow
-                      key={m.id}
-                      role={m.role}
-                      tag={m.role === "assistant" ? speakerTag : undefined}
-                    >
-                      {m.pending ? (
-                        <TypingDots label={`${speakerTag} is thinking`} />
-                      ) : (
-                        <>
-                          <div style={{ whiteSpace: "pre-wrap" }}>{m.content}</div>
-                          {m.role === "assistant" &&
-                          Array.isArray(m.memories_used) &&
-                          m.memories_used.length > 0 ? (
-                            <div className="km-echo-citations">
-                              <div className="km-mono-label km-echo-citations-label">
-                                Sources
-                              </div>
-                              <div className="km-echo-citations-row">
-                                {m.memories_used.map((mem, i) => {
-                                  const isActive =
-                                    activeSource?.memory_id === mem.memory_id;
-                                  return (
-                                    <button
-                                      key={mem.memory_id}
-                                      type="button"
-                                      className="km-echo-citation"
-                                      data-active={isActive ? "true" : "false"}
-                                      onClick={() => openSource(mem)}
-                                      title={`View original passage (${mem.memory_id})`}
-                                    >
-                                      [{i + 1}]
-                                    </button>
-                                  );
-                                })}
-                                {m.context_turn_ids_count ? (
-                                  <span
-                                    className="km-form-help"
-                                    style={{ marginLeft: 8 }}
-                                  >
-                                    of {m.context_turn_ids_count} memories
-                                    {m.elapsed_ms
-                                      ? ` · ${(m.elapsed_ms / 1000).toFixed(1)}s`
-                                      : ""}
-                                  </span>
-                                ) : null}
-                              </div>
-                            </div>
-                          ) : null}
-                        </>
-                      )}
-                    </ChatRow>
-                  ))
-                )}
+          <div ref={surfaceRef} className="km-chat-surface km-chat km-echo-surface">
+            {messages.length === 0 ? (
+              <div className="km-chat-empty">
+                Ask anything — about their family, their work, the things they
+                cared about.
               </div>
-
-              {chatError ? (
-                <div style={{ marginTop: 12 }}>
-                  <Banner tone="danger">
-                    <span>{chatError}</span>
-                  </Banner>
-                </div>
-              ) : null}
-
-              <div className="km-chat-input-row" style={{ marginTop: 12 }}>
-                <textarea
-                  ref={inputRef}
-                  value={draft}
-                  onChange={(e) => {
-                    const next = e.target.value.slice(0, MESSAGE_MAX_CHARS);
-                    setDraft(next);
-                    autoResizeTextarea(e.target);
-                  }}
-                  onInput={(e) => autoResizeTextarea(e.target)}
-                  onKeyDown={handleInputKeyDown}
-                  placeholder={
-                    isAuthed
-                      ? `Ask ${speakerTag} something...`
-                      : "Sign in to chat..."
-                  }
-                  className="km-chat-input"
-                  maxLength={MESSAGE_MAX_CHARS}
-                  rows={1}
-                  disabled={!isAuthed || sending}
-                />
-                <Button
-                  variant="primary"
-                  onClick={sendMessage}
-                  disabled={sendDisabled}
+            ) : (
+              messages.map((m) => (
+                <ChatRow
+                  key={m.id}
+                  role={m.role}
+                  tag={m.role === "assistant" ? speakerTag : undefined}
                 >
-                  {sending ? "Sending..." : "Send"}
-                </Button>
-              </div>
-              <div
-                className="km-form-help"
-                style={{ marginTop: 8, fontStyle: "italic" }}
-              >
-                Echo is a faithful AI reconstruction. Responses are grounded in
-                recorded memories — never invented.
-              </div>
-            </div>
+                  {m.pending ? (
+                    <TypingDots label={`${speakerTag} is thinking`} />
+                  ) : (
+                    <>
+                      <div style={{ whiteSpace: "pre-wrap" }}>{m.content}</div>
+                      {m.role === "assistant" &&
+                      Array.isArray(m.memories_used) &&
+                      m.memories_used.length > 0 ? (
+                        <div className="km-echo-citations">
+                          <div className="km-mono-label km-echo-citations-label">
+                            Sources
+                          </div>
+                          <div className="km-echo-citations-row">
+                            {m.memories_used.map((mem, i) => {
+                              const isActive =
+                                activeSource?.memory_id === mem.memory_id;
+                              return (
+                                <button
+                                  key={mem.memory_id}
+                                  type="button"
+                                  className="km-echo-citation"
+                                  data-active={isActive ? "true" : "false"}
+                                  onClick={() => openSource(mem)}
+                                  title={`View original passage (${mem.memory_id})`}
+                                >
+                                  [{i + 1}]
+                                </button>
+                              );
+                            })}
+                            {m.context_turn_ids_count ? (
+                              <span
+                                className="km-form-help"
+                                style={{ marginLeft: 8 }}
+                              >
+                                of {m.context_turn_ids_count} memories
+                                {m.elapsed_ms
+                                  ? ` · ${(m.elapsed_ms / 1000).toFixed(1)}s`
+                                  : ""}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                      ) : null}
+                    </>
+                  )}
+                </ChatRow>
+              ))
+            )}
+          </div>
 
-            <aside className="km-echo-source-col">
-              <div className="km-echo-source-panel">
-                <div className="km-echo-source-header">
-                  <span className="km-mono-label">Original source</span>
-                  {activeSource ? (
-                    <button
-                      type="button"
-                      className="km-echo-source-close"
-                      onClick={closeSource}
-                      aria-label="Close source"
-                      title="Close source"
-                    >
-                      <X size={14} aria-hidden="true" />
-                    </button>
-                  ) : null}
-                </div>
-                {activeSource ? (
-                  <>
-                    <div className="km-echo-source-id">
-                      <code>{activeSource.memory_id}</code>
-                    </div>
-                    <div className="km-echo-source-body">
-                      {activeSource.content}
-                    </div>
-                  </>
-                ) : (
-                  <div className="km-echo-source-empty">
-                    Click a numbered source under any reply to view the original
-                    passage from the interviewee&apos;s own recollections.
-                  </div>
-                )}
-              </div>
-            </aside>
+          {chatError ? (
+            <div style={{ marginTop: 12 }}>
+              <Banner tone="danger">
+                <span>{chatError}</span>
+              </Banner>
+            </div>
+          ) : null}
+
+          <div className="km-chat-input-row" style={{ marginTop: 12 }}>
+            <textarea
+              ref={inputRef}
+              value={draft}
+              onChange={(e) => {
+                const next = e.target.value.slice(0, MESSAGE_MAX_CHARS);
+                setDraft(next);
+                autoResizeTextarea(e.target);
+              }}
+              onInput={(e) => autoResizeTextarea(e.target)}
+              onKeyDown={handleInputKeyDown}
+              placeholder={
+                isAuthed
+                  ? `Ask ${speakerTag} something...`
+                  : "Sign in to chat..."
+              }
+              className="km-chat-input"
+              maxLength={MESSAGE_MAX_CHARS}
+              rows={1}
+              disabled={!isAuthed || sending}
+            />
+            <Button
+              variant="primary"
+              onClick={sendMessage}
+              disabled={sendDisabled}
+            >
+              {sending ? "Sending..." : "Send"}
+            </Button>
+          </div>
+          <div
+            className="km-form-help"
+            style={{ marginTop: 8, fontStyle: "italic" }}
+          >
+            Echo is a faithful AI reconstruction. Responses are grounded in
+            recorded memories — never invented.
           </div>
         </div>
       ) : null}
+
+      {/* Bottom sheet for original-source citation. iOS-native pattern
+          (UISheetPresentationController): slides up from bottom, backdrop
+          dims chat, dismiss via backdrop tap, close button, or Escape. */}
+      <div
+        className="km-echo-sheet-backdrop"
+        data-open={sheetOpen ? "true" : "false"}
+        onClick={closeSource}
+        aria-hidden={!sheetOpen}
+      />
+      <div
+        className="km-echo-sheet"
+        data-open={sheetOpen ? "true" : "false"}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Original source passage"
+        aria-hidden={!sheetOpen}
+      >
+        <div className="km-echo-sheet-handle" aria-hidden="true" />
+        <div className="km-echo-sheet-header">
+          <span className="km-mono-label">Original source</span>
+          <button
+            ref={sheetCloseRef}
+            type="button"
+            className="km-echo-source-close"
+            onClick={closeSource}
+            aria-label="Close source"
+            title="Close (Esc)"
+          >
+            <X size={14} aria-hidden="true" />
+          </button>
+        </div>
+        {activeSource ? (
+          <div className="km-echo-sheet-body">
+            <div className="km-echo-source-id">
+              <code>{activeSource.memory_id}</code>
+            </div>
+            <div className="km-echo-source-body">{activeSource.content}</div>
+          </div>
+        ) : null}
+      </div>
     </Section>
   );
 }
