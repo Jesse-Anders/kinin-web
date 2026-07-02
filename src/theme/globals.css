@@ -2019,6 +2019,26 @@ a:hover {
   align-self: flex-end;
 }
 
+/* ─── Reunion share list (owner-side, Settings) ─── */
+.km-share-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  max-width: 560px;
+}
+.km-share-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--cream);
+  border: 1px solid var(--thread);
+  border-radius: 4px;
+}
+
 /* ─── Reunion mode (Listener) ─── */
 .km-reunion-bio {
   display: block;

@@ -2491,6 +2491,8 @@ export default function App() {
           setTtsVoiceUuid={setTtsVoiceUuid}
           reunionSettings={reunionSettings}
           saveReunionEnabled={saveReunionEnabled}
+          apiBase={API_BASE}
+          getAccessToken={getAccessToken}
           resendAccountExecutorInvite={resendAccountExecutorInvite}
           removeAccountExecutor={removeAccountExecutor}
           onOpenDangerZone={() => navigateToPage("danger-zone")}

@@ -1,6 +1,16 @@
+import { useCallback, useEffect, useState } from "react";
 import { Banner, Button, FormRow, Frame, Section, Skeleton, Spinner, TextInput } from "../theme";
 import InterviewDetailsPanel from "../components/InterviewDetailsPanel";
 import VoicePickerSection from "../components/VoicePickerSection";
+
+function parseSharesPayload(text) {
+  try {
+    const outer = JSON.parse(text);
+    return typeof outer?.body === "string" ? JSON.parse(outer.body) : outer;
+  } catch {
+    return null;
+  }
+}
 
 function deriveAgeFromDateOfBirth(dateOfBirth) {
   const text = String(dateOfBirth || "").trim();
@@ -45,8 +55,119 @@ export default function KininSettingsPage({
   setTtsVoiceUuid,
   reunionSettings,
   saveReunionEnabled,
+  apiBase,
+  getAccessToken,
 }) {
   const reunionEnabled = reunionSettings?.enabled !== false;
+  const canManageShares = !!apiBase && typeof getAccessToken === "function";
+
+  const [shares, setShares] = useState([]);
+  const [sharesLoading, setSharesLoading] = useState(false);
+  const [sharesError, setSharesError] = useState("");
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareNotice, setShareNotice] = useState("");
+  const [shareEmail, setShareEmail] = useState("");
+  const [shareRelationship, setShareRelationship] = useState("");
+
+  const loadShares = useCallback(async () => {
+    if (!canManageShares) return;
+    setSharesLoading(true);
+    setSharesError("");
+    try {
+      const token = await getAccessToken();
+      const res = await fetch(`${apiBase}/reunion/shares`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const text = await res.text();
+      const parsed = parseSharesPayload(text);
+      if (!res.ok) {
+        throw new Error(parsed?.detail || parsed?.error || `Request failed (${res.status})`);
+      }
+      setShares(Array.isArray(parsed?.shares) ? parsed.shares : []);
+    } catch (e) {
+      setSharesError(e?.message || String(e));
+    } finally {
+      setSharesLoading(false);
+    }
+  }, [apiBase, getAccessToken, canManageShares]);
+
+  useEffect(() => {
+    loadShares();
+  }, [loadShares]);
+
+  async function addShare(e) {
+    if (e?.preventDefault) e.preventDefault();
+    if (!canManageShares || shareBusy) return;
+    const email = shareEmail.trim();
+    const relationship = shareRelationship.trim();
+    if (!email) {
+      setSharesError("Enter an email address to share with.");
+      return;
+    }
+    setShareBusy(true);
+    setSharesError("");
+    setShareNotice("");
+    try {
+      const token = await getAccessToken();
+      const res = await fetch(`${apiBase}/reunion/shares`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ email, relationship }),
+      });
+      const text = await res.text();
+      const parsed = parseSharesPayload(text);
+      if (!res.ok) {
+        if (parsed?.error === "no_account_for_email") {
+          throw new Error(
+            "No Kinin account uses that email yet. Email invitations for people who haven't joined are coming soon.",
+          );
+        }
+        throw new Error(parsed?.detail || parsed?.error || `Request failed (${res.status})`);
+      }
+      const name = parsed?.share?.display_name || email;
+      setShareNotice(`${name} can now hear your story in Reunion.`);
+      setShareEmail("");
+      setShareRelationship("");
+      await loadShares();
+    } catch (err) {
+      setSharesError(err?.message || String(err));
+    } finally {
+      setShareBusy(false);
+    }
+  }
+
+  async function removeShare(listenerUserId, name) {
+    if (!canManageShares || shareBusy || !listenerUserId) return;
+    setShareBusy(true);
+    setSharesError("");
+    setShareNotice("");
+    try {
+      const token = await getAccessToken();
+      const res = await fetch(`${apiBase}/reunion/shares`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ listener_user_id: listenerUserId }),
+      });
+      const text = await res.text();
+      const parsed = parseSharesPayload(text);
+      if (!res.ok) {
+        throw new Error(parsed?.detail || parsed?.error || `Request failed (${res.status})`);
+      }
+      setShareNotice(`${name || "That person"}'s access has been removed.`);
+      await loadShares();
+    } catch (err) {
+      setSharesError(err?.message || String(err));
+    } finally {
+      setShareBusy(false);
+    }
+  }
   const cadenceValue = String(continuitySettings?.reminder_cadence_weeks ?? 2);
   const showInitialLoader = profileBusy && !profileSchema;
   const executorStatus = accountExecutor?.status || "";
@@ -241,6 +362,99 @@ export default function KininSettingsPage({
                 : "No one can reach you through Reunion right now, even if you've granted them access."}
             </span>
           </label>
+
+          {canManageShares ? (
+            <div style={{ marginTop: 28 }}>
+              <div className="km-mono-label" style={{ marginBottom: 12 }}>
+                Who can hear your story in Kinin's Reunion
+              </div>
+              <div className="km-prose" style={{ maxWidth: 560, marginBottom: 16 }}>
+                <p>
+                  Invite a family member or friend by the email tied to their
+                  Kinin account. They'll be able to talk with your Reunion right
+                  away. You can remove access at any time.
+                </p>
+              </div>
+
+              {shareNotice ? (
+                <div style={{ marginBottom: 14 }}>
+                  <Banner tone="info">{shareNotice}</Banner>
+                </div>
+              ) : null}
+              {sharesError ? (
+                <div style={{ marginBottom: 14 }}>
+                  <Banner tone="danger">{sharesError}</Banner>
+                </div>
+              ) : null}
+
+              <form className="km-form-grid" onSubmit={addShare}>
+                <FormRow label="Their email">
+                  <TextInput
+                    value={shareEmail}
+                    onChange={(e) => setShareEmail(e.target.value)}
+                    disabled={shareBusy}
+                    inputMode="email"
+                    placeholder="name@example.com"
+                  />
+                </FormRow>
+                <FormRow label="Relationship (optional)" help="e.g. daughter, brother, close friend">
+                  <TextInput
+                    value={shareRelationship}
+                    onChange={(e) => setShareRelationship(e.target.value)}
+                    disabled={shareBusy}
+                    maxLength={60}
+                    placeholder="daughter"
+                  />
+                </FormRow>
+              </form>
+              <div className="km-row" style={{ marginTop: 14 }}>
+                <Button variant="primary" onClick={addShare} disabled={shareBusy || !shareEmail.trim()}>
+                  {shareBusy ? (
+                    <>
+                      <Spinner /> Working...
+                    </>
+                  ) : (
+                    "Share with this person"
+                  )}
+                </Button>
+              </div>
+
+              <div style={{ marginTop: 22 }}>
+                <div className="km-mono-label" style={{ marginBottom: 10 }}>
+                  Currently shared with
+                </div>
+                {sharesLoading ? (
+                  <div style={{ display: "grid", gap: 8, maxWidth: 480 }}>
+                    <Skeleton />
+                    <Skeleton short />
+                  </div>
+                ) : shares.length === 0 ? (
+                  <div className="km-form-help" style={{ fontStyle: "normal" }}>
+                    You haven't shared your Reunion with anyone yet.
+                  </div>
+                ) : (
+                  <ul className="km-share-list">
+                    {shares.map((s) => (
+                      <li key={s.listener_user_id} className="km-share-row">
+                        <div>
+                          <strong>{s.display_name || s.listener_user_id}</strong>
+                          {s.relationship ? (
+                            <span className="km-muted"> · {s.relationship}</span>
+                          ) : null}
+                        </div>
+                        <Button
+                          onClick={() => removeShare(s.listener_user_id, s.display_name)}
+                          disabled={shareBusy}
+                        >
+                          Remove
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          ) : null}
         </Frame>
 
         <Frame label="Account executor">
