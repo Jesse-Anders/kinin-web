@@ -209,6 +209,7 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
       const parsed = parseApiPayload(text);
       if (!res.ok) {
         const code = String(parsed?.error || "");
+        const isSelf = !!selectedBio?.is_self;
         const speaker =
           parsed?.display_name ||
           selectedBio?.display_name ||
@@ -217,14 +218,18 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
         if (code === "no_memories_available") {
           setChatErrorTone("info");
           setChatError(
-            `${speaker} hasn't shared any memories with Kinin yet. Check back after their next session.`,
+            isSelf
+              ? "You haven't shared any memories with Kinin yet. Have your first interview session, then come back to preview your Echo."
+              : `${speaker} hasn't shared any memories with Kinin yet. Check back after their next session.`,
           );
           return;
         }
         if (code === "echo_disabled_by_owner") {
           setChatErrorTone("info");
           setChatError(
-            `${speaker} has paused Echo access for now. You'll be able to reach them again once they turn it back on.`,
+            isSelf
+              ? "You've paused Echo. Turn it back on in Settings to preview or share your biography."
+              : `${speaker} has paused Echo access for now. You'll be able to reach them again once they turn it back on.`,
           );
           return;
         }
@@ -334,6 +339,11 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
           <div className="km-stack" style={{ gap: 10 }}>
             {bios.map((b) => {
               const isSelected = b.biography_owner_user_id === selectedOwnerId;
+              const isSelf = !!b.is_self;
+              const displayName = b.display_name || b.biography_owner_user_id;
+              const primaryLabel = isSelf
+                ? `You${b.display_name ? ` — ${b.display_name}` : ""}`
+                : displayName;
               return (
                 <button
                   key={b.biography_owner_user_id}
@@ -347,9 +357,13 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
                     <Radio size={16} aria-hidden="true" style={{ flex: "0 0 auto" }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 600 }}>
-                        {b.display_name || b.biography_owner_user_id}
+                        {primaryLabel}
                       </div>
-                      {b.date_of_birth ? (
+                      {isSelf ? (
+                        <div className="km-form-help" style={{ marginTop: 2 }}>
+                          Preview what listeners will hear from your Echo.
+                        </div>
+                      ) : b.date_of_birth ? (
                         <div className="km-form-help" style={{ marginTop: 2 }}>
                           Born {formatDateOfBirth(b.date_of_birth)}
                         </div>
@@ -374,7 +388,9 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
             }}
           >
             <div className="km-mono-label">
-              Talking with {selectedBio.display_name || selectedBio.biography_owner_user_id}
+              {selectedBio.is_self
+                ? "Previewing your Echo"
+                : `Talking with ${selectedBio.display_name || selectedBio.biography_owner_user_id}`}
             </div>
             {messages.length > 0 ? (
               <Button size="sm" onClick={startNewConversation} disabled={sending}>
@@ -386,8 +402,9 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
           <div ref={surfaceRef} className="km-chat-surface km-chat km-echo-surface">
             {messages.length === 0 ? (
               <div className="km-chat-empty">
-                Ask anything — about their family, their work, the things they
-                cared about.
+                {selectedBio.is_self
+                  ? "Ask anything a family member might ask — try questions about your childhood, work, or the things you care about — and see how Echo replies."
+                  : "Ask anything — about their family, their work, the things they cared about."}
               </div>
             ) : (
               messages.map((m) => (
@@ -466,9 +483,11 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
               onInput={(e) => autoResizeTextarea(e.target)}
               onKeyDown={handleInputKeyDown}
               placeholder={
-                isAuthed
-                  ? `Ask ${speakerTag} something...`
-                  : "Sign in to chat..."
+                !isAuthed
+                  ? "Sign in to chat..."
+                  : selectedBio?.is_self
+                    ? "Ask your Echo something..."
+                    : `Ask ${speakerTag} something...`
               }
               className="km-chat-input"
               maxLength={MESSAGE_MAX_CHARS}
