@@ -2042,9 +2042,123 @@ a:hover {
   border-color: var(--ink);
   background: var(--cream-warm);
 }
+
+/* Two-column workspace: chat left, source panel right. Stacks on narrow
+   screens (below ~880px) so mobile/tablet portrait keeps the chat readable. */
+.km-echo-workspace {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  align-items: start;
+}
+@media (max-width: 880px) {
+  .km-echo-workspace { grid-template-columns: 1fr; }
+}
+.km-echo-chat-col { min-width: 0; }
+.km-echo-source-col { min-width: 0; }
 .km-echo-surface {
   min-height: 240px;
   max-height: 520px;
   overflow-y: auto;
+}
+
+/* Numbered citation badges under assistant replies. */
+.km-echo-citations {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--thread);
+}
+.km-echo-citations-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ink-faint);
+}
+.km-echo-citations-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.km-echo-citation {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 8px;
+  min-width: 28px;
+  background: var(--cream);
+  color: var(--ink);
+  border: 1px solid var(--thread);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+.km-echo-citation:hover {
+  background: var(--cream-warm);
+  border-color: var(--ink-faint);
+}
+.km-echo-citation[data-active="true"] {
+  background: var(--ink);
+  color: var(--cream);
+  border-color: var(--ink);
+}
+
+/* Right-hand source panel. Sticky on wide screens so it stays put while
+   the chat surface scrolls. */
+.km-echo-source-panel {
+  background: var(--cream-warm);
+  border: 1px solid var(--thread);
+  border-radius: 4px;
+  padding: 16px;
+  min-height: 320px;
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+}
+@media (min-width: 881px) {
+  .km-echo-source-panel { position: sticky; top: 24px; }
+}
+.km-echo-source-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--thread);
+}
+.km-echo-source-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  color: var(--ink-faint);
+  border: 1px solid var(--thread);
+  border-radius: 3px;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+.km-echo-source-close:hover {
+  color: var(--ink);
+  border-color: var(--ink-faint);
+}
+.km-echo-source-id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+  margin-bottom: 10px;
+  word-break: break-all;
+}
+.km-echo-source-body {
+  white-space: pre-wrap;
+  font-family: var(--font-body, inherit);
+  color: var(--ink);
+  line-height: 1.55;
+}
+.km-echo-source-empty {
+  color: var(--ink-faint);
+  font-style: italic;
+  line-height: 1.5;
 }
 
