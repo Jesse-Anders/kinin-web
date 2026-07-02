@@ -6,6 +6,7 @@ import {
   CirclePlus,
   Feather,
   Key,
+  MapPin,
   Menu,
   Play,
   Quote,
@@ -39,6 +40,7 @@ import AdminUserPurgePage from "./pages/AdminUserPurgePage";
 import AboutKininPage from "./pages/AboutKininPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import ReviewEditChatsPage from "./pages/ReviewEditChatsPage";
+import PinsPage from "./pages/PinsPage";
 import EchoPage from "./pages/EchoPage";
 import UnsubscribePage from "./pages/UnsubscribePage";
 import OnboardingPage from "./pages/OnboardingPage";
@@ -89,6 +91,7 @@ const PAGE_TO_PATH = {
   faq: "/faq",
   feedback: "/feedback",
   "review-chats": "/review-chats",
+  pins: "/pins",
   echo: "/echo",
   contact: "/contact",
   privacy: "/privacy",
@@ -165,6 +168,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [isSendingTurn, setIsSendingTurn] = useState(false);
   const [isStartingSession, setIsStartingSession] = useState(false);
+  const [startingPinId, setStartingPinId] = useState("");
   const [isEndingSession, setIsEndingSession] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [error, setError] = useState("");
@@ -710,6 +714,13 @@ export default function App() {
       onClick: () => navigateToPage("review-chats"),
     },
     {
+      id: "pins",
+      label: "Pins",
+      icon: MapPin,
+      requiresAuth: true,
+      onClick: () => navigateToPage("pins"),
+    },
+    {
       id: "echo",
       label: "Echo",
       icon: Radio,
@@ -885,6 +896,7 @@ export default function App() {
       activePage === "onboarding" ||
       activePage === "feedback" ||
       activePage === "review-chats" ||
+      activePage === "pins" ||
       activePage === "echo";
     const isAdminPage =
       activePage === "admin" ||
@@ -1316,7 +1328,22 @@ export default function App() {
     }
   }
 
-  async function startSession() {
+  async function startChatFromPin(pin) {
+    if (!pin || !pin.pin_id) return;
+    setStartingPinId(pin.pin_id);
+    try {
+      // Reset the current conversation and open a fresh freeform session
+      // seeded by the pin so Kinin opens by referencing the pinned memory.
+      setChat([]);
+      setUiState(null);
+      navigateToPage("interview");
+      await startSession({ mode: "freeform", pinId: pin.pin_id, newSession: true });
+    } finally {
+      setStartingPinId("");
+    }
+  }
+
+  async function startSession({ mode, pinId, newSession = false } = {}) {
     setError("");
     setBusy(true);
     setIsStartingSession(true);
@@ -1326,9 +1353,13 @@ export default function App() {
       if (!idToken) throw new Error("Missing idToken. Are you logged in?");
 
       const body = {
-        session_id: sessionId || undefined,
+        // Omit session_id to force the backend to mint a fresh session
+        // (used when launching a brand-new conversation from a pin).
+        session_id: newSession ? undefined : sessionId || undefined,
         start: true,
       };
+      if (mode) body.mode = mode;
+      if (pinId) body.pin_id = pinId;
 
       const res = await fetch(`${API_BASE}/turn`, {
         method: "POST",
@@ -2266,6 +2297,14 @@ export default function App() {
           getAccessToken={getAccessToken}
           apiBase={API_BASE}
           userDisplayName={navDisplayName || "You"}
+        />
+      ) : activePage === "pins" ? (
+        <PinsPage
+          isAuthed={isAuthed}
+          getAccessToken={getAccessToken}
+          apiBase={API_BASE}
+          onStartChatFromPin={startChatFromPin}
+          startingPinId={startingPinId}
         />
       ) : activePage === "echo" ? (
         <EchoPage
