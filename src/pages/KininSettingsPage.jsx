@@ -43,7 +43,10 @@ export default function KininSettingsPage({
   interviewDetails,
   ttsVoiceUuid,
   setTtsVoiceUuid,
+  echoSettings,
+  saveEchoEnabled,
 }) {
+  const echoEnabled = echoSettings?.enabled !== false;
   const cadenceValue = String(continuitySettings?.reminder_cadence_weeks ?? 2);
   const showInitialLoader = profileBusy && !profileSchema;
   const executorStatus = accountExecutor?.status || "";
@@ -203,6 +206,39 @@ export default function KininSettingsPage({
             setTtsVoiceUuid={setTtsVoiceUuid}
             disabled={profileBusy}
           />
+        </Frame>
+
+        <Frame label="Echo">
+          <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
+            <p>
+              Echo lets family members you've invited talk directly with your
+              interview memories &mdash; asking questions and hearing answers
+              in your voice, grounded in what you've already shared with
+              Kinin. New memories become available to Echo as soon as you
+              finish each turn.
+            </p>
+            <p>
+              You control access. Turn Echo off any time to pause it for
+              everyone; turn it back on when you're ready. Individual
+              per-listener controls will come later &mdash; this is a blanket
+              switch for now.
+            </p>
+          </div>
+          <label className="km-checkbox">
+            <input
+              type="checkbox"
+              checked={echoEnabled}
+              onChange={(e) => saveEchoEnabled && saveEchoEnabled(e.target.checked)}
+              disabled={profileBusy || !saveEchoEnabled}
+            />
+            <span>
+              <strong>Echo is {echoEnabled ? "on" : "paused"}.</strong>
+              {" "}
+              {echoEnabled
+                ? "Family members you've granted access can reach you through Echo."
+                : "No one can reach you through Echo right now, even if you've granted them access."}
+            </span>
+          </label>
         </Frame>
 
         <Frame label="Account executor">

@@ -62,6 +62,10 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [chatError, setChatError] = useState("");
+  // "danger" for real errors; "info" for expected soft states (no memories
+  // yet, interviewee paused Echo) so listeners aren't greeted with a red
+  // banner for something benign.
+  const [chatErrorTone, setChatErrorTone] = useState("danger");
 
   // The memory currently open in the bottom sheet, or null when hidden.
   const [activeSource, setActiveSource] = useState(null);
@@ -143,11 +147,16 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [activeSource, closeSource]);
 
+  function clearChatError() {
+    setChatError("");
+    setChatErrorTone("danger");
+  }
+
   function selectBio(owner) {
     if (sending) return;
     setSelectedOwnerId(owner);
     setMessages([]);
-    setChatError("");
+    clearChatError();
     setDraft("");
     setActiveSource(null);
     requestAnimationFrame(() => inputRef.current?.focus());
@@ -156,7 +165,7 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
   function startNewConversation() {
     if (sending) return;
     setMessages([]);
-    setChatError("");
+    clearChatError();
     setDraft("");
     setActiveSource(null);
     requestAnimationFrame(() => inputRef.current?.focus());
@@ -165,7 +174,7 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
   async function sendMessage() {
     const trimmed = (draft || "").trim();
     if (!trimmed || !selectedOwnerId || sending) return;
-    setChatError("");
+    clearChatError();
     const userMsg = {
       id: `u_${Date.now()}_${Math.random().toString(16).slice(2, 6)}`,
       role: "user",
@@ -199,9 +208,38 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
       const text = await res.text();
       const parsed = parseApiPayload(text);
       if (!res.ok) {
+        const code = String(parsed?.error || "");
+        const speaker =
+          parsed?.display_name ||
+          selectedBio?.display_name ||
+          "This person";
+        setMessages((prev) => prev.filter((m) => m.id !== placeholder.id));
+        if (code === "no_memories_available") {
+          setChatErrorTone("info");
+          setChatError(
+            `${speaker} hasn't shared any memories with Kinin yet. Check back after their next session.`,
+          );
+          return;
+        }
+        if (code === "echo_disabled_by_owner") {
+          setChatErrorTone("info");
+          setChatError(
+            `${speaker} has paused Echo access for now. You'll be able to reach them again once they turn it back on.`,
+          );
+          return;
+        }
+        if (code === "echo_access_denied") {
+          setChatErrorTone("danger");
+          setChatError(
+            "You don't have access to this biography anymore. Ask an administrator to restore it.",
+          );
+          return;
+        }
         const detail =
           parsed?.detail || parsed?.error || (parsed ? JSON.stringify(parsed) : text);
-        throw new Error(`${res.status} — ${detail}`);
+        setChatErrorTone("danger");
+        setChatError(`${res.status} — ${detail}`);
+        return;
       }
       const reply = String(parsed?.response || "").trim();
       const sources = Array.isArray(parsed?.source_turn_ids)
@@ -410,7 +448,7 @@ export default function EchoPage({ isAuthed, getAccessToken, apiBase }) {
 
           {chatError ? (
             <div style={{ marginTop: 12 }}>
-              <Banner tone="danger">
+              <Banner tone={chatErrorTone}>
                 <span>{chatError}</span>
               </Banner>
             </div>

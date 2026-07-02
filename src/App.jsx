@@ -178,6 +178,10 @@ export default function App() {
   const [_showProfile, setShowProfile] = useState(false);
   const [profileSchema, setProfileSchema] = useState(null);
   const [bioProfile, setBioProfile] = useState({ preferred_name: "", date_of_birth: "" });
+  // Blanket privacy switch: when false, listeners can't reach this interviewee
+  // via Echo. Defaults to true so legacy users stay accessible until they
+  // explicitly opt out.
+  const [echoSettings, setEchoSettings] = useState({ enabled: true });
   const [continuitySettings, setContinuitySettings] = useState({
     reminder_cadence_weeks: 2,
     reminder_channel: "email",
@@ -1037,6 +1041,10 @@ export default function App() {
       confirmed_at: executor.confirmed_at || null,
       last_invite_sent_at: executor.last_invite_sent_at || null,
     });
+    const echo = parsed?.echo_settings;
+    setEchoSettings({
+      enabled: echo && typeof echo === "object" && echo.enabled === false ? false : true,
+    });
   }
 
   function normalizedExecutorDraft() {
@@ -1722,6 +1730,9 @@ export default function App() {
         voice_preferences: ttsVoiceUuid
           ? { voice_uuid: ttsVoiceUuid }
           : null,
+        echo_settings: {
+          enabled: echoSettings?.enabled !== false,
+        },
       };
 
       const res = await fetch(`${API_BASE}/profile`, {
@@ -1755,6 +1766,44 @@ export default function App() {
       return false;
     } finally {
       setProfileBusy(false);
+    }
+  }
+
+  // Persist the Echo on/off privacy switch immediately, without waiting for
+  // the user to hit "Save" on the Settings page. Optimistic: local state
+  // flips first, then we PUT. On failure we revert and surface a banner —
+  // this is a privacy control so silent failure is unacceptable.
+  async function saveEchoEnabled(nextEnabled) {
+    if (!isAuthed) return false;
+    const desired = !!nextEnabled;
+    const previous = echoSettings?.enabled !== false;
+    setEchoSettings({ enabled: desired });
+    try {
+      const session = await fetchAuthSession();
+      const idToken = session.tokens?.idToken?.toString();
+      if (!idToken) throw new Error("Missing idToken. Are you logged in?");
+      const res = await fetch(`${API_BASE}/profile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ echo_settings: { enabled: desired } }),
+      });
+      await ensureApiOk(res);
+      const data = await res.json();
+      const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
+      applyProfilePayload(parsed);
+      setProfileNotice(
+        desired
+          ? "Echo is on. Family members you've granted access can talk with your interview memories."
+          : "Echo is paused. Listeners won't see your biography until you turn it back on.",
+      );
+      return true;
+    } catch (e) {
+      setEchoSettings({ enabled: previous });
+      setTopErrorFromException(e);
+      return false;
     }
   }
 
@@ -2437,6 +2486,8 @@ export default function App() {
           saveProfile={saveProfile}
           ttsVoiceUuid={ttsVoiceUuid}
           setTtsVoiceUuid={setTtsVoiceUuid}
+          echoSettings={echoSettings}
+          saveEchoEnabled={saveEchoEnabled}
           resendAccountExecutorInvite={resendAccountExecutorInvite}
           removeAccountExecutor={removeAccountExecutor}
           onOpenDangerZone={() => navigateToPage("danger-zone")}
