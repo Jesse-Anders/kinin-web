@@ -704,13 +704,6 @@ export default function App() {
       onClick: () => navigateToPage("faq"),
     },
     {
-      id: "feedback",
-      label: "Feedback",
-      icon: Feather,
-      requiresAuth: true,
-      onClick: () => navigateToPage("feedback"),
-    },
-    {
       id: "review-chats",
       label: "Review",
       icon: ScrollText,
@@ -730,6 +723,13 @@ export default function App() {
       icon: Radio,
       requiresAuth: true,
       onClick: () => navigateToPage("reunion"),
+    },
+    {
+      id: "feedback",
+      label: "Feedback",
+      icon: Feather,
+      requiresAuth: true,
+      onClick: () => navigateToPage("feedback"),
     },
     {
       id: "admin",
@@ -842,10 +842,26 @@ export default function App() {
     if (message) return;
     messageInputRef.current.style.height = "auto";
   }, [message]);
+  // About and FAQ sit on the main sidebar when logged out, but nest into the
+  // "+" overflow menu (alongside Contact and Privacy) once a user is logged in.
+  const NESTED_WHEN_AUTHED_IDS = new Set(["about", "faq"]);
   const visibleTopItems = menuItems.filter(
-    (item) => item.section !== "bottom" && (isAuthed || !item.requiresAuth) && !(item.hideForBetaLite && IS_BETA_LITE)
+    (item) =>
+      item.section !== "bottom" &&
+      (isAuthed || !item.requiresAuth) &&
+      !(item.hideForBetaLite && IS_BETA_LITE) &&
+      !(isAuthed && NESTED_WHEN_AUTHED_IDS.has(item.id))
   );
+  const nestedTopItems = isAuthed
+    ? menuItems.filter(
+        (item) =>
+          item.section !== "bottom" &&
+          NESTED_WHEN_AUTHED_IDS.has(item.id) &&
+          !(item.hideForBetaLite && IS_BETA_LITE)
+      )
+    : [];
   const extraMenuItems = [
+    ...nestedTopItems,
     {
       id: "contact",
       label: "Contact",
