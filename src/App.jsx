@@ -171,6 +171,7 @@ export default function App() {
   const [startingPinId, setStartingPinId] = useState("");
   const [isEndingSession, setIsEndingSession] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [reunionInvite, setReunionInvite] = useState(null);
   const [error, setError] = useState("");
   const [profileNotice, setProfileNotice] = useState("");
   const [accessBlocked, setAccessBlocked] = useState(null);
@@ -1263,6 +1264,47 @@ export default function App() {
     setAccountUsername(user.username);
   }, [user]);
 
+  // Capture a Reunion invite deep link (?invite=reunion&email=&from=) so we can
+  // welcome the invitee by name and point them at signup. Persist it across the
+  // Hosted UI redirect, and strip the params so they don't linger in the URL.
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      if ((sp.get("invite") || "").toLowerCase() === "reunion") {
+        const invite = {
+          email: (sp.get("email") || "").trim(),
+          from: (sp.get("from") || "").trim(),
+        };
+        setReunionInvite(invite);
+        try {
+          sessionStorage.setItem("kinin_reunion_invite", JSON.stringify(invite));
+        } catch { /* ignore storage errors */ }
+        sp.delete("invite");
+        sp.delete("email");
+        sp.delete("from");
+        const qs = sp.toString();
+        window.history.replaceState(
+          {},
+          "",
+          window.location.pathname + (qs ? `?${qs}` : "") + window.location.hash,
+        );
+      } else {
+        const stored = sessionStorage.getItem("kinin_reunion_invite");
+        if (stored) setReunionInvite(JSON.parse(stored));
+      }
+    } catch { /* ignore malformed invite params */ }
+  }, []);
+
+  // Once signed in, the invite has served its purpose (the grant materializes
+  // server-side at signup); clear the stored context.
+  useEffect(() => {
+    if (!isAuthed) return;
+    setReunionInvite(null);
+    try {
+      sessionStorage.removeItem("kinin_reunion_invite");
+    } catch { /* ignore */ }
+  }, [isAuthed]);
+
   async function onLogin(provider) {
     setError("");
     setAccessBlocked(null);
@@ -2302,6 +2344,33 @@ export default function App() {
           <span><strong>Error.</strong> {error}</span>
         </Banner>
       )}
+
+      {!isAuthed && reunionInvite ? (
+        <Banner tone="info">
+          <div>
+            <div>
+              <strong>
+                {reunionInvite.from
+                  ? `${reunionInvite.from} invited you to hear their story on Kinin.`
+                  : "You've been invited to hear a story on Kinin."}
+              </strong>
+            </div>
+            <div style={{ marginTop: 6 }}>
+              Reunion lets you talk with a loved one&apos;s memories, in their own
+              voice. Create your free account
+              {reunionInvite.email ? (
+                <> using <strong>{reunionInvite.email}</strong></>
+              ) : null}{" "}
+              to start listening.
+            </div>
+            <div style={{ marginTop: 10 }}>
+              <Button variant="primary" onClick={() => onLogin()} disabled={isSigningIn}>
+                Create your free account
+              </Button>
+            </div>
+          </div>
+        </Banner>
+      ) : null}
 
       {isEndingSession ? (
         <Banner tone="info">

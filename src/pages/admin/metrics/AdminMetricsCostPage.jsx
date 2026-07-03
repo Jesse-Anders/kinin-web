@@ -444,6 +444,53 @@ export default function AdminMetricsCostPage({ isAuthed, getAccessToken, apiBase
         </ChartFrame>
       </div>
 
+      {/* Reunion (free tier) breakout */}
+      <ChartFrame
+        eyebrow="Reunion · free tier"
+        title="Reunion listening cost"
+        description="Listener chats against a shared persona. Attributed to the listening account, never the interviewee; free to users, so the platform absorbs this spend."
+        exportName="cost-reunion"
+      >
+        <div style={{ display: "flex", gap: 28, flexWrap: "wrap", fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--ink-soft)", letterSpacing: "0.08em" }}>
+          <div>
+            <div style={{ textTransform: "uppercase", marginBottom: 4 }}>Reunion cost</div>
+            <strong style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: 20 }}>
+              {fmtUsd(maybeObfuscateNumber(data?.reunion?.total_cost || 0, { demoMode, isCount: false }))}
+            </strong>
+          </div>
+          <div>
+            <div style={{ textTransform: "uppercase", marginBottom: 4 }}>Chats</div>
+            <strong style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: 20 }}>
+              {fmtTokens(maybeObfuscateNumber(data?.reunion?.calls || 0, { demoMode }))}
+            </strong>
+          </div>
+          <div>
+            <div style={{ textTransform: "uppercase", marginBottom: 4 }}>Tokens</div>
+            <strong style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: 20 }}>
+              {fmtTokens(maybeObfuscateNumber(data?.reunion?.total_tokens || 0, { demoMode }))}
+            </strong>
+          </div>
+          <div>
+            <div style={{ textTransform: "uppercase", marginBottom: 4 }}>Listeners</div>
+            <strong style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: 20 }}>
+              {fmtTokens(maybeObfuscateNumber(data?.reunion?.distinct_listeners || 0, { demoMode }))}
+            </strong>
+          </div>
+          <div>
+            <div style={{ textTransform: "uppercase", marginBottom: 4 }}>Personas heard</div>
+            <strong style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: 20 }}>
+              {fmtTokens(maybeObfuscateNumber(data?.reunion?.distinct_personas || 0, { demoMode }))}
+            </strong>
+          </div>
+          <div>
+            <div style={{ textTransform: "uppercase", marginBottom: 4 }}>Share of total</div>
+            <strong style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: 20 }}>
+              {totalCost > 0 ? `${(((data?.reunion?.total_cost || 0) / totalCost) * 100).toFixed(1)}%` : "—"}
+            </strong>
+          </div>
+        </div>
+      </ChartFrame>
+
       {/* Provider vs estimated */}
       <ChartFrame
         eyebrow="Data confidence"
