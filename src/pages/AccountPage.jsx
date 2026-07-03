@@ -34,7 +34,7 @@ export default function AccountPage({
         <div className="km-prose" style={{ maxWidth: 640, marginBottom: 22 }}>
           <p>
             This <strong>permanently</strong> deletes your account, your
-            authentication user, your S3 archive objects, and your data from
+            authentication user, your archive objects, and your data from
             our application stores — conversation turns, user state, journey
             state, idempotency records, lifecycle CRM, entitlement records,
             relationships, and memory.
