@@ -8,6 +8,7 @@ import {
   Key,
   MapPin,
   Menu,
+  NotebookPen,
   Play,
   Quote,
   Radio,
@@ -41,6 +42,7 @@ import AboutKininPage from "./pages/AboutKininPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import ReviewEditChatsPage from "./pages/ReviewEditChatsPage";
 import PinsPage from "./pages/PinsPage";
+import JournalPage from "./pages/JournalPage";
 import ReunionPage from "./pages/ReunionPage";
 import UnsubscribePage from "./pages/UnsubscribePage";
 import OnboardingPage from "./pages/OnboardingPage";
@@ -92,6 +94,7 @@ const PAGE_TO_PATH = {
   feedback: "/feedback",
   "review-chats": "/review-chats",
   pins: "/pins",
+  journal: "/journal",
   reunion: "/reunion",
   contact: "/contact",
   privacy: "/privacy",
@@ -719,6 +722,13 @@ export default function App() {
       onClick: () => navigateToPage("pins"),
     },
     {
+      id: "journal",
+      label: "Journal",
+      icon: NotebookPen,
+      requiresAuth: true,
+      onClick: () => navigateToPage("journal"),
+    },
+    {
       id: "reunion",
       label: "Reunion",
       icon: Radio,
@@ -918,6 +928,7 @@ export default function App() {
       activePage === "feedback" ||
       activePage === "review-chats" ||
       activePage === "pins" ||
+      activePage === "journal" ||
       activePage === "reunion";
     const isAdminPage =
       activePage === "admin" ||
@@ -2442,6 +2453,12 @@ export default function App() {
           apiBase={API_BASE}
           onStartChatFromPin={startChatFromPin}
           startingPinId={startingPinId}
+        />
+      ) : activePage === "journal" ? (
+        <JournalPage
+          isAuthed={isAuthed}
+          getAccessToken={getAccessToken}
+          apiBase={API_BASE}
         />
       ) : activePage === "reunion" ? (
         <ReunionPage
