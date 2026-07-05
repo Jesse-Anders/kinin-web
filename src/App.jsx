@@ -43,6 +43,7 @@ import PrivacyPage from "./pages/PrivacyPage";
 import ReviewEditChatsPage from "./pages/ReviewEditChatsPage";
 import PinsPage from "./pages/PinsPage";
 import JournalPage from "./pages/JournalPage";
+import { createEntry as createJournalEntry } from "./services/journalClient";
 import ReunionPage from "./pages/ReunionPage";
 import UnsubscribePage from "./pages/UnsubscribePage";
 import OnboardingPage from "./pages/OnboardingPage";
@@ -172,6 +173,8 @@ export default function App() {
   const [isSendingTurn, setIsSendingTurn] = useState(false);
   const [isStartingSession, setIsStartingSession] = useState(false);
   const [startingPinId, setStartingPinId] = useState("");
+  const [startingJournalPinId, setStartingJournalPinId] = useState("");
+  const [journalOpenEntryId, setJournalOpenEntryId] = useState("");
   const [isEndingSession, setIsEndingSession] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [reunionInvite, setReunionInvite] = useState(null);
@@ -1423,6 +1426,29 @@ export default function App() {
     }
   }
 
+  async function startJournalFromPin(pin) {
+    if (!pin || !pin.pin_id) return;
+    setStartingJournalPinId(pin.pin_id);
+    try {
+      // Seed a new journal draft with the pin text so the user can expand the
+      // reminder into a full written memory. Title auto-derives on the backend.
+      const token = await getAccessToken();
+      const data = await createJournalEntry({
+        apiBase: API_BASE,
+        token,
+        title: "",
+        body: pin.text || "",
+      });
+      const entryId = data?.entry?.entry_id || "";
+      setJournalOpenEntryId(entryId);
+      navigateToPage("journal");
+    } catch (e) {
+      setError(e?.message || String(e));
+    } finally {
+      setStartingJournalPinId("");
+    }
+  }
+
   async function startSession({ mode, pinId, newSession = false } = {}) {
     setError("");
     setBusy(true);
@@ -2452,13 +2478,17 @@ export default function App() {
           getAccessToken={getAccessToken}
           apiBase={API_BASE}
           onStartChatFromPin={startChatFromPin}
+          onStartJournalFromPin={startJournalFromPin}
           startingPinId={startingPinId}
+          startingJournalPinId={startingJournalPinId}
         />
       ) : activePage === "journal" ? (
         <JournalPage
           isAuthed={isAuthed}
           getAccessToken={getAccessToken}
           apiBase={API_BASE}
+          openEntryId={journalOpenEntryId}
+          onEntryOpened={() => setJournalOpenEntryId("")}
         />
       ) : activePage === "reunion" ? (
         <ReunionPage

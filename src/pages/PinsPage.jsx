@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Check, MapPin, MessageCircle, RotateCcw, Trash2 } from "lucide-react";
+import { Check, MapPin, MessageCircle, NotebookPen, RotateCcw, Trash2 } from "lucide-react";
 import { Banner, Button, Frame, Section, Spinner, TextArea } from "../theme";
 import { createPin, deletePin, listPins, updatePin } from "../services/pinsClient";
 
@@ -23,7 +23,9 @@ export default function PinsPage({
   getAccessToken,
   apiBase,
   onStartChatFromPin,
+  onStartJournalFromPin,
   startingPinId = "",
+  startingJournalPinId = "",
 }) {
   const [filter, setFilter] = useState("active");
   const [pins, setPins] = useState([]);
@@ -125,8 +127,15 @@ export default function PinsPage({
     }
   }
 
+  function handleStartJournal(pin) {
+    if (!pin) return;
+    if (typeof onStartJournalFromPin === "function") {
+      onStartJournalFromPin(pin);
+    }
+  }
+
   const remaining = PIN_TEXT_MAX_CHARS - newPinText.length;
-  const launching = Boolean(startingPinId);
+  const launching = Boolean(startingPinId) || Boolean(startingJournalPinId);
 
   const emptyCopy = {
     active: "No pins yet. Add one above to remember a story for later.",
@@ -215,8 +224,9 @@ export default function PinsPage({
           <div className="km-stack" style={{ gap: 12 }}>
             {pins.map((pin) => {
               const isLaunching = startingPinId === pin.pin_id;
+              const isLaunchingJournal = startingJournalPinId === pin.pin_id;
               const isUpdating = updatingPinId === pin.pin_id;
-              const rowBusy = isLaunching || isUpdating || launching;
+              const rowBusy = isLaunching || isLaunchingJournal || isUpdating || launching;
               return (
                 <Frame key={pin.pin_id}>
                   <div className="km-row" style={{ gap: 12, alignItems: "flex-start" }}>
@@ -244,6 +254,22 @@ export default function PinsPage({
                           ) : (
                             <>
                               <MessageCircle size={16} strokeWidth={1.5} /> Start chat from pin
+                            </>
+                          )}
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          onClick={() => handleStartJournal(pin)}
+                          disabled={!isAuthed || rowBusy}
+                        >
+                          {isLaunchingJournal ? (
+                            <>
+                              <Spinner /> Starting...
+                            </>
+                          ) : (
+                            <>
+                              <NotebookPen size={16} strokeWidth={1.5} /> Start journal from pin
                             </>
                           )}
                         </Button>

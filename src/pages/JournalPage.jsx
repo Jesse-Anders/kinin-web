@@ -114,7 +114,13 @@ function renderMarkdown(src) {
   return html;
 }
 
-export default function JournalPage({ isAuthed, getAccessToken, apiBase }) {
+export default function JournalPage({
+  isAuthed,
+  getAccessToken,
+  apiBase,
+  openEntryId = "",
+  onEntryOpened,
+}) {
   const [entries, setEntries] = useState([]);
   const [loadingList, setLoadingList] = useState(false);
   const [activeId, setActiveId] = useState("");
@@ -161,6 +167,22 @@ export default function JournalPage({ isAuthed, getAccessToken, apiBase }) {
   useEffect(() => {
     loadList();
   }, [loadList]);
+
+  // Open a specific entry when arriving from another surface (e.g. "start journal
+  // from pin"), then refresh the list so the new draft shows up.
+  useEffect(() => {
+    if (!openEntryId || !isAuthed) return;
+    if (openEntryId === activeId) {
+      onEntryOpened?.();
+      return;
+    }
+    (async () => {
+      await openEntry(openEntryId);
+      await loadList();
+      onEntryOpened?.();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openEntryId, isAuthed]);
 
   async function openEntry(entryId) {
     if (!entryId || entryId === activeId) return;
