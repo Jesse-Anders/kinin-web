@@ -459,7 +459,96 @@ export default function JournalPage({
       ) : null}
 
       <div className="km-row" style={{ gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
-        {/* Entry list */}
+        {/* Writing box — LEFT */}
+        <div style={{ flex: "3 1 420px", minWidth: 320 }}>
+          {loadingEntry ? (
+            <div className="km-chat-empty">
+              <Spinner /> Opening entry...
+            </div>
+          ) : activeId ? (
+            <Frame>
+              <div className="km-stack" style={{ gap: 12 }}>
+                <TextInput
+                  value={title}
+                  onChange={(ev) => setTitle(ev.target.value)}
+                  onBlur={handleTitleBlur}
+                  placeholder="Title (fills from your first line if left blank)"
+                  maxLength={TITLE_MAX_CHARS}
+                  disabled={!isAuthed}
+                />
+
+                <div className="km-row" style={{ gap: 8, justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
+                  <div className="km-row" style={{ gap: 6 }}>
+                    <Button
+                      size="sm"
+                      variant={view === "write" ? "primary" : "ghost"}
+                      onClick={() => setView("write")}
+                    >
+                      <Pencil size={15} strokeWidth={1.5} /> Write
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={view === "preview" ? "primary" : "ghost"}
+                      onClick={() => setView("preview")}
+                    >
+                      <Eye size={15} strokeWidth={1.5} /> Preview
+                    </Button>
+                  </div>
+                  <span className="km-mono-label" style={{ opacity: 0.8 }}>
+                    {words} words {autosaveLabel ? `· ${autosaveLabel}` : ""}
+                  </span>
+                </div>
+
+                {view === "write" ? (
+                  <TextArea
+                    ref={bodyRef}
+                    value={body}
+                    onChange={(ev) => setBody(ev.target.value)}
+                    placeholder="Write your memory here. Light Markdown works: **bold**, *italics*, # headings, - lists."
+                    rows={18}
+                    disabled={!isAuthed}
+                  />
+                ) : (
+                  <div
+                    className="km-prose"
+                    style={{ minHeight: 240, padding: "4px 2px" }}
+                    dangerouslySetInnerHTML={{ __html: renderMarkdown(body) }}
+                  />
+                )}
+
+                {overReviewCap ? (
+                  <div className="km-form-help" style={{ color: "var(--danger, #b00)" }}>
+                    Reviews are limited to {REVIEW_MAX_WORDS.toLocaleString()} words. This entry has {words.toLocaleString()}.
+                  </div>
+                ) : null}
+
+                <div className="km-row" style={{ gap: 8, flexWrap: "wrap", justifyContent: "space-between" }}>
+                  <div className="km-row" style={{ gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                    <Button
+                      variant="primary"
+                      onClick={handleSaveEntry}
+                      disabled={!isAuthed || savingEntry || !body.trim()}
+                    >
+                      {savingEntry ? <Spinner /> : <Save size={16} strokeWidth={1.5} />} Save Journal Entry
+                    </Button>
+                    {entryStatus === "finalized" ? (
+                      <span className="km-mono-label" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                        <Check size={14} strokeWidth={2} /> In your story
+                      </span>
+                    ) : null}
+                  </div>
+                  <Button variant="danger" onClick={handleDelete} disabled={!isAuthed || deleting}>
+                    {deleting ? <Spinner /> : <Trash2 size={16} strokeWidth={1.5} />} Delete
+                  </Button>
+                </div>
+              </div>
+            </Frame>
+          ) : (
+            <div className="km-chat-empty">Select an entry or start a new one to begin writing.</div>
+          )}
+        </div>
+
+        {/* Entries — RIGHT */}
         <div style={{ flex: "1 1 220px", minWidth: 220, maxWidth: 300 }}>
           <div className="km-row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <span className="km-mono-label">Entries</span>
@@ -491,132 +580,40 @@ export default function JournalPage({
             <div className="km-chat-empty">No entries yet. Start a new one.</div>
           )}
         </div>
+      </div>
 
-        {/* Writing box */}
-        <div style={{ flex: "3 1 380px", minWidth: 300 }}>
-          {loadingEntry ? (
-            <div className="km-chat-empty">
-              <Spinner /> Opening entry...
-            </div>
-          ) : activeId ? (
-            <Frame>
-              <div className="km-stack" style={{ gap: 12 }}>
-                <TextInput
-                  value={title}
-                  onChange={(ev) => setTitle(ev.target.value)}
-                  onBlur={handleTitleBlur}
-                  placeholder="Title (fills from your first line if left blank)"
-                  maxLength={TITLE_MAX_CHARS}
-                  disabled={!isAuthed}
-                />
-
-                {view === "write" ? (
-                  <TextArea
-                    ref={bodyRef}
-                    value={body}
-                    onChange={(ev) => setBody(ev.target.value)}
-                    placeholder="Write your memory here. Light Markdown works: **bold**, *italics*, # headings, - lists."
-                    rows={18}
-                    disabled={!isAuthed}
-                  />
-                ) : (
-                  <div
-                    className="km-prose"
-                    style={{ minHeight: 240, padding: "4px 2px" }}
-                    dangerouslySetInnerHTML={{ __html: renderMarkdown(body) }}
-                  />
-                )}
-
-                {overReviewCap ? (
-                  <div className="km-form-help" style={{ color: "var(--danger, #b00)" }}>
-                    Reviews are limited to {REVIEW_MAX_WORDS.toLocaleString()} words. This entry has {words.toLocaleString()}.
-                  </div>
-                ) : null}
-              </div>
-            </Frame>
-          ) : (
-            <div className="km-chat-empty">Select an entry or start a new one to begin writing.</div>
-          )}
-        </div>
-
-        {/* Right rail: editor controls + Kinin sidecar */}
-        {activeId ? (
-          <div style={{ flex: "2 1 260px", minWidth: 240, maxWidth: 320 }}>
+      {/* Ask Kinin — BOTTOM, full width */}
+      {activeId ? (
+        <div className="km-stack" style={{ gap: 12, marginTop: 20 }}>
+          <Frame label="Ask Kinin">
             <div className="km-stack" style={{ gap: 12 }}>
-              <div className="km-row" style={{ gap: 6 }}>
+              <div className="km-row" style={{ gap: 8, flexWrap: "wrap" }}>
                 <Button
                   size="sm"
-                  variant={view === "write" ? "primary" : "ghost"}
-                  onClick={() => setView("write")}
-                  className="km-btn-block"
-                  style={{ flex: 1 }}
+                  onClick={() => runReview("review")}
+                  disabled={!isAuthed || !body.trim() || overReviewCap || Boolean(reviewMode)}
                 >
-                  <Pencil size={15} strokeWidth={1.5} /> Write
+                  {reviewMode === "review" ? <Spinner /> : <Sparkles size={16} strokeWidth={1.5} />} Review my journal entry
                 </Button>
                 <Button
                   size="sm"
-                  variant={view === "preview" ? "primary" : "ghost"}
-                  onClick={() => setView("preview")}
-                  className="km-btn-block"
-                  style={{ flex: 1 }}
+                  onClick={() => runReview("cleanup")}
+                  disabled={!isAuthed || !body.trim() || overReviewCap || Boolean(reviewMode)}
                 >
-                  <Eye size={15} strokeWidth={1.5} /> Preview
+                  {reviewMode === "cleanup" ? <Spinner /> : <SpellCheck size={16} strokeWidth={1.5} />} Text clean-up
                 </Button>
               </div>
-              <div className="km-mono-label" style={{ opacity: 0.8 }}>
-                {words} words {autosaveLabel ? `· ${autosaveLabel}` : ""}
+              <div className="km-form-help">
+                Kinin offers suggestions only — it never rewrites your words. You choose what to change.
               </div>
+            </div>
+          </Frame>
 
-              <Button
-                variant="primary"
-                onClick={handleSaveEntry}
-                disabled={!isAuthed || savingEntry || !body.trim()}
-                className="km-btn-block"
-              >
-                {savingEntry ? <Spinner /> : <Save size={16} strokeWidth={1.5} />} Save Journal Entry
-              </Button>
-              {entryStatus === "finalized" ? (
-                <span className="km-mono-label" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  <Check size={14} strokeWidth={2} /> In your story
-                </span>
-              ) : null}
-              <Button
-                variant="danger"
-                onClick={handleDelete}
-                disabled={!isAuthed || deleting}
-                className="km-btn-block"
-              >
-                {deleting ? <Spinner /> : <Trash2 size={16} strokeWidth={1.5} />} Delete
-              </Button>
-
-              <Frame label="Ask Kinin">
-                <div className="km-stack" style={{ gap: 10 }}>
-                  <Button
-                    size="sm"
-                    onClick={() => runReview("review")}
-                    disabled={!isAuthed || !body.trim() || overReviewCap || Boolean(reviewMode)}
-                    className="km-btn-block"
-                  >
-                    {reviewMode === "review" ? <Spinner /> : <Sparkles size={16} strokeWidth={1.5} />} Review my journal entry
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => runReview("cleanup")}
-                    disabled={!isAuthed || !body.trim() || overReviewCap || Boolean(reviewMode)}
-                    className="km-btn-block"
-                  >
-                    {reviewMode === "cleanup" ? <Spinner /> : <SpellCheck size={16} strokeWidth={1.5} />} Text clean-up
-                  </Button>
-                  <div className="km-form-help">
-                    Kinin offers suggestions only — it never rewrites your words. You choose what to change.
-                  </div>
-                </div>
-              </Frame>
-
-              {notes.length ? (
-                <div className="km-stack" style={{ gap: 8 }}>
-                  {notes.map((n, i) => (
-                  <Frame key={`note-${i}`}>
+          {notes.length ? (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+              {notes.map((n, i) => (
+                <div key={`note-${i}`} style={{ flex: "1 1 300px", minWidth: 260 }}>
+                  <Frame>
                     <div className="km-row" style={{ justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                       <span className="km-mono-label">{NOTE_LABELS[n.type] || "Note"}</span>
                       <button
@@ -641,33 +638,34 @@ export default function JournalPage({
                     ) : null}
                     <div style={{ marginTop: 6 }}>{n.note}</div>
                   </Frame>
-                  ))}
                 </div>
-              ) : null}
-
-              {fixes.length ? (
-                <div className="km-stack" style={{ gap: 8 }}>
-                  {fixes.map((f, i) => (
-                    <Frame key={`fix-${i}`}>
-                      <div style={{ textDecoration: "line-through", opacity: 0.7 }}>{f.quote}</div>
-                      <div style={{ marginTop: 4, fontWeight: 600 }}>{f.suggested_fix}</div>
-                      {f.reason ? <div className="km-mono-label" style={{ marginTop: 4 }}>{f.reason}</div> : null}
-                      <div className="km-row" style={{ gap: 8, marginTop: 8 }}>
-                        <Button size="sm" variant="primary" onClick={() => applyFix(f)}>
-                          <Check size={14} strokeWidth={1.5} /> Apply
-                        </Button>
-                        <Button size="sm" onClick={() => dismissFix(f)}>
-                          <X size={14} strokeWidth={1.5} /> Dismiss
-                        </Button>
-                      </div>
-                    </Frame>
-                  ))}
-                </div>
-              ) : null}
+              ))}
             </div>
-          </div>
-        ) : null}
-      </div>
+          ) : null}
+
+          {fixes.length ? (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+              {fixes.map((f, i) => (
+                <div key={`fix-${i}`} style={{ flex: "1 1 300px", minWidth: 260 }}>
+                  <Frame>
+                    <div style={{ textDecoration: "line-through", opacity: 0.7 }}>{f.quote}</div>
+                    <div style={{ marginTop: 4, fontWeight: 600 }}>{f.suggested_fix}</div>
+                    {f.reason ? <div className="km-mono-label" style={{ marginTop: 4 }}>{f.reason}</div> : null}
+                    <div className="km-row" style={{ gap: 8, marginTop: 8 }}>
+                      <Button size="sm" variant="primary" onClick={() => applyFix(f)}>
+                        <Check size={14} strokeWidth={1.5} /> Apply
+                      </Button>
+                      <Button size="sm" onClick={() => dismissFix(f)}>
+                        <X size={14} strokeWidth={1.5} /> Dismiss
+                      </Button>
+                    </div>
+                  </Frame>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </Section>
   );
 }
