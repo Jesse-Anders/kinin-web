@@ -40,7 +40,7 @@ export default function AccountPage({
             relationships, and memory.
           </p>
           <p>
-            <em>This action cannot be undone.</em>
+            <em>This action cannot be undone!</em>
           </p>
         </div>
 
