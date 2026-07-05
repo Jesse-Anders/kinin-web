@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Check,
   Eye,
+  MapPin,
   Pencil,
   Plus,
   Save,
@@ -20,6 +21,7 @@ import {
   saveEntry,
   updateEntry,
 } from "../services/journalClient";
+import { updatePin } from "../services/pinsClient";
 
 const TITLE_MAX_CHARS = 200;
 const REVIEW_MAX_WORDS = 6000;
@@ -138,6 +140,9 @@ export default function JournalPage({
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [entryStatus, setEntryStatus] = useState("draft");
+  const [sourcePinId, setSourcePinId] = useState("");
+  const [sourcePinCompleted, setSourcePinCompleted] = useState(false);
+  const [completingPin, setCompletingPin] = useState(false);
 
   const [autosave, setAutosave] = useState("idle"); // idle | saving | saved
   const [view, setView] = useState("write"); // write | preview
@@ -211,6 +216,8 @@ export default function JournalPage({
         setTitle(entry.title || "");
         setBody(entry.body || "");
         setEntryStatus(entry.status || "draft");
+        setSourcePinId(entry.source_pin_id || "");
+        setSourcePinCompleted(Boolean(entry.source_pin_completed));
         savedSnapshotRef.current = { title: entry.title || "", body: entry.body || "" };
         setAutosave("idle");
       }
@@ -235,6 +242,8 @@ export default function JournalPage({
         setTitle(entry.title || "");
         setBody("");
         setEntryStatus("draft");
+        setSourcePinId(entry.source_pin_id || "");
+        setSourcePinCompleted(Boolean(entry.source_pin_completed));
         savedSnapshotRef.current = { title: entry.title || "", body: "" };
         setNotes([]);
         setFixes([]);
@@ -356,6 +365,30 @@ export default function JournalPage({
       setError(describeError("Couldn't delete that entry", e));
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function handleCompletePin() {
+    if (!activeId || !sourcePinId || sourcePinCompleted) return;
+    setError("");
+    setStatusMsg("");
+    setCompletingPin(true);
+    try {
+      const token = await getAccessToken();
+      await updatePin({ apiBase, token, pinId: sourcePinId, updates: { status: "completed" } });
+      // Remember on the entry so we don't offer this again on reopen.
+      await updateEntry({
+        apiBase,
+        token,
+        entryId: activeId,
+        updates: { source_pin_completed: true },
+      });
+      setSourcePinCompleted(true);
+      setStatusMsg("Linked pin marked complete.");
+    } catch (e) {
+      setError(describeError("Couldn't mark the linked pin complete", e));
+    } finally {
+      setCompletingPin(false);
     }
   }
 
@@ -539,6 +572,21 @@ export default function JournalPage({
                 {overReviewCap ? (
                   <div className="km-form-help" style={{ color: "var(--danger, #b00)" }}>
                     Reviews are limited to {REVIEW_MAX_WORDS.toLocaleString()} words. This entry has {words.toLocaleString()}.
+                  </div>
+                ) : null}
+
+                {sourcePinId ? (
+                  <div className="km-row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <MapPin size={15} strokeWidth={1.5} style={{ opacity: 0.7, flexShrink: 0 }} />
+                    {sourcePinCompleted ? (
+                      <span className="km-mono-label" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                        <Check size={14} strokeWidth={2} /> Linked pin completed
+                      </span>
+                    ) : (
+                      <Button size="sm" onClick={handleCompletePin} disabled={!isAuthed || completingPin}>
+                        {completingPin ? <Spinner /> : <Check size={15} strokeWidth={1.5} />} Mark linked pin complete
+                      </Button>
+                    )}
                   </div>
                 ) : null}
 

@@ -47,8 +47,10 @@ export async function getEntry({ apiBase, token, entryId } = {}) {
   return request(apiBase, token, `/journal/${encodeURIComponent(entryId)}`);
 }
 
-export async function createEntry({ apiBase, token, title, body } = {}) {
-  return request(apiBase, token, "/journal", { method: "POST", body: { title, body } });
+export async function createEntry({ apiBase, token, title, body, sourcePinId } = {}) {
+  const payload = { title, body };
+  if (sourcePinId) payload.source_pin_id = sourcePinId;
+  return request(apiBase, token, "/journal", { method: "POST", body: payload });
 }
 
 export async function updateEntry({ apiBase, token, entryId, updates } = {}) {

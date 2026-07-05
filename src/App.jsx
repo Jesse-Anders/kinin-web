@@ -1438,6 +1438,7 @@ export default function App() {
         token,
         title: "",
         body: pin.text || "",
+        sourcePinId: pin.pin_id,
       });
       const entryId = data?.entry?.entry_id || "";
       setJournalOpenEntryId(entryId);
