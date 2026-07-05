@@ -343,6 +343,40 @@ a:hover {
 }
 .km-btn-ghost:hover:not(:disabled) { background: var(--cream-deep); color: var(--ink); border-color: var(--ink); }
 .km-btn-sm { padding: 8px 16px; font-size: 10px; }
+.km-btn-block { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+
+/* ─── Journal entry list ─── */
+.km-journal-entry {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  border: 1px solid var(--thread);
+  border-left: 3px solid transparent;
+  background: var(--cream-warm);
+  color: var(--ink);
+  cursor: pointer;
+  transition: all var(--t-fast);
+}
+.km-journal-entry:hover:not(:disabled) {
+  background: var(--cream-deep);
+  border-color: var(--ink-faint);
+}
+.km-journal-entry.is-active {
+  border-color: var(--ink);
+  border-left-color: var(--crimson);
+  background: var(--cream);
+}
+.km-journal-entry-title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.km-journal-entry-meta {
+  margin-top: 4px;
+  opacity: 0.8;
+}
 
 /* ─── Form row ─── */
 .km-form-grid { display: grid; gap: 24px; max-width: 640px; }

@@ -478,13 +478,10 @@ export default function JournalPage({
                   key={e.entry_id}
                   type="button"
                   onClick={() => openEntry(e.entry_id)}
-                  className={`km-btn km-btn-ghost${e.entry_id === activeId ? " km-btn-primary" : ""}`}
-                  style={{ textAlign: "left", width: "100%", display: "block", padding: "10px 12px" }}
+                  className={`km-journal-entry${e.entry_id === activeId ? " is-active" : ""}`}
                 >
-                  <div style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {e.title || "Untitled entry"}
-                  </div>
-                  <div className="km-mono-label" style={{ marginTop: 4, opacity: 0.8 }}>
+                  <div className="km-journal-entry-title">{e.title || "Untitled entry"}</div>
+                  <div className="km-mono-label km-journal-entry-meta">
                     {e.status === "finalized" ? "In your story" : "Draft"} · {formatDate(e.updated_at)}
                   </div>
                 </button>
@@ -495,8 +492,8 @@ export default function JournalPage({
           )}
         </div>
 
-        {/* Editor */}
-        <div style={{ flex: "3 1 420px", minWidth: 320 }}>
+        {/* Writing box */}
+        <div style={{ flex: "3 1 380px", minWidth: 300 }}>
           {loadingEntry ? (
             <div className="km-chat-empty">
               <Spinner /> Opening entry...
@@ -512,28 +509,6 @@ export default function JournalPage({
                   maxLength={TITLE_MAX_CHARS}
                   disabled={!isAuthed}
                 />
-
-                <div className="km-row" style={{ gap: 8, justifyContent: "space-between", alignItems: "center" }}>
-                  <div className="km-row" style={{ gap: 6 }}>
-                    <Button
-                      size="sm"
-                      variant={view === "write" ? "primary" : "ghost"}
-                      onClick={() => setView("write")}
-                    >
-                      <Pencil size={15} strokeWidth={1.5} /> Write
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={view === "preview" ? "primary" : "ghost"}
-                      onClick={() => setView("preview")}
-                    >
-                      <Eye size={15} strokeWidth={1.5} /> Preview
-                    </Button>
-                  </div>
-                  <span className="km-mono-label" style={{ opacity: 0.8 }}>
-                    {words} words {autosaveLabel ? `· ${autosaveLabel}` : ""}
-                  </span>
-                </div>
 
                 {view === "write" ? (
                   <TextArea
@@ -557,26 +532,6 @@ export default function JournalPage({
                     Reviews are limited to {REVIEW_MAX_WORDS.toLocaleString()} words. This entry has {words.toLocaleString()}.
                   </div>
                 ) : null}
-
-                <div className="km-row" style={{ gap: 8, flexWrap: "wrap", justifyContent: "space-between" }}>
-                  <div className="km-row" style={{ gap: 8, flexWrap: "wrap" }}>
-                    <Button
-                      variant="primary"
-                      onClick={handleSaveEntry}
-                      disabled={!isAuthed || savingEntry || !body.trim()}
-                    >
-                      {savingEntry ? <Spinner /> : <Save size={16} strokeWidth={1.5} />} Save Journal Entry
-                    </Button>
-                    {entryStatus === "finalized" ? (
-                      <span className="km-mono-label" style={{ alignSelf: "center" }}>
-                        <Check size={14} strokeWidth={2} /> In your story
-                      </span>
-                    ) : null}
-                  </div>
-                  <Button variant="danger" onClick={handleDelete} disabled={!isAuthed || deleting}>
-                    {deleting ? <Spinner /> : <Trash2 size={16} strokeWidth={1.5} />} Delete
-                  </Button>
-                </div>
               </div>
             </Frame>
           ) : (
@@ -584,34 +539,83 @@ export default function JournalPage({
           )}
         </div>
 
-        {/* Kinin sidecar */}
+        {/* Right rail: editor controls + Kinin sidecar */}
         {activeId ? (
-          <div style={{ flex: "2 1 260px", minWidth: 240, maxWidth: 340 }}>
-            <Frame label="Ask Kinin">
-              <div className="km-stack" style={{ gap: 10 }}>
+          <div style={{ flex: "2 1 260px", minWidth: 240, maxWidth: 320 }}>
+            <div className="km-stack" style={{ gap: 12 }}>
+              <div className="km-row" style={{ gap: 6 }}>
                 <Button
                   size="sm"
-                  onClick={() => runReview("review")}
-                  disabled={!isAuthed || !body.trim() || overReviewCap || Boolean(reviewMode)}
+                  variant={view === "write" ? "primary" : "ghost"}
+                  onClick={() => setView("write")}
+                  className="km-btn-block"
+                  style={{ flex: 1 }}
                 >
-                  {reviewMode === "review" ? <Spinner /> : <Sparkles size={16} strokeWidth={1.5} />} Review my journal entry
+                  <Pencil size={15} strokeWidth={1.5} /> Write
                 </Button>
                 <Button
                   size="sm"
-                  onClick={() => runReview("cleanup")}
-                  disabled={!isAuthed || !body.trim() || overReviewCap || Boolean(reviewMode)}
+                  variant={view === "preview" ? "primary" : "ghost"}
+                  onClick={() => setView("preview")}
+                  className="km-btn-block"
+                  style={{ flex: 1 }}
                 >
-                  {reviewMode === "cleanup" ? <Spinner /> : <SpellCheck size={16} strokeWidth={1.5} />} Text clean-up
+                  <Eye size={15} strokeWidth={1.5} /> Preview
                 </Button>
-                <div className="km-form-help">
-                  Kinin offers suggestions only — it never rewrites your words. You choose what to change.
-                </div>
               </div>
-            </Frame>
+              <div className="km-mono-label" style={{ opacity: 0.8 }}>
+                {words} words {autosaveLabel ? `· ${autosaveLabel}` : ""}
+              </div>
 
-            {notes.length ? (
-              <div className="km-stack" style={{ gap: 8, marginTop: 12 }}>
-                {notes.map((n, i) => (
+              <Button
+                variant="primary"
+                onClick={handleSaveEntry}
+                disabled={!isAuthed || savingEntry || !body.trim()}
+                className="km-btn-block"
+              >
+                {savingEntry ? <Spinner /> : <Save size={16} strokeWidth={1.5} />} Save Journal Entry
+              </Button>
+              {entryStatus === "finalized" ? (
+                <span className="km-mono-label" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <Check size={14} strokeWidth={2} /> In your story
+                </span>
+              ) : null}
+              <Button
+                variant="danger"
+                onClick={handleDelete}
+                disabled={!isAuthed || deleting}
+                className="km-btn-block"
+              >
+                {deleting ? <Spinner /> : <Trash2 size={16} strokeWidth={1.5} />} Delete
+              </Button>
+
+              <Frame label="Ask Kinin">
+                <div className="km-stack" style={{ gap: 10 }}>
+                  <Button
+                    size="sm"
+                    onClick={() => runReview("review")}
+                    disabled={!isAuthed || !body.trim() || overReviewCap || Boolean(reviewMode)}
+                    className="km-btn-block"
+                  >
+                    {reviewMode === "review" ? <Spinner /> : <Sparkles size={16} strokeWidth={1.5} />} Review my journal entry
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => runReview("cleanup")}
+                    disabled={!isAuthed || !body.trim() || overReviewCap || Boolean(reviewMode)}
+                    className="km-btn-block"
+                  >
+                    {reviewMode === "cleanup" ? <Spinner /> : <SpellCheck size={16} strokeWidth={1.5} />} Text clean-up
+                  </Button>
+                  <div className="km-form-help">
+                    Kinin offers suggestions only — it never rewrites your words. You choose what to change.
+                  </div>
+                </div>
+              </Frame>
+
+              {notes.length ? (
+                <div className="km-stack" style={{ gap: 8 }}>
+                  {notes.map((n, i) => (
                   <Frame key={`note-${i}`}>
                     <div className="km-row" style={{ justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                       <span className="km-mono-label">{NOTE_LABELS[n.type] || "Note"}</span>
@@ -637,29 +641,30 @@ export default function JournalPage({
                     ) : null}
                     <div style={{ marginTop: 6 }}>{n.note}</div>
                   </Frame>
-                ))}
-              </div>
-            ) : null}
+                  ))}
+                </div>
+              ) : null}
 
-            {fixes.length ? (
-              <div className="km-stack" style={{ gap: 8, marginTop: 12 }}>
-                {fixes.map((f, i) => (
-                  <Frame key={`fix-${i}`}>
-                    <div style={{ textDecoration: "line-through", opacity: 0.7 }}>{f.quote}</div>
-                    <div style={{ marginTop: 4, fontWeight: 600 }}>{f.suggested_fix}</div>
-                    {f.reason ? <div className="km-mono-label" style={{ marginTop: 4 }}>{f.reason}</div> : null}
-                    <div className="km-row" style={{ gap: 8, marginTop: 8 }}>
-                      <Button size="sm" variant="primary" onClick={() => applyFix(f)}>
-                        <Check size={14} strokeWidth={1.5} /> Apply
-                      </Button>
-                      <Button size="sm" onClick={() => dismissFix(f)}>
-                        <X size={14} strokeWidth={1.5} /> Dismiss
-                      </Button>
-                    </div>
-                  </Frame>
-                ))}
-              </div>
-            ) : null}
+              {fixes.length ? (
+                <div className="km-stack" style={{ gap: 8 }}>
+                  {fixes.map((f, i) => (
+                    <Frame key={`fix-${i}`}>
+                      <div style={{ textDecoration: "line-through", opacity: 0.7 }}>{f.quote}</div>
+                      <div style={{ marginTop: 4, fontWeight: 600 }}>{f.suggested_fix}</div>
+                      {f.reason ? <div className="km-mono-label" style={{ marginTop: 4 }}>{f.reason}</div> : null}
+                      <div className="km-row" style={{ gap: 8, marginTop: 8 }}>
+                        <Button size="sm" variant="primary" onClick={() => applyFix(f)}>
+                          <Check size={14} strokeWidth={1.5} /> Apply
+                        </Button>
+                        <Button size="sm" onClick={() => dismissFix(f)}>
+                          <X size={14} strokeWidth={1.5} /> Dismiss
+                        </Button>
+                      </div>
+                    </Frame>
+                  ))}
+                </div>
+              ) : null}
+            </div>
           </div>
         ) : null}
       </div>
