@@ -35,6 +35,15 @@ function countWords(text) {
   return (text || "").trim() ? (text || "").trim().split(/\s+/).length : 0;
 }
 
+// Prefix errors with the operation that failed, and translate raw fetch
+// transport failures ("Load failed" / "Failed to fetch") into something clearer.
+function describeError(context, e) {
+  const raw = e?.message || String(e || "");
+  const isNetwork = /load failed|failed to fetch|networkerror/i.test(raw);
+  const detail = isNetwork ? "network request didn't complete (connection or CORS)" : raw;
+  return `${context}: ${detail}`;
+}
+
 function formatDate(value) {
   const raw = String(value || "").trim();
   if (!raw) return "";
@@ -158,7 +167,7 @@ export default function JournalPage({
       const data = await listEntries({ apiBase, token, status: "all" });
       setEntries(Array.isArray(data?.entries) ? data.entries : []);
     } catch (e) {
-      setError(e?.message || String(e));
+      setError(describeError("Couldn't load your entries", e));
     } finally {
       setLoadingList(false);
     }
@@ -206,7 +215,7 @@ export default function JournalPage({
         setAutosave("idle");
       }
     } catch (e) {
-      setError(e?.message || String(e));
+      setError(describeError("Couldn't open that entry", e));
     } finally {
       setLoadingEntry(false);
     }
@@ -234,7 +243,7 @@ export default function JournalPage({
         setAutosave("idle");
       }
     } catch (e) {
-      setError(e?.message || String(e));
+      setError(describeError("Couldn't create a new entry", e));
     } finally {
       setCreating(false);
     }
@@ -268,8 +277,13 @@ export default function JournalPage({
         );
       }
     } catch (e) {
-      setAutosave("idle");
-      setError(e?.message || String(e));
+      // Autosave runs constantly in the background; a transient failure here
+      // should not throw a scary banner over the writing surface. Surface it
+      // quietly instead — the manual "Save Journal Entry" still reports loudly.
+      setAutosave("error");
+      if (typeof console !== "undefined") {
+        console.warn(describeError("Journal autosave failed", e));
+      }
     }
   }, [activeId, title, body, apiBase, getAccessToken]);
 
@@ -311,7 +325,7 @@ export default function JournalPage({
           : "Saved to your story. Kinin will weave this into your memories.",
       );
     } catch (e) {
-      setError(e?.message || String(e));
+      setError(describeError("Couldn't save to your story", e));
     } finally {
       setSavingEntry(false);
     }
@@ -339,7 +353,7 @@ export default function JournalPage({
       savedSnapshotRef.current = null;
       setStatusMsg("Entry deleted.");
     } catch (e) {
-      setError(e?.message || String(e));
+      setError(describeError("Couldn't delete that entry", e));
     } finally {
       setDeleting(false);
     }
@@ -365,7 +379,7 @@ export default function JournalPage({
         if (!data?.notes?.length) setStatusMsg("Kinin didn't find gaps — this reads clearly.");
       }
     } catch (e) {
-      setError(e?.message || String(e));
+      setError(describeError("Kinin couldn't finish that review", e));
     } finally {
       setReviewMode("");
     }
@@ -425,7 +439,13 @@ export default function JournalPage({
   }
 
   const autosaveLabel =
-    autosave === "saving" ? "Saving..." : autosave === "saved" ? "Saved" : "";
+    autosave === "saving"
+      ? "Saving..."
+      : autosave === "saved"
+      ? "Saved"
+      : autosave === "error"
+      ? "Autosave paused — use Save"
+      : "";
 
   return (
     <Section

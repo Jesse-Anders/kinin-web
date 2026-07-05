@@ -711,11 +711,11 @@ export default function App() {
       onClick: () => navigateToPage("faq"),
     },
     {
-      id: "review-chats",
-      label: "Review",
-      icon: ScrollText,
+      id: "journal",
+      label: "Journal",
+      icon: NotebookPen,
       requiresAuth: true,
-      onClick: () => navigateToPage("review-chats"),
+      onClick: () => navigateToPage("journal"),
     },
     {
       id: "pins",
@@ -725,11 +725,11 @@ export default function App() {
       onClick: () => navigateToPage("pins"),
     },
     {
-      id: "journal",
-      label: "Journal",
-      icon: NotebookPen,
+      id: "review-chats",
+      label: "Review",
+      icon: ScrollText,
       requiresAuth: true,
-      onClick: () => navigateToPage("journal"),
+      onClick: () => navigateToPage("review-chats"),
     },
     {
       id: "reunion",
