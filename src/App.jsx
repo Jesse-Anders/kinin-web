@@ -44,7 +44,10 @@ import PrivacyPage from "./pages/PrivacyPage";
 import ReviewEditChatsPage from "./pages/ReviewEditChatsPage";
 import PinsPage from "./pages/PinsPage";
 import JournalPage from "./pages/JournalPage";
-import { createEntry as createJournalEntry } from "./services/journalClient";
+import {
+  createEntry as createJournalEntry,
+  findEntriesByPin as findJournalEntriesByPin,
+} from "./services/journalClient";
 import ReunionPage from "./pages/ReunionPage";
 import UnsubscribePage from "./pages/UnsubscribePage";
 import OnboardingPage from "./pages/OnboardingPage";
@@ -1438,9 +1441,36 @@ export default function App() {
     if (!pin || !pin.pin_id) return;
     setStartingJournalPinId(pin.pin_id);
     try {
+      const token = await getAccessToken();
+
+      // If this pin already has a linked journal entry, offer to reopen it
+      // rather than silently creating a duplicate. Exact server-side lookup so
+      // it holds even for users with hundreds of entries.
+      let existing = null;
+      try {
+        const list = await findJournalEntriesByPin({ apiBase: API_BASE, token, pinId: pin.pin_id });
+        const entries = Array.isArray(list?.entries) ? list.entries : [];
+        existing = entries[0] || null;
+      } catch {
+        // Lookup is a best-effort check; fall through to normal creation.
+      }
+
+      if (existing) {
+        const openExisting = window.confirm(
+          `You already started a journal entry from this pin:\n\n` +
+            `“${existing.title || "Untitled entry"}”\n\n` +
+            `Click OK to open that entry, or Cancel to create a new, separate entry.`,
+        );
+        if (openExisting) {
+          setJournalOpenEntryId(existing.entry_id);
+          navigateToPage("journal");
+          return;
+        }
+        // Cancel → fall through and create another entry from the same pin.
+      }
+
       // Seed a new journal draft with the pin text so the user can expand the
       // reminder into a full written memory. Title auto-derives on the backend.
-      const token = await getAccessToken();
       const data = await createJournalEntry({
         apiBase: API_BASE,
         token,

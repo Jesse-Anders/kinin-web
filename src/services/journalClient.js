@@ -47,6 +47,11 @@ export async function getEntry({ apiBase, token, entryId } = {}) {
   return request(apiBase, token, `/journal/${encodeURIComponent(entryId)}`);
 }
 
+export async function findEntriesByPin({ apiBase, token, pinId } = {}) {
+  const qs = new URLSearchParams({ source_pin_id: pinId }).toString();
+  return request(apiBase, token, `/journal?${qs}`);
+}
+
 export async function createEntry({ apiBase, token, title, body, sourcePinId } = {}) {
   const payload = { title, body };
   if (sourcePinId) payload.source_pin_id = sourcePinId;
