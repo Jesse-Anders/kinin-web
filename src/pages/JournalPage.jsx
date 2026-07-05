@@ -460,7 +460,7 @@ export default function JournalPage({
 
       <div className="km-row" style={{ gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
         {/* Writing box — LEFT */}
-        <div style={{ flex: "3 1 420px", minWidth: 320 }}>
+        <div style={{ flex: "5 1 460px", minWidth: 320 }}>
           {loadingEntry ? (
             <div className="km-chat-empty">
               <Spinner /> Opening entry...
@@ -549,7 +549,7 @@ export default function JournalPage({
         </div>
 
         {/* Entries — RIGHT */}
-        <div style={{ flex: "1 1 220px", minWidth: 220, maxWidth: 300 }}>
+        <div style={{ flex: "1 1 180px", minWidth: 170, maxWidth: 220 }}>
           <div className="km-row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <span className="km-mono-label">Entries</span>
             <Button size="sm" variant="primary" onClick={handleNewEntry} disabled={!isAuthed || creating}>
