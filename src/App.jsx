@@ -8,6 +8,7 @@ import {
   Key,
   MapPin,
   Menu,
+  MessageCircle,
   NotebookPen,
   Play,
   Quote,
@@ -709,6 +710,13 @@ export default function App() {
       icon: Quote,
       requiresAuth: false,
       onClick: () => navigateToPage("faq"),
+    },
+    {
+      id: "interview",
+      label: "Interview",
+      icon: MessageCircle,
+      requiresAuth: true,
+      onClick: () => navigateToPage("interview"),
     },
     {
       id: "journal",
