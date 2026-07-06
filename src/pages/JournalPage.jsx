@@ -286,13 +286,8 @@ export default function JournalPage({
         );
       }
     } catch (e) {
-      // Autosave runs constantly in the background; a transient failure here
-      // should not throw a scary banner over the writing surface. Surface it
-      // quietly instead — the manual "Save Journal Entry" still reports loudly.
       setAutosave("error");
-      if (typeof console !== "undefined") {
-        console.warn(describeError("Journal autosave failed", e));
-      }
+      setError(describeError("Autosave failed", e));
     }
   }, [activeId, title, body, apiBase, getAccessToken]);
 
@@ -575,21 +570,6 @@ export default function JournalPage({
                   </div>
                 ) : null}
 
-                {sourcePinId ? (
-                  <div className="km-row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                    <MapPin size={15} strokeWidth={1.5} style={{ opacity: 0.7, flexShrink: 0 }} />
-                    {sourcePinCompleted ? (
-                      <span className="km-mono-label" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                        <Check size={14} strokeWidth={2} /> Linked pin completed
-                      </span>
-                    ) : (
-                      <Button size="sm" onClick={handleCompletePin} disabled={!isAuthed || completingPin}>
-                        {completingPin ? <Spinner /> : <Check size={15} strokeWidth={1.5} />} Mark linked pin complete
-                      </Button>
-                    )}
-                  </div>
-                ) : null}
-
                 <div className="km-row" style={{ gap: 8, flexWrap: "wrap", justifyContent: "space-between" }}>
                   <div className="km-row" style={{ gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                     <Button
@@ -609,6 +589,21 @@ export default function JournalPage({
                     {deleting ? <Spinner /> : <Trash2 size={16} strokeWidth={1.5} />} Delete
                   </Button>
                 </div>
+
+                {sourcePinId ? (
+                  <div className="km-row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <MapPin size={15} strokeWidth={1.5} style={{ opacity: 0.7, flexShrink: 0 }} />
+                    {sourcePinCompleted ? (
+                      <span className="km-mono-label" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                        <Check size={14} strokeWidth={2} /> Linked pin completed
+                      </span>
+                    ) : (
+                      <Button size="sm" onClick={handleCompletePin} disabled={!isAuthed || completingPin}>
+                        {completingPin ? <Spinner /> : <Check size={15} strokeWidth={1.5} />} Mark linked pin complete
+                      </Button>
+                    )}
+                  </div>
+                ) : null}
               </div>
             </Frame>
           ) : (
