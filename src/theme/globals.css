@@ -345,6 +345,30 @@ a:hover {
 .km-btn-sm { padding: 8px 16px; font-size: 10px; }
 .km-btn-block { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 
+/* ─── Chat "from pin" note (bottom of the chat composer) ─── */
+.km-chat-pin-note {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--thread);
+  border-left: 3px solid var(--crimson);
+  background: var(--cream-warm);
+}
+.km-chat-pin-note-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.km-chat-pin-note-text {
+  color: var(--ink);
+  font-style: italic;
+}
+
 /* ─── Journal entry list ─── */
 .km-journal-entry {
   display: block;

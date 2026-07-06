@@ -5,6 +5,7 @@ import {
   CircleUserRound,
   CirclePlus,
   Feather,
+  Check,
   Key,
   MapPin,
   Menu,
@@ -48,6 +49,7 @@ import {
   createEntry as createJournalEntry,
   findEntriesByPin as findJournalEntriesByPin,
 } from "./services/journalClient";
+import { updatePin } from "./services/pinsClient";
 import ReunionPage from "./pages/ReunionPage";
 import UnsubscribePage from "./pages/UnsubscribePage";
 import OnboardingPage from "./pages/OnboardingPage";
@@ -179,6 +181,11 @@ export default function App() {
   const [startingPinId, setStartingPinId] = useState("");
   const [startingJournalPinId, setStartingJournalPinId] = useState("");
   const [journalOpenEntryId, setJournalOpenEntryId] = useState("");
+  // The pin (if any) that seeded the current chat session — powers the
+  // "Chat from Pin" note + Mark Pin Complete control at the bottom of the chat.
+  const [chatPin, setChatPin] = useState(null);
+  const [chatPinCompleted, setChatPinCompleted] = useState(false);
+  const [completingChatPin, setCompletingChatPin] = useState(false);
   const [isEndingSession, setIsEndingSession] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [reunionInvite, setReunionInvite] = useState(null);
@@ -1355,6 +1362,8 @@ export default function App() {
     setUser(null);
     setDidStart(false);
     setChat([]);
+    setChatPin(null);
+    setChatPinCompleted(false);
     setOnboardingStatus({ required: false, completed_at: null, current_step: 1 });
     setOnboardingChecked(false);
   }
@@ -1430,10 +1439,27 @@ export default function App() {
       // seeded by the pin so Kinin opens by referencing the pinned memory.
       setChat([]);
       setUiState(null);
+      setChatPin({ id: pin.pin_id, text: pin.text || "" });
+      setChatPinCompleted(pin.status === "completed");
       navigateToPage("interview");
       await startSession({ mode: "freeform", pinId: pin.pin_id, newSession: true });
     } finally {
       setStartingPinId("");
+    }
+  }
+
+  async function markChatPinComplete() {
+    if (!chatPin?.id || chatPinCompleted) return;
+    setError("");
+    setCompletingChatPin(true);
+    try {
+      const token = await getAccessToken();
+      await updatePin({ apiBase: API_BASE, token, pinId: chatPin.id, updates: { status: "completed" } });
+      setChatPinCompleted(true);
+    } catch (e) {
+      setError(e?.message || String(e));
+    } finally {
+      setCompletingChatPin(false);
     }
   }
 
@@ -2750,6 +2776,37 @@ export default function App() {
               {isSendingTurn ? "Sending..." : "Send"}
             </Button>
           </div>
+
+          {chatPin ? (
+            <div className="km-chat-pin-note">
+              <MapPin size={14} strokeWidth={1.5} style={{ flexShrink: 0, color: "var(--ink-soft)" }} />
+              <span className="km-chat-pin-note-label">Chat from Pin:</span>
+              <span className="km-chat-pin-note-text" style={{ flex: 1, minWidth: 120 }}>
+                {chatPin.text
+                  ? chatPin.text.length > 90
+                    ? `${chatPin.text.slice(0, 87)}…`
+                    : chatPin.text
+                  : "your pinned memory"}
+              </span>
+              {chatPinCompleted ? (
+                <span
+                  className="km-mono-label"
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+                >
+                  <Check size={14} strokeWidth={2} /> Completed
+                </span>
+              ) : (
+                <Button
+                  size="sm"
+                  onClick={markChatPinComplete}
+                  disabled={!isAuthed || completingChatPin}
+                >
+                  {completingChatPin ? <Spinner /> : <Check size={15} strokeWidth={1.5} />} Mark Pin Complete
+                </Button>
+              )}
+            </div>
+          ) : null}
+
           {/* Chat-session control strip. New per-session toggles
               (voice, future autoplay, transcript-only, etc.) live here.
               Right-aligned so the first toggle sits under the Send button;
