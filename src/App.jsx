@@ -10,11 +10,13 @@ import {
   MapPin,
   Menu,
   MessageCircle,
+  Mic,
   NotebookPen,
   Play,
   Quote,
   Radio,
   ScrollText,
+  Square,
 } from "lucide-react";
 import kininHomeIcon from "./assets/icons/kinin-icon-390sq.png";
 import {
@@ -70,6 +72,7 @@ import {
 } from "./theme";
 import { streamTurn } from "./services/turnStreamClient";
 import { synthesizeTts, warmTts } from "./services/ttsClient";
+import { transcribeAudio } from "./services/sttClient";
 import { createTtsStreamQueue } from "./services/ttsStreamQueue";
 import { isIOS } from "./services/platform";
 import { ensureRunning, playArrayBuffer } from "./services/webAudioPlayer";
@@ -241,6 +244,17 @@ export default function App() {
   // via Reunion. Defaults to true so legacy users stay accessible until they
   // explicitly opt out.
   const [reunionSettings, setReunionSettings] = useState({ enabled: true });
+  // "Enable voice features" paid add-on (voice input, storage, Reunion
+  // playback/reenactment). Defaults OFF — opt-in feature set, not a default.
+  const [voiceFeaturesEnabled, setVoiceFeaturesEnabled] = useState(false);
+  // Voice-to-text (dictation) recording state — Phase 1: transient, no storage.
+  const [isRecording, setIsRecording] = useState(false);
+  const [sttBusy, setSttBusy] = useState(false);
+  const [sttError, setSttError] = useState("");
+  const mediaRecorderRef = useRef(null);
+  const mediaStreamRef = useRef(null);
+  const recordedChunksRef = useRef([]);
+  const recordStopTimerRef = useRef(null);
   const [continuitySettings, setContinuitySettings] = useState({
     reminder_cadence_weeks: 2,
     reminder_channel: "email",
@@ -1136,6 +1150,10 @@ export default function App() {
           ? false
           : true,
     });
+    const vf = parsed?.voice_features;
+    setVoiceFeaturesEnabled(
+      !!(vf && typeof vf === "object" && vf.enabled === true),
+    );
   }
 
   function normalizedExecutorDraft() {
@@ -1976,6 +1994,9 @@ export default function App() {
         reunion_settings: {
           enabled: reunionSettings?.enabled !== false,
         },
+        voice_features: {
+          enabled: !!voiceFeaturesEnabled,
+        },
       };
 
       const res = await fetch(`${API_BASE}/profile`, {
@@ -2049,6 +2070,204 @@ export default function App() {
       return false;
     }
   }
+
+  // Persist the "Enable voice features" add-on toggle immediately (optimistic),
+  // mirroring saveReunionEnabled. Turning this on unlocks voice dictation now
+  // and voice storage / Reunion voice features in later phases.
+  async function saveVoiceFeaturesEnabled(nextEnabled) {
+    if (!isAuthed) return false;
+    const desired = !!nextEnabled;
+    const previous = !!voiceFeaturesEnabled;
+    setVoiceFeaturesEnabled(desired);
+    if (!desired) {
+      // If they turn it off mid-recording, stop and discard.
+      stopRecording();
+      setSttError("");
+    }
+    try {
+      const session = await fetchAuthSession();
+      const idToken = session.tokens?.idToken?.toString();
+      if (!idToken) throw new Error("Missing idToken. Are you logged in?");
+      const res = await fetch(`${API_BASE}/profile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ voice_features: { enabled: desired } }),
+      });
+      await ensureApiOk(res);
+      const data = await res.json();
+      const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
+      applyProfilePayload(parsed);
+      return true;
+    } catch (e) {
+      setVoiceFeaturesEnabled(previous);
+      setTopErrorFromException(e);
+      return false;
+    }
+  }
+
+  // ---- Voice-to-text dictation (Phase 1: transient, no storage) ----
+  const STT_MAX_RECORD_MS = 180000; // 3-minute cap
+
+  function pickRecorderMimeType() {
+    if (typeof MediaRecorder === "undefined") return "";
+    const candidates = [
+      "audio/webm;codecs=opus",
+      "audio/webm",
+      "audio/mp4",
+      "audio/ogg;codecs=opus",
+    ];
+    for (const c of candidates) {
+      try {
+        if (MediaRecorder.isTypeSupported(c)) return c;
+      } catch {
+        /* ignore */
+      }
+    }
+    return "";
+  }
+
+  function releaseRecordingStream() {
+    if (recordStopTimerRef.current) {
+      clearTimeout(recordStopTimerRef.current);
+      recordStopTimerRef.current = null;
+    }
+    const stream = mediaStreamRef.current;
+    if (stream) {
+      stream.getTracks().forEach((t) => t.stop());
+      mediaStreamRef.current = null;
+    }
+  }
+
+  function stopRecording() {
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      try {
+        recorder.stop();
+      } catch {
+        /* ignore */
+      }
+    }
+    setIsRecording(false);
+  }
+
+  async function finalizeRecording() {
+    const chunks = recordedChunksRef.current;
+    recordedChunksRef.current = [];
+    const recorder = mediaRecorderRef.current;
+    const mimeType = recorder?.mimeType || "audio/webm";
+    releaseRecordingStream();
+    mediaRecorderRef.current = null;
+    if (!chunks.length) return;
+    const blob = new Blob(chunks, { type: mimeType });
+    if (!blob.size) return;
+    setSttBusy(true);
+    setSttError("");
+    try {
+      const { text } = await transcribeAudio({ blob, mimeType });
+      const clean = (text || "").trim();
+      if (!clean) {
+        setSttError("Didn't catch that — try speaking again.");
+        return;
+      }
+      setMessage((prev) => {
+        const base = prev || "";
+        const joiner = base && !/\s$/.test(base) ? " " : "";
+        return (base + joiner + clean).slice(0, CHAT_MESSAGE_MAX_CHARS);
+      });
+      requestAnimationFrame(() => {
+        const el = messageInputRef.current;
+        if (el) {
+          el.focus();
+          autoResizeMessageInput(el);
+        }
+      });
+    } catch (e) {
+      const code = e?.message || "";
+      if (code === "voice_features_not_enabled" || e?.status === 403) {
+        setSttError("Enable voice features in Settings to use voice input.");
+      } else if (code === "stt_timeout" || e?.status === 504) {
+        setSttError("That clip was too long to transcribe. Try a shorter one.");
+      } else if (code === "audio_too_large" || e?.status === 413) {
+        setSttError("That recording was too long. Try a shorter clip.");
+      } else if (code === "rate_limited" || e?.status === 429) {
+        setSttError("Too many voice requests. Try again shortly.");
+      } else {
+        setSttError("Couldn't transcribe the audio. Please try again.");
+      }
+    } finally {
+      setSttBusy(false);
+    }
+  }
+
+  async function startRecording() {
+    if (!voiceFeaturesEnabled || isRecording || sttBusy) return;
+    setSttError("");
+    if (
+      !navigator.mediaDevices?.getUserMedia ||
+      typeof MediaRecorder === "undefined"
+    ) {
+      setSttError("Voice input isn't supported in this browser.");
+      return;
+    }
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (e) {
+      setSttError(
+        e?.name === "NotAllowedError"
+          ? "Microphone permission was denied."
+          : "Couldn't access the microphone.",
+      );
+      return;
+    }
+    const mimeType = pickRecorderMimeType();
+    let recorder;
+    try {
+      recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+    } catch {
+      recorder = new MediaRecorder(stream);
+    }
+    mediaStreamRef.current = stream;
+    mediaRecorderRef.current = recorder;
+    recordedChunksRef.current = [];
+    recorder.ondataavailable = (ev) => {
+      if (ev.data && ev.data.size > 0) recordedChunksRef.current.push(ev.data);
+    };
+    recorder.onstop = () => {
+      void finalizeRecording();
+    };
+    try {
+      recorder.start();
+    } catch {
+      releaseRecordingStream();
+      mediaRecorderRef.current = null;
+      setSttError("Couldn't start recording. Please try again.");
+      return;
+    }
+    setIsRecording(true);
+    recordStopTimerRef.current = window.setTimeout(() => {
+      stopRecording();
+    }, STT_MAX_RECORD_MS);
+  }
+
+  function toggleRecording() {
+    if (isRecording) stopRecording();
+    else void startRecording();
+  }
+
+  // Release the mic and any pending auto-stop timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (recordStopTimerRef.current) clearTimeout(recordStopTimerRef.current);
+      const stream = mediaStreamRef.current;
+      if (stream) stream.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
 
   // Persist a single voice choice without going through the full saveProfile
   // pipeline. Used by the chat-strip quick-switch and the Settings page voice
@@ -2781,6 +3000,8 @@ export default function App() {
           setTtsVoiceUuid={setTtsVoiceUuid}
           reunionSettings={reunionSettings}
           saveReunionEnabled={saveReunionEnabled}
+          voiceFeaturesEnabled={voiceFeaturesEnabled}
+          saveVoiceFeaturesEnabled={saveVoiceFeaturesEnabled}
           apiBase={API_BASE}
           getAccessToken={getAccessToken}
           resendAccountExecutorInvite={resendAccountExecutorInvite}
@@ -2860,6 +3081,39 @@ export default function App() {
               rows={1}
               disabled={!isAuthed || busy || !!accessBlocked}
             />
+            {voiceFeaturesEnabled ? (
+              <button
+                type="button"
+                onClick={toggleRecording}
+                disabled={!isAuthed || busy || !!accessBlocked || sttBusy}
+                title={
+                  sttBusy
+                    ? "Transcribing..."
+                    : isRecording
+                      ? "Stop and transcribe"
+                      : "Speak your message"
+                }
+                aria-label={
+                  sttBusy
+                    ? "Transcribing"
+                    : isRecording
+                      ? "Stop and transcribe"
+                      : "Speak your message"
+                }
+                aria-pressed={isRecording}
+                className={`km-mic-btn${
+                  isRecording ? " km-mic-btn-recording" : ""
+                }${sttBusy ? " km-mic-btn-busy" : ""}`}
+              >
+                {sttBusy ? (
+                  <Spinner />
+                ) : isRecording ? (
+                  <Square size={18} />
+                ) : (
+                  <Mic size={20} />
+                )}
+              </button>
+            ) : null}
             <Button
               variant="primary"
               onClick={sendTurn}
@@ -2868,6 +3122,17 @@ export default function App() {
               {isSendingTurn ? "Sending..." : "Send"}
             </Button>
           </div>
+          {voiceFeaturesEnabled && (isRecording || sttError) ? (
+            <div
+              className="km-voice-error-note"
+              role="status"
+              aria-live="polite"
+            >
+              {isRecording
+                ? "Listening… tap the stop button when you're done (3 min max)."
+                : sttError}
+            </div>
+          ) : null}
 
           {chatPin ? (
             <div className="km-chat-pin-note">

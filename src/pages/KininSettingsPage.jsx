@@ -55,10 +55,13 @@ export default function KininSettingsPage({
   setTtsVoiceUuid,
   reunionSettings,
   saveReunionEnabled,
+  voiceFeaturesEnabled,
+  saveVoiceFeaturesEnabled,
   apiBase,
   getAccessToken,
 }) {
   const reunionEnabled = reunionSettings?.enabled !== false;
+  const voiceFeaturesOn = voiceFeaturesEnabled === true;
   const canManageShares = !!apiBase && typeof getAccessToken === "function";
 
   const [shares, setShares] = useState([]);
@@ -364,6 +367,42 @@ export default function KininSettingsPage({
             setTtsVoiceUuid={setTtsVoiceUuid}
             disabled={profileBusy}
           />
+        </Frame>
+
+        <Frame label="Voice features">
+          <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
+            <p>
+              Voice features let you <strong>speak instead of type</strong> —
+              tap the microphone in chat and Kinin turns your words into text
+              you can edit before sending. This add-on also unlocks upcoming
+              abilities to save your spoken recordings and let your Reunion
+              persona speak back in your own voice.
+            </p>
+            <p className="km-muted">
+              Kinin reading its turns aloud is always free and works without
+              this add-on.
+            </p>
+          </div>
+          <label className="km-checkbox">
+            <input
+              type="checkbox"
+              checked={voiceFeaturesOn}
+              onChange={(e) =>
+                saveVoiceFeaturesEnabled &&
+                saveVoiceFeaturesEnabled(e.target.checked)
+              }
+              disabled={profileBusy || !saveVoiceFeaturesEnabled}
+            />
+            <span>
+              <strong>
+                Voice features are {voiceFeaturesOn ? "on" : "off"}.
+              </strong>
+              {" "}
+              {voiceFeaturesOn
+                ? "The microphone is available in chat so you can dictate your messages."
+                : "Turn this on to dictate messages with the microphone in chat."}
+            </span>
+          </label>
         </Frame>
 
         <Frame label="Reunion">
