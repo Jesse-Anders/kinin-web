@@ -94,6 +94,47 @@ const GOOGLE_LOGIN_ENABLED = String(import.meta.env.VITE_GOOGLE_LOGIN_ENABLED ||
 const GOOGLE_PROVIDER_NAME = import.meta.env.VITE_GOOGLE_PROVIDER_NAME || "Google";
 const ACCOUNT_CONFIRM_PHRASE = "delete my account and all data";
 const CHAT_MESSAGE_MAX_CHARS = 4000;
+
+// Auto-session-boundary: after this much inactivity (or a calendar-day
+// rollover), the next time the chat is opened/foregrounded we silently start a
+// fresh conversation. This matches the manual "Start a new conversation"
+// behavior (mints a new session + resets the rolling summary). Applies to both
+// web and the iOS app, where the user is effectively always logged in.
+const AUTO_SESSION_IDLE_MS = 120 * 60 * 1000; // 120 minutes
+
+function readLastActivityAt() {
+  try {
+    const raw = localStorage.getItem("last_activity_at");
+    const n = raw ? parseInt(raw, 10) : 0;
+    return Number.isFinite(n) ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function markSessionActivity() {
+  try {
+    localStorage.setItem("last_activity_at", String(Date.now()));
+  } catch {
+    /* privacy-mode / unavailable localStorage: ignore */
+  }
+}
+
+// A session is "stale" (should be rotated on next open) if the last recorded
+// activity was more than AUTO_SESSION_IDLE_MS ago, or on a prior local day.
+function isSessionStale() {
+  const last = readLastActivityAt();
+  if (!last) return false; // no prior activity → nothing to rotate
+  const now = Date.now();
+  if (now - last >= AUTO_SESSION_IDLE_MS) return true;
+  const lastDay = new Date(last);
+  const nowDay = new Date(now);
+  return (
+    lastDay.getFullYear() !== nowDay.getFullYear() ||
+    lastDay.getMonth() !== nowDay.getMonth() ||
+    lastDay.getDate() !== nowDay.getDate()
+  );
+}
 const PAGE_TO_PATH = {
   interview: "/",
   about: "/about",
@@ -365,6 +406,12 @@ export default function App() {
   const [menuOverflowOpen, setMenuOverflowOpen] = useState(false);
   const sidebarRef = useRef(null);
   const hasSyncedPathRef = useRef(false);
+  // Mirrors of state read inside global event listeners (focus/visibility) so
+  // the auto-session-boundary handler always sees current values without
+  // re-subscribing on every render.
+  const isAuthedRef = useRef(false);
+  const activePageRef = useRef("interview");
+  const busyRef = useRef(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -771,14 +818,6 @@ export default function App() {
       hideForBetaLite: true,
       onClick: () => navigateToPage("admin"),
     },
-    {
-      id: "end-session",
-      label: "End Session",
-      icon: null,
-      requiresAuth: true,
-      onClick: () => endSession(),
-      section: "bottom",
-    },
   ];
   const [feedbackName, setFeedbackName] = useState("");
   const [feedbackEmail, setFeedbackEmail] = useState("");
@@ -1155,6 +1194,7 @@ export default function App() {
 
   function applyTurnResponse(parsed, fallbackSessionId) {
     setAccessBlocked(null);
+    markSessionActivity();
     const newSessionId = parsed.session_id || fallbackSessionId || "";
     if (newSessionId && newSessionId !== sessionId) {
       setSessionId(newSessionId);
@@ -1285,11 +1325,49 @@ export default function App() {
     if (onboardingRequired) return;
     if (busy) return;
     if (didStart) return;
-    // Auto-start session on login to get intro + session_id without requiring a user message.
-    startSession();
+    // Auto-start session on login/cold-launch to get intro + session_id without
+    // requiring a user message. If the stored session has gone stale (long idle
+    // gap or a new local day), mint a fresh conversation instead of resuming.
+    startSession(isSessionStale() ? { newSession: true } : {});
     setDidStart(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthed, onboardingChecked, onboardingRequired]);
+
+  // Keep listener-facing refs in sync with the latest render values.
+  isAuthedRef.current = isAuthed;
+  activePageRef.current = activePage;
+  busyRef.current = busy;
+
+  // Auto-session-boundary on foreground: when the app/tab becomes visible again
+  // after a long idle gap (or across a calendar day), silently start a fresh
+  // conversation. Lazy by design — a stale session is only rotated when the
+  // user actually returns to the chat, so we never churn sessions in the
+  // background. The natural "Welcome back…" recap is the only signal shown.
+  useEffect(() => {
+    if (!isAuthed) return undefined;
+    function handleForeground() {
+      if (
+        typeof document !== "undefined" &&
+        document.visibilityState &&
+        document.visibilityState !== "visible"
+      ) {
+        return;
+      }
+      if (!isAuthedRef.current) return;
+      if (activePageRef.current !== "interview") return;
+      if (busyRef.current) return;
+      if (!localStorage.getItem("session_id")) return;
+      if (!isSessionStale()) return;
+      startSession({ newSession: true });
+    }
+    window.addEventListener("focus", handleForeground);
+    document.addEventListener("visibilitychange", handleForeground);
+    return () => {
+      window.removeEventListener("focus", handleForeground);
+      document.removeEventListener("visibilitychange", handleForeground);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthed]);
 
   useEffect(() => {
     if (!user?.username) return;
@@ -1547,6 +1625,7 @@ export default function App() {
       const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
       setAccessBlocked(null);
 
+      markSessionActivity();
       const newSessionId = parsed.session_id || sessionId;
       if (newSessionId && newSessionId !== sessionId) {
         setSessionId(newSessionId);
@@ -1798,6 +1877,7 @@ export default function App() {
         typeof data.body === "string" ? JSON.parse(data.body) : data;
       setAccessBlocked(null);
 
+      markSessionActivity();
       const newSessionId = parsed.session_id || "";
       setSessionId(newSessionId);
       localStorage.setItem("session_id", newSessionId);
@@ -2439,6 +2519,18 @@ export default function App() {
             <div className="km-chat-header-wordmark">Kinin</div>
             <div className="km-chat-header-rule" />
             <div className="km-chat-header-tag">— a living biography, in conversation.</div>
+            {isAuthed && chat.length > 0 ? (
+              <button
+                type="button"
+                className="km-btn km-btn-ghost km-btn-sm"
+                style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 8 }}
+                onClick={endSession}
+                disabled={busy || isEndingSession}
+                title="Start a fresh conversation. This won't log you out or delete anything."
+              >
+                {isEndingSession ? <Spinner /> : <CirclePlus size={14} strokeWidth={1.5} />} Start a new conversation
+              </button>
+            ) : null}
           </div>
 
       {error && (
