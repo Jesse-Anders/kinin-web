@@ -247,6 +247,11 @@ export default function App() {
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [reunionInvite, setReunionInvite] = useState(null);
   const [error, setError] = useState("");
+  // Errors from the profile-editing surfaces (account/settings + onboarding).
+  // Kept separate from the global `error` so they render ONLY on those pages
+  // and can never bleed onto chat/other pages. saveProfile, the optimistic
+  // Settings toggles, executor actions, and the profile load all route here.
+  const [profileError, setProfileError] = useState("");
   const [profileNotice, setProfileNotice] = useState("");
   const [accessBlocked, setAccessBlocked] = useState(null);
   const [didStart, setDidStart] = useState(false);
@@ -400,6 +405,13 @@ export default function App() {
       localStorage.removeItem("tts_voice_uuid");
     }
   }, [ttsVoiceUuid]);
+  // Serializes all PUT /profile writes. The full "Save" and the optimistic
+  // toggles (reunion / voice features / voice preference) all hit the same
+  // conditional-write record; without ordering, overlapping requests can
+  // resolve out of order and apply a stale server snapshot. Chaining them
+  // guarantees writes (and the state reconciliation that follows each) run
+  // one at a time, in submission order.
+  const profileWriteChainRef = useRef(Promise.resolve());
   // Dev-only free-text voice style prompt (Resemble "description"). Sent
   // inline per /tts call. Empty = no prompt. Capped to 1000 chars (matches
   // Resemble's preset spec; backend enforces the same limit).
@@ -922,14 +934,37 @@ export default function App() {
       .filter(Boolean);
   }
 
+  // Client mirror of the backend's normalize_date_of_birth
+  // (kinin-lambda/src/kinin/utils/date_of_birth.py): strict YYYY-MM-DD, a real
+  // calendar date, not in the future, and age <= 120. Keep the two in sync —
+  // the backend is authoritative and will reject anything this misses.
   function isValidDateOfBirth(value) {
     const text = String(value || "").trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return false;
-    const dt = new Date(`${text}T00:00:00`);
-    if (Number.isNaN(dt.getTime())) return false;
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+    if (!m) return false;
+    const year = Number(m[1]);
+    const month = Number(m[2]);
+    const day = Number(m[3]);
+    const dt = new Date(year, month - 1, day);
+    // Reject rollover (e.g. Feb 30 -> Mar 2); strptime on the backend would.
+    if (
+      dt.getFullYear() !== year ||
+      dt.getMonth() !== month - 1 ||
+      dt.getDate() !== day
+    ) {
+      return false;
+    }
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     if (dt > today) return false;
+    let age = today.getFullYear() - year;
+    if (
+      today.getMonth() < month - 1 ||
+      (today.getMonth() === month - 1 && today.getDate() < day)
+    ) {
+      age -= 1;
+    }
+    if (age > 120) return false;
     return true;
   }
 
@@ -1043,6 +1078,14 @@ export default function App() {
     }
   }, [activePage, location.pathname, location.hash, navigate]);
 
+  // Errors are page-scoped: never let a banner from one page linger onto the
+  // next. Profile/settings errors already use `profileError` (rendered only on
+  // the account/onboarding surfaces); this clears the global chat/turn/auth
+  // banner whenever the active page changes so nothing bleeds across pages.
+  useEffect(() => {
+    setError("");
+  }, [activePage]);
+
   useEffect(() => {
     const isRestrictedAuthPage =
       activePage === "account" ||
@@ -1155,11 +1198,50 @@ export default function App() {
     setError(e?.message || String(e));
   }
 
-  function applyProfilePayload(parsed) {
-    const bp = parsed?.biography_user_profile || {};
-    const continuity = parsed?.continuity_settings || {};
-    const onboarding = parsed?.onboarding || {};
-    const executor = parsed?.account_executor || {};
+  // Profile/settings-scoped counterpart of setTopErrorFromException. Writes to
+  // `profileError`, which is only rendered inside the account/onboarding pages.
+  function setProfileErrorFromException(e) {
+    if (e?.name === "AccessBlockedError" || e?.name === "OnboardingRequiredError") return;
+    setProfileError(e?.message || String(e));
+  }
+
+  // Send one PUT /profile, serialized behind any in-flight profile writes.
+  // Returns the parsed profile body. Throws on non-OK (via ensureApiOk) or
+  // auth failure, so callers keep their existing try/catch + revert logic.
+  function putProfile(body) {
+    const task = async () => {
+      const session = await fetchAuthSession();
+      const idToken = session.tokens?.idToken?.toString();
+      if (!idToken) throw new Error("Missing idToken. Are you logged in?");
+      const res = await fetch(`${API_BASE}/profile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify(body),
+      });
+      await ensureApiOk(res);
+      const data = await res.json();
+      return typeof data.body === "string" ? JSON.parse(data.body) : data;
+    };
+    // Chain after the previous write regardless of how it settled, so a failed
+    // write never stalls the queue. Callers await the returned promise.
+    const run = profileWriteChainRef.current.then(task, task);
+    profileWriteChainRef.current = run.then(
+      () => {},
+      () => {},
+    );
+    return run;
+  }
+
+  // --- Per-section appliers -------------------------------------------------
+  // Each reconciles exactly ONE slice of local form state from a /profile
+  // response. Partial/optimistic saves (a single toggle) call only their own
+  // slice so a partial response can never clobber unrelated fields (e.g. the
+  // DOB). The full applyProfilePayload() composes all of them for full loads.
+
+  function applyVoicePreferencesFromPayload(parsed) {
     const voicePrefs = parsed?.voice_preferences;
     if (voicePrefs && typeof voicePrefs === "object") {
       const savedVoice = voicePrefs.voice_uuid;
@@ -1168,10 +1250,44 @@ export default function App() {
         setTtsVoiceUuid(savedVoice);
       }
     }
-    setBioProfile({
-      preferred_name: bp.preferred_name || "",
-      date_of_birth: bp.date_of_birth || "",
+  }
+
+  function applyReunionSettingsFromPayload(parsed) {
+    const reunion = parsed?.reunion_settings;
+    setReunionSettings({
+      enabled:
+        reunion && typeof reunion === "object" && reunion.enabled === false
+          ? false
+          : true,
     });
+  }
+
+  function applyVoiceFeaturesFromPayload(parsed) {
+    const vf = parsed?.voice_features;
+    setVoiceFeaturesEnabled(
+      !!(vf && typeof vf === "object" && vf.enabled === true),
+    );
+  }
+
+  function applyProfilePayload(parsed) {
+    const bp = parsed?.biography_user_profile || {};
+    const continuity = parsed?.continuity_settings || {};
+    const onboarding = parsed?.onboarding || {};
+    const executor = parsed?.account_executor || {};
+    applyVoicePreferencesFromPayload(parsed);
+    // Treat the required identity fields as "sticky": never blank an
+    // already-populated preferred_name / date_of_birth just because a given
+    // response omitted them.
+    setBioProfile((prev) => ({
+      preferred_name:
+        typeof bp.preferred_name === "string" && bp.preferred_name
+          ? bp.preferred_name
+          : prev.preferred_name || "",
+      date_of_birth:
+        typeof bp.date_of_birth === "string" && bp.date_of_birth
+          ? bp.date_of_birth
+          : prev.date_of_birth || "",
+    }));
     setContinuitySettings({
       reminder_cadence_weeks:
         continuity.reminder_cadence_weeks === undefined || continuity.reminder_cadence_weeks === null
@@ -1192,17 +1308,8 @@ export default function App() {
       confirmed_at: executor.confirmed_at || null,
       last_invite_sent_at: executor.last_invite_sent_at || null,
     });
-    const reunion = parsed?.reunion_settings;
-    setReunionSettings({
-      enabled:
-        reunion && typeof reunion === "object" && reunion.enabled === false
-          ? false
-          : true,
-    });
-    const vf = parsed?.voice_features;
-    setVoiceFeaturesEnabled(
-      !!(vf && typeof vf === "object" && vf.enabled === true),
-    );
+    applyReunionSettingsFromPayload(parsed);
+    applyVoiceFeaturesFromPayload(parsed);
   }
 
   function normalizedExecutorDraft() {
@@ -1965,12 +2072,12 @@ export default function App() {
   }
 
   async function openProfile() {
-    setError("");
+    setProfileError("");
     setProfileNotice("");
     setShowProfile(true);
     navigateToPage("account");
     if (!isAuthed) {
-      setError("Please sign in to view your profile.");
+      setProfileError("Please sign in to view your profile.");
       return;
     }
     setProfileBusy(true);
@@ -1978,7 +2085,7 @@ export default function App() {
       await loadProfileState({ includeSchema: true });
       setAccessBlocked(null);
     } catch (e) {
-      setTopErrorFromException(e);
+      setProfileErrorFromException(e);
     } finally {
       setProfileBusy(false);
     }
@@ -1993,14 +2100,10 @@ export default function App() {
       executorNotice = "",
       executorSendInvite = true,
     } = options;
-    setError("");
+    setProfileError("");
     if (!isAuthed) return;
     setProfileBusy(true);
     try {
-      const session = await fetchAuthSession();
-      const idToken = session.tokens?.idToken?.toString();
-      if (!idToken) throw new Error("Missing idToken. Are you logged in?");
-
       const preferred = (bioProfile.preferred_name || "").trim();
       if (!preferred) throw new Error("Preferred name is required.");
       const dateOfBirth = String(bioProfile.date_of_birth || "").trim();
@@ -2048,18 +2151,7 @@ export default function App() {
         },
       };
 
-      const res = await fetch(`${API_BASE}/profile`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${idToken}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      await ensureApiOk(res);
-      const data = await res.json();
-      const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
+      const parsed = await putProfile(payload);
       setAccessBlocked(null);
       applyProfilePayload(parsed);
       if (closeAfterSave) {
@@ -2075,7 +2167,7 @@ export default function App() {
       }
       return true;
     } catch (e) {
-      setTopErrorFromException(e);
+      setProfileErrorFromException(e);
       return false;
     } finally {
       setProfileBusy(false);
@@ -2090,23 +2182,13 @@ export default function App() {
     if (!isAuthed) return false;
     const desired = !!nextEnabled;
     const previous = reunionSettings?.enabled !== false;
+    setProfileError("");
     setReunionSettings({ enabled: desired });
     try {
-      const session = await fetchAuthSession();
-      const idToken = session.tokens?.idToken?.toString();
-      if (!idToken) throw new Error("Missing idToken. Are you logged in?");
-      const res = await fetch(`${API_BASE}/profile`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({ reunion_settings: { enabled: desired } }),
-      });
-      await ensureApiOk(res);
-      const data = await res.json();
-      const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
-      applyProfilePayload(parsed);
+      const parsed = await putProfile({ reunion_settings: { enabled: desired } });
+      // Reconcile only this slice — never re-hydrate the whole form from a
+      // partial-save response.
+      applyReunionSettingsFromPayload(parsed);
       setProfileNotice(
         desired
           ? "Reunion is on. Family members you've granted access can talk with your interview memories."
@@ -2115,7 +2197,7 @@ export default function App() {
       return true;
     } catch (e) {
       setReunionSettings({ enabled: previous });
-      setTopErrorFromException(e);
+      setProfileErrorFromException(e);
       return false;
     }
   }
@@ -2127,6 +2209,7 @@ export default function App() {
     if (!isAuthed) return false;
     const desired = !!nextEnabled;
     const previous = !!voiceFeaturesEnabled;
+    setProfileError("");
     setVoiceFeaturesEnabled(desired);
     if (!desired) {
       // If they turn it off mid-capture, stop and discard.
@@ -2135,25 +2218,12 @@ export default function App() {
       setSttError("");
     }
     try {
-      const session = await fetchAuthSession();
-      const idToken = session.tokens?.idToken?.toString();
-      if (!idToken) throw new Error("Missing idToken. Are you logged in?");
-      const res = await fetch(`${API_BASE}/profile`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({ voice_features: { enabled: desired } }),
-      });
-      await ensureApiOk(res);
-      const data = await res.json();
-      const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
-      applyProfilePayload(parsed);
+      const parsed = await putProfile({ voice_features: { enabled: desired } });
+      applyVoiceFeaturesFromPayload(parsed);
       return true;
     } catch (e) {
       setVoiceFeaturesEnabled(previous);
-      setTopErrorFromException(e);
+      setProfileErrorFromException(e);
       return false;
     }
   }
@@ -2319,33 +2389,24 @@ export default function App() {
     };
   }, []);
 
-  // Persist a single voice choice without going through the full saveProfile
-  // pipeline. Used by the chat-strip quick-switch and the Settings page voice
-  // picker so the user's pick survives across devices. Fire-and-forget: a
-  // failure is logged but does not surface a top error (the UI already
-  // reflects the new state via optimistic update).
+  // Persist Kinin's voice choice from the chat-strip quick-switch without going
+  // through the full saveProfile pipeline. Optimistic: the caller flips the
+  // selection first. On failure we revert the selection so the UI never lies,
+  // and surface a concise (chat-context) banner rather than failing silently.
   async function saveVoicePreferences(voiceUuid) {
     if (!isAuthed) return false;
     const next = (voiceUuid || "").trim();
     if (!next) return false;
+    // ttsVoiceUuidRef lags one render, so at call time it still holds the
+    // value from before the caller's optimistic setTtsVoiceUuid().
+    const previous = ttsVoiceUuidRef.current;
     try {
-      const session = await fetchAuthSession();
-      const idToken = session.tokens?.idToken?.toString();
-      if (!idToken) return false;
-      const res = await fetch(`${API_BASE}/profile`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({ voice_preferences: { voice_uuid: next } }),
-      });
-      if (!res.ok) return false;
-      const data = await res.json();
-      const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
-      applyProfilePayload(parsed);
+      const parsed = await putProfile({ voice_preferences: { voice_uuid: next } });
+      applyVoicePreferencesFromPayload(parsed);
       return true;
     } catch {
+      if (previous && previous !== next) setTtsVoiceUuid(previous);
+      setError("Couldn't save your voice choice. Please try again.");
       return false;
     }
   }
@@ -2354,26 +2415,11 @@ export default function App() {
     if (!isAuthed) return false;
     setOnboardingBusy(true);
     try {
-      const session = await fetchAuthSession();
-      const idToken = session.tokens?.idToken?.toString();
-      if (!idToken) throw new Error("Missing idToken. Are you logged in?");
-      const res = await fetch(`${API_BASE}/profile`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({
-          onboarding: { current_step: Number(step) },
-        }),
-      });
-      await ensureApiOk(res);
-      const data = await res.json();
-      const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
+      const parsed = await putProfile({ onboarding: { current_step: Number(step) } });
       applyProfilePayload(parsed);
       return true;
     } catch (e) {
-      setTopErrorFromException(e);
+      setProfileErrorFromException(e);
       return false;
     } finally {
       setOnboardingBusy(false);
@@ -2387,11 +2433,11 @@ export default function App() {
       !!accountExecutor?.last_invite_sent_at || statusNorm === "pending" || statusNorm === "confirmed";
     const firstSend = !hasInviteBeenSent;
     if (!validation.ok) {
-      setError(validation.message || "Please complete account executor details before sending an invite.");
+      setProfileError(validation.message || "Please complete account executor details before sending an invite.");
       return;
     }
     if (!validation.hasAny) {
-      setError("Enter account executor details before sending an invite.");
+      setProfileError("Enter account executor details before sending an invite.");
       return;
     }
     const ok = await saveProfile({
@@ -2402,33 +2448,20 @@ export default function App() {
         : "Account executor invitation email resent.",
     });
     if (ok) {
-      setError("");
+      setProfileError("");
     }
   }
 
   async function removeAccountExecutor() {
-    setError("");
+    setProfileError("");
     if (!isAuthed) return;
     setProfileBusy(true);
     try {
-      const session = await fetchAuthSession();
-      const idToken = session.tokens?.idToken?.toString();
-      if (!idToken) throw new Error("Missing idToken. Are you logged in?");
-      const res = await fetch(`${API_BASE}/profile`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({ account_executor: null }),
-      });
-      await ensureApiOk(res);
-      const data = await res.json();
-      const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
+      const parsed = await putProfile({ account_executor: null });
       applyProfilePayload(parsed);
       setProfileNotice("Account executor removed.");
     } catch (e) {
-      setTopErrorFromException(e);
+      setProfileErrorFromException(e);
     } finally {
       setProfileBusy(false);
     }
@@ -2512,6 +2545,7 @@ export default function App() {
   }
 
   async function onOnboardingContinue() {
+    setProfileError("");
     const step = Number(onboardingStatus?.current_step || 1);
     if (step === 1) {
       await updateOnboardingStep(2);
@@ -2529,7 +2563,7 @@ export default function App() {
     if (step === 3) {
       const validation = validateExecutorDraft();
       if (!validation.ok) {
-        setError(validation.message || "Trusted contact requires valid details.");
+        setProfileError(validation.message || "Trusted contact requires valid details.");
         return;
       }
       await updateOnboardingStep(4);
@@ -2996,6 +3030,7 @@ export default function App() {
           continuitySettings={continuitySettings}
           setContinuitySettings={setContinuitySettings}
           busy={profileBusy || onboardingBusy}
+          profileError={profileError}
           onBack={onOnboardingBack}
           onContinue={onOnboardingContinue}
           onBegin={onOnboardingBegin}
@@ -3045,6 +3080,7 @@ export default function App() {
           setAccountExecutor={setAccountExecutor}
           profileBusy={profileBusy}
           profileNotice={profileNotice}
+          profileError={profileError}
           saveProfile={saveProfile}
           ttsVoiceUuid={ttsVoiceUuid}
           setTtsVoiceUuid={setTtsVoiceUuid}

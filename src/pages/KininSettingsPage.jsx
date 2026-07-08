@@ -45,6 +45,7 @@ export default function KininSettingsPage({
   setAccountExecutor,
   profileBusy,
   profileNotice,
+  profileError,
   saveProfile,
   resendAccountExecutorInvite,
   removeAccountExecutor,
@@ -251,6 +252,14 @@ export default function KininSettingsPage({
       <div className="km-mono-label" style={{ marginBottom: 24 }}>
         {profileSchema?.title || "Settings"} · schema v{profileSchema?.version || "—"}
       </div>
+
+      {profileError ? (
+        <div style={{ marginBottom: 20 }}>
+          <Banner tone="danger">
+            <span><strong>Error.</strong> {profileError}</span>
+          </Banner>
+        </div>
+      ) : null}
 
       {profileNotice ? (
         <div style={{ marginBottom: 20 }}>
@@ -649,7 +658,7 @@ export default function KininSettingsPage({
         <Button onClick={onClose} disabled={profileBusy}>
           Cancel
         </Button>
-        <Button variant="primary" onClick={saveProfile} disabled={profileBusy}>
+        <Button variant="primary" onClick={() => saveProfile()} disabled={profileBusy}>
           {profileBusy ? (
             <>
               <Spinner /> Saving...

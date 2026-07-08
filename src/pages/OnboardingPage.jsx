@@ -43,6 +43,7 @@ export default function OnboardingPage({
   continuitySettings,
   setContinuitySettings,
   busy,
+  profileError,
   onBack,
   onContinue,
   onBegin,
@@ -74,6 +75,14 @@ export default function OnboardingPage({
         <Banner tone="info">
           <span><strong>Preview mode.</strong> Changes here are not saved.</span>
         </Banner>
+      ) : null}
+
+      {profileError ? (
+        <div style={{ marginTop: 16 }}>
+          <Banner tone="danger">
+            <span><strong>Error.</strong> {profileError}</span>
+          </Banner>
+        </div>
       ) : null}
 
       <h2 className="km-h2" style={{ marginTop: 24 }}>{meta.title}</h2>
