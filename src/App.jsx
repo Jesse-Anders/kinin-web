@@ -2822,7 +2822,7 @@ export default function App() {
             <div className="km-chat-header-wordmark">Kinin</div>
             <div className="km-chat-header-rule" />
             <div className="km-chat-header-tag">— a living biography, in conversation.</div>
-            {isAuthed && chat.length > 0 ? (
+            {isAuthed && activePage === "interview" && chat.length > 0 ? (
               <button
                 type="button"
                 className="km-btn km-btn-ghost km-btn-sm"
@@ -3228,7 +3228,7 @@ export default function App() {
               {dictationSupported && dictation.connecting
                 ? "Connecting…"
                 : dictationSupported && dictation.listening
-                  ? "Listening… speak naturally, then tap the mic to stop."
+                  ? "Voice to Text is active..."
                   : sttBusy
                     ? "Transcribing…"
                     : isRecording
