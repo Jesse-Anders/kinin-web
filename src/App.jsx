@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AudioLines,
   BookOpen,
@@ -73,6 +73,7 @@ import {
 import { streamTurn } from "./services/turnStreamClient";
 import { synthesizeTts, warmTts } from "./services/ttsClient";
 import { transcribeAudio } from "./services/sttClient";
+import { useDictation, isDictationSupported } from "./hooks/useDictation";
 import { createTtsStreamQueue } from "./services/ttsStreamQueue";
 import { isIOS } from "./services/platform";
 import { ensureRunning, playArrayBuffer } from "./services/webAudioPlayer";
@@ -97,6 +98,15 @@ const GOOGLE_LOGIN_ENABLED = String(import.meta.env.VITE_GOOGLE_LOGIN_ENABLED ||
 const GOOGLE_PROVIDER_NAME = import.meta.env.VITE_GOOGLE_PROVIDER_NAME || "Google";
 const ACCOUNT_CONFIRM_PHRASE = "delete my account and all data";
 const CHAT_MESSAGE_MAX_CHARS = 4000;
+
+// Append `add` to `base`, inserting a single space only when needed. Used to
+// stitch dictation chunks (finals / interim) onto the existing message.
+function joinText(base, add) {
+  const b = base || "";
+  if (!add) return b;
+  const joiner = b && !/\s$/.test(b) ? " " : "";
+  return b + joiner + add;
+}
 
 // Auto-session-boundary: after this much inactivity (or a calendar-day
 // rollover), the next time the chat is opened/foregrounded we silently start a
@@ -283,6 +293,36 @@ export default function App() {
     continuitySettings: { reminder_cadence_weeks: 2, reminder_channel: "email" },
   });
   const messageInputRef = useRef(null);
+
+  // Real-time dictation via the browser-native Web Speech API. When supported
+  // (Chrome/Edge/Safari desktop), the mic streams live interim + final text
+  // into the message box. Firefox / unsupported browsers fall back to the
+  // batch record -> POST /stt path (the isRecording/sttBusy state below).
+  const dictationSupported = isDictationSupported();
+  const appendDictatedText = useCallback((chunk) => {
+    setMessage((prev) => joinText(prev, chunk).slice(0, CHAT_MESSAGE_MAX_CHARS));
+  }, []);
+  const handleDictationError = useCallback((err) => {
+    if (err === "not-allowed" || err === "service-not-allowed") {
+      setSttError("Microphone access was denied. Check your browser's site settings.");
+    } else if (err === "network") {
+      setSttError("Voice input needs an internet connection.");
+    } else {
+      setSttError("Voice input hit a snag. Please try again.");
+    }
+  }, []);
+  const dictation = useDictation({
+    onFinal: appendDictatedText,
+    onError: handleDictationError,
+  });
+  // Grow the textarea as dictation fills it (value changes without an input
+  // event, so the onInput auto-resize doesn't fire on its own).
+  useEffect(() => {
+    const el = messageInputRef.current;
+    if (el) autoResizeMessageInput(el);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [message, dictation.interim, dictation.listening]);
+
   // Kinin voice (TTS) — per-session toggle, defaults off. Audio bytes
   // come back from POST /tts and are played client-side as Blob URLs.
   const [voiceEnabled, setVoiceEnabled] = useState(false);
@@ -2080,7 +2120,8 @@ export default function App() {
     const previous = !!voiceFeaturesEnabled;
     setVoiceFeaturesEnabled(desired);
     if (!desired) {
-      // If they turn it off mid-recording, stop and discard.
+      // If they turn it off mid-capture, stop and discard.
+      if (dictationSupported) dictation.stop();
       stopRecording();
       setSttError("");
     }
@@ -3068,9 +3109,16 @@ export default function App() {
           <div className="km-chat-input-row">
             <textarea
               ref={messageInputRef}
-              value={message}
+              value={
+                dictation.listening && dictation.interim
+                  ? joinText(message, dictation.interim)
+                  : message
+              }
               onChange={(e) => {
                 const nextMessage = e.target.value.slice(0, CHAT_MESSAGE_MAX_CHARS);
+                // Typing while dictating hands control back to the keyboard:
+                // stop the stream and keep whatever is now in the box.
+                if (dictationSupported && dictation.listening) dictation.stop();
                 setMessage(nextMessage);
                 autoResizeMessageInput(e.target);
               }}
@@ -3082,37 +3130,40 @@ export default function App() {
               disabled={!isAuthed || busy || !!accessBlocked}
             />
             {voiceFeaturesEnabled ? (
-              <button
-                type="button"
-                onClick={toggleRecording}
-                disabled={!isAuthed || busy || !!accessBlocked || sttBusy}
-                title={
-                  sttBusy
-                    ? "Transcribing..."
-                    : isRecording
-                      ? "Stop and transcribe"
-                      : "Speak your message"
-                }
-                aria-label={
-                  sttBusy
-                    ? "Transcribing"
-                    : isRecording
-                      ? "Stop and transcribe"
-                      : "Speak your message"
-                }
-                aria-pressed={isRecording}
-                className={`km-mic-btn${
-                  isRecording ? " km-mic-btn-recording" : ""
-                }${sttBusy ? " km-mic-btn-busy" : ""}`}
-              >
-                {sttBusy ? (
-                  <Spinner />
-                ) : isRecording ? (
-                  <Square size={18} />
-                ) : (
-                  <Mic size={20} />
-                )}
-              </button>
+              (() => {
+                const micActive = dictationSupported ? dictation.listening : isRecording;
+                const micBusy = !dictationSupported && sttBusy;
+                const micTitle = micBusy
+                  ? "Transcribing..."
+                  : micActive
+                    ? dictationSupported
+                      ? "Stop dictation"
+                      : "Stop and transcribe"
+                    : dictationSupported
+                      ? "Speak your message (live)"
+                      : "Speak your message";
+                return (
+                  <button
+                    type="button"
+                    onClick={dictationSupported ? dictation.toggle : toggleRecording}
+                    disabled={!isAuthed || busy || !!accessBlocked || micBusy}
+                    title={micTitle}
+                    aria-label={micTitle}
+                    aria-pressed={micActive}
+                    className={`km-mic-btn${
+                      micActive ? " km-mic-btn-recording" : ""
+                    }${micBusy ? " km-mic-btn-busy" : ""}`}
+                  >
+                    {micBusy ? (
+                      <Spinner />
+                    ) : micActive ? (
+                      <Square size={18} />
+                    ) : (
+                      <Mic size={20} />
+                    )}
+                  </button>
+                );
+              })()
             ) : null}
             <Button
               variant="primary"
@@ -3122,15 +3173,20 @@ export default function App() {
               {isSendingTurn ? "Sending..." : "Send"}
             </Button>
           </div>
-          {voiceFeaturesEnabled && (isRecording || sttError) ? (
+          {voiceFeaturesEnabled &&
+          (dictation.listening || isRecording || sttBusy || sttError) ? (
             <div
               className="km-voice-error-note"
               role="status"
               aria-live="polite"
             >
-              {isRecording
-                ? "Listening… tap the stop button when you're done (3 min max)."
-                : sttError}
+              {dictationSupported && dictation.listening
+                ? "Listening… speak naturally, then tap the mic to stop."
+                : sttBusy
+                  ? "Transcribing…"
+                  : isRecording
+                    ? "Recording… tap the stop button when you're done (3 min max)."
+                    : sttError}
             </div>
           ) : null}
 
