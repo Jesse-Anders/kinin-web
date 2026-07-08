@@ -73,7 +73,10 @@ import {
 import { streamTurn } from "./services/turnStreamClient";
 import { synthesizeTts, warmTts } from "./services/ttsClient";
 import { transcribeAudio } from "./services/sttClient";
-import { useDictation, isDictationSupported } from "./hooks/useDictation";
+import {
+  useRealtimeDictation,
+  isRealtimeDictationSupported,
+} from "./hooks/useRealtimeDictation";
 import { createTtsStreamQueue } from "./services/ttsStreamQueue";
 import { isIOS } from "./services/platform";
 import { ensureRunning, playArrayBuffer } from "./services/webAudioPlayer";
@@ -294,24 +297,30 @@ export default function App() {
   });
   const messageInputRef = useRef(null);
 
-  // Real-time dictation via the browser-native Web Speech API. When supported
-  // (Chrome/Edge/Safari desktop), the mic streams live interim + final text
-  // into the message box. Firefox / unsupported browsers fall back to the
-  // batch record -> POST /stt path (the isRecording/sttBusy state below).
-  const dictationSupported = isDictationSupported();
+  // Real-time streaming dictation via OpenAI Realtime (WebRTC). Streams live
+  // interim + final text into the message box; works across modern browsers.
+  // Ancient browsers without WebRTC fall back to the batch record -> POST /stt
+  // path (the isRecording/sttBusy state below).
+  const dictationSupported = isRealtimeDictationSupported();
   const appendDictatedText = useCallback((chunk) => {
     setMessage((prev) => joinText(prev, chunk).slice(0, CHAT_MESSAGE_MAX_CHARS));
   }, []);
   const handleDictationError = useCallback((err) => {
     if (err === "not-allowed" || err === "service-not-allowed") {
       setSttError("Microphone access was denied. Check your browser's site settings.");
+    } else if (err === "no-microphone") {
+      setSttError("No microphone was found.");
+    } else if (err === "connection_lost") {
+      setSttError("Voice connection dropped. Tap the mic to try again.");
+    } else if (err === "voice_features_not_enabled") {
+      setSttError("Enable voice features in Settings to use voice input.");
     } else if (err === "network") {
       setSttError("Voice input needs an internet connection.");
     } else {
       setSttError("Voice input hit a snag. Please try again.");
     }
   }, []);
-  const dictation = useDictation({
+  const dictation = useRealtimeDictation({
     onFinal: appendDictatedText,
     onError: handleDictationError,
   });
@@ -3180,13 +3189,15 @@ export default function App() {
               role="status"
               aria-live="polite"
             >
-              {dictationSupported && dictation.listening
-                ? "Listening… speak naturally, then tap the mic to stop."
-                : sttBusy
-                  ? "Transcribing…"
-                  : isRecording
-                    ? "Recording… tap the stop button when you're done (3 min max)."
-                    : sttError}
+              {dictationSupported && dictation.connecting
+                ? "Connecting…"
+                : dictationSupported && dictation.listening
+                  ? "Listening… speak naturally, then tap the mic to stop."
+                  : sttBusy
+                    ? "Transcribing…"
+                    : isRecording
+                      ? "Recording… tap the stop button when you're done (3 min max)."
+                      : sttError}
             </div>
           ) : null}
 

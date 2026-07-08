@@ -74,3 +74,44 @@ export async function transcribeAudio({ blob, mimeType, language, signal } = {})
     elapsedMs: parsed.elapsed_ms ?? null,
   };
 }
+
+/**
+ * Mint a short-lived ephemeral token for a realtime (streaming) transcription
+ * session. The browser uses the returned `value` to open a WebRTC connection
+ * to OpenAI directly — audio never transits our backend.
+ *
+ * @returns {Promise<{ value: string, model: string|null, expiresAt: number|null }>}
+ */
+export async function createRealtimeToken({ language, signal } = {}) {
+  if (!API_BASE) throw new Error("VITE_API_BASE_URL is not set");
+  const idToken = await getIdToken();
+  const res = await fetch(`${API_BASE}/stt/realtime_token`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${idToken}`,
+    },
+    body: JSON.stringify(language ? { language } : {}),
+    signal,
+  });
+
+  let parsed = null;
+  try {
+    parsed = await res.json();
+  } catch {
+    parsed = null;
+  }
+
+  if (!res.ok || !parsed?.ok || !parsed?.value) {
+    const err = new Error(parsed?.error || `stt_token_http_${res.status}`);
+    err.status = res.status;
+    err.detail = parsed?.detail;
+    throw err;
+  }
+
+  return {
+    value: parsed.value,
+    model: parsed.model ?? null,
+    expiresAt: parsed.expires_at ?? null,
+  };
+}
