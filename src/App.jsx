@@ -16,21 +16,27 @@ import {
   Quote,
   Radio,
   ScrollText,
+  Settings as SettingsIcon,
   Square,
 } from "lucide-react";
 import kininHomeIcon from "./assets/icons/kinin-icon-390sq.png";
 import {
+  confirmUserAttribute,
   fetchAuthSession,
   getCurrentUser,
+  sendUserAttributeVerificationCode,
   signInWithRedirect,
   signOut,
+  updatePassword,
+  updateUserAttributes,
 } from "aws-amplify/auth";
 import { useLocation, useNavigate } from "react-router-dom";
 import FaqPage from "./pages/FaqPage";
 import FeedbackPage from "./pages/FeedbackPage";
 import ContactPage from "./pages/ContactPage";
 import AccountPage from "./pages/AccountPage";
-import KininSettingsPage from "./pages/KininSettingsPage";
+import MyAccountPage from "./pages/MyAccountPage";
+import SettingsPage from "./pages/SettingsPage";
 import AdminCrmPage from "./pages/AdminCrmPage";
 import AdminHomePage from "./pages/AdminHomePage";
 import { AdminNav } from "./admin/AdminNav";
@@ -181,11 +187,26 @@ const PAGE_TO_PATH = {
   "admin-email": "/admin/email",
   account: "/account",
   "danger-zone": "/danger-zone",
+  settings: "/settings",
+  "settings-voice": "/settings/voice",
+  "settings-reminders": "/settings/reminders",
+  "settings-reunion": "/settings/reunion",
+  "settings-interview": "/settings/interview",
 };
+// Settings category pages, in menu order. Kept as data so the breakout menu
+// and the routing/render switch stay in sync.
+const SETTINGS_CATEGORIES = [
+  { id: "voice", page: "settings-voice", label: "Voice", blurb: "Kinin's speaking voice and voice-input add-on." },
+  { id: "reminders", page: "settings-reminders", label: "Reminders", blurb: "How often Kinin checks back in." },
+  { id: "reunion", page: "settings-reunion", label: "Reunion", blurb: "Who can hear your story, and the on/off switch." },
+  { id: "interview", page: "settings-interview", label: "Interview details", blurb: "Behind-the-scenes session context." },
+];
+const SETTINGS_PAGE_TO_CATEGORY = Object.fromEntries(
+  SETTINGS_CATEGORIES.map((c) => [c.page, c.id]),
+);
 const PATH_TO_PAGE = {
   ...Object.fromEntries(Object.entries(PAGE_TO_PATH).map(([page, path]) => [path, page])),
-  // Legacy aliases: the old "Settings" page is now reached under My Account.
-  "/settings": "account",
+  // Legacy alias: the old profile/bio route now lives under My Account.
   "/bio": "account",
 };
 
@@ -913,6 +934,26 @@ export default function App() {
   const [accountBusy, setAccountBusy] = useState(false);
   const [accountError, setAccountError] = useState("");
   const [accountStatus, setAccountStatus] = useState("");
+  // True when the signed-in user came in via a federated IdP (e.g. Google).
+  // Those users have no Cognito-managed password and their email is owned by
+  // the IdP, so the change-email / change-password controls are hidden.
+  const [isFederatedUser, setIsFederatedUser] = useState(false);
+  // Change-email flow (Cognito self-service). Two steps: request -> confirm
+  // with the code Cognito emails to the NEW address.
+  const [emailForm, setEmailForm] = useState({ newEmail: "", code: "" });
+  const [emailStage, setEmailStage] = useState("idle"); // idle | confirm
+  const [emailBusy, setEmailBusy] = useState(false);
+  const [emailError, setEmailError] = useState("");
+  const [emailNotice, setEmailNotice] = useState("");
+  // Change-password flow (Cognito self-service, current + new).
+  const [passwordForm, setPasswordForm] = useState({
+    current: "",
+    next: "",
+    confirm: "",
+  });
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordNotice, setPasswordNotice] = useState("");
 
   function navigateToPage(page, options = {}) {
     const targetPath = PAGE_TO_PATH[page] || "/";
@@ -1269,15 +1310,10 @@ export default function App() {
     );
   }
 
-  function applyProfilePayload(parsed) {
+  function applyBioProfileFromPayload(parsed) {
     const bp = parsed?.biography_user_profile || {};
-    const continuity = parsed?.continuity_settings || {};
-    const onboarding = parsed?.onboarding || {};
-    const executor = parsed?.account_executor || {};
-    applyVoicePreferencesFromPayload(parsed);
-    // Treat the required identity fields as "sticky": never blank an
-    // already-populated preferred_name / date_of_birth just because a given
-    // response omitted them.
+    // Sticky required fields: never blank a populated name/DOB from a response
+    // that happens to omit them.
     setBioProfile((prev) => ({
       preferred_name:
         typeof bp.preferred_name === "string" && bp.preferred_name
@@ -1288,6 +1324,10 @@ export default function App() {
           ? bp.date_of_birth
           : prev.date_of_birth || "",
     }));
+  }
+
+  function applyContinuityFromPayload(parsed) {
+    const continuity = parsed?.continuity_settings || {};
     setContinuitySettings({
       reminder_cadence_weeks:
         continuity.reminder_cadence_weeks === undefined || continuity.reminder_cadence_weeks === null
@@ -1295,11 +1335,10 @@ export default function App() {
           : Number(continuity.reminder_cadence_weeks),
       reminder_channel: continuity.reminder_channel || "email",
     });
-    setOnboardingStatus({
-      required: onboarding.required === true,
-      completed_at: onboarding.completed_at || null,
-      current_step: Number(onboarding.current_step || 1),
-    });
+  }
+
+  function applyAccountExecutorFromPayload(parsed) {
+    const executor = parsed?.account_executor || {};
     setAccountExecutor({
       name: executor.name || "",
       email: executor.email || "",
@@ -1308,6 +1347,19 @@ export default function App() {
       confirmed_at: executor.confirmed_at || null,
       last_invite_sent_at: executor.last_invite_sent_at || null,
     });
+  }
+
+  function applyProfilePayload(parsed) {
+    const onboarding = parsed?.onboarding || {};
+    applyVoicePreferencesFromPayload(parsed);
+    applyBioProfileFromPayload(parsed);
+    applyContinuityFromPayload(parsed);
+    setOnboardingStatus({
+      required: onboarding.required === true,
+      completed_at: onboarding.completed_at || null,
+      current_step: Number(onboarding.current_step || 1),
+    });
+    applyAccountExecutorFromPayload(parsed);
     applyReunionSettingsFromPayload(parsed);
     applyVoiceFeaturesFromPayload(parsed);
   }
@@ -1447,10 +1499,14 @@ export default function App() {
 
         // If tokens exist, we are authenticated
         if (session?.tokens?.idToken) {
-          const tokenGivenName = String(session.tokens.idToken.payload?.given_name || "").trim();
+          const payload = session.tokens.idToken.payload || {};
+          const tokenGivenName = String(payload.given_name || "").trim();
           setCognitoGivenName(tokenGivenName);
-          const tokenEmail = String(session.tokens.idToken.payload?.email || "").trim();
+          const tokenEmail = String(payload.email || "").trim();
           setCognitoEmail(tokenEmail);
+          // Federated users carry an `identities` claim (e.g. Google). They
+          // have no Cognito password and the IdP owns their email.
+          setIsFederatedUser(!!payload.identities);
           const u = await getCurrentUser();
           setUser(u);
 
@@ -1680,6 +1736,165 @@ export default function App() {
     } finally {
       setAccountPassword("");
       setAccountBusy(false);
+    }
+  }
+
+  // ---- Cognito self-service: change password ----
+  async function changePassword() {
+    setPasswordError("");
+    setPasswordNotice("");
+    if (isFederatedUser) {
+      setPasswordError("Your sign-in is managed by your identity provider.");
+      return;
+    }
+    const current = passwordForm.current;
+    const next = passwordForm.next;
+    if (!current) {
+      setPasswordError("Enter your current password.");
+      return;
+    }
+    if (!next || next.length < 8) {
+      setPasswordError("New password must be at least 8 characters.");
+      return;
+    }
+    if (next !== passwordForm.confirm) {
+      setPasswordError("New password and confirmation do not match.");
+      return;
+    }
+    if (next === current) {
+      setPasswordError("New password must differ from the current one.");
+      return;
+    }
+    setPasswordBusy(true);
+    try {
+      await updatePassword({ oldPassword: current, newPassword: next });
+      setPasswordForm({ current: "", next: "", confirm: "" });
+      setPasswordNotice("Password updated.");
+    } catch (e) {
+      const name = e?.name || "";
+      if (name === "NotAuthorizedException") {
+        setPasswordError("Current password is incorrect.");
+      } else if (name === "InvalidPasswordException" || name === "InvalidParameterException") {
+        setPasswordError(
+          e?.message || "New password doesn't meet the requirements.",
+        );
+      } else if (name === "LimitExceededException") {
+        setPasswordError("Too many attempts. Please wait a bit and try again.");
+      } else {
+        setPasswordError(e?.message || "Couldn't update your password.");
+      }
+    } finally {
+      setPasswordBusy(false);
+    }
+  }
+
+  // ---- Cognito self-service: change email (request + confirm code) ----
+  async function requestEmailChange() {
+    setEmailError("");
+    setEmailNotice("");
+    if (isFederatedUser) {
+      setEmailError("Your email is managed by your identity provider.");
+      return;
+    }
+    const next = (emailForm.newEmail || "").trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(next)) {
+      setEmailError("Enter a valid email address.");
+      return;
+    }
+    if (next === (cognitoEmail || "").trim().toLowerCase()) {
+      setEmailError("That's already your email address.");
+      return;
+    }
+    setEmailBusy(true);
+    try {
+      const result = await updateUserAttributes({
+        userAttributes: { email: next },
+      });
+      const step = result?.email?.nextStep?.updateAttributeStep;
+      if (step === "CONFIRM_ATTRIBUTE_WITH_CODE") {
+        setEmailStage("confirm");
+        setEmailNotice(`We sent a verification code to ${next}.`);
+      } else {
+        // No confirmation required (pool not enforcing verification).
+        await refreshCognitoEmail();
+        setEmailForm({ newEmail: "", code: "" });
+        setEmailNotice("Email updated.");
+      }
+    } catch (e) {
+      const name = e?.name || "";
+      if (name === "AliasExistsException") {
+        setEmailError("That email is already in use by another account.");
+      } else if (name === "LimitExceededException") {
+        setEmailError("Too many attempts. Please wait a bit and try again.");
+      } else if (name === "NotAuthorizedException") {
+        setEmailError("Please sign in again before changing your email.");
+      } else {
+        setEmailError(e?.message || "Couldn't start the email change.");
+      }
+    } finally {
+      setEmailBusy(false);
+    }
+  }
+
+  async function confirmEmailChange() {
+    setEmailError("");
+    setEmailNotice("");
+    const code = (emailForm.code || "").trim();
+    if (!code) {
+      setEmailError("Enter the verification code.");
+      return;
+    }
+    setEmailBusy(true);
+    try {
+      await confirmUserAttribute({
+        userAttributeKey: "email",
+        confirmationCode: code,
+      });
+      await refreshCognitoEmail();
+      setEmailForm({ newEmail: "", code: "" });
+      setEmailStage("idle");
+      setEmailNotice("Email address updated.");
+    } catch (e) {
+      const name = e?.name || "";
+      if (name === "CodeMismatchException") {
+        setEmailError("That code is incorrect. Check it and try again.");
+      } else if (name === "ExpiredCodeException") {
+        setEmailError("That code expired. Request a new one.");
+      } else {
+        setEmailError(e?.message || "Couldn't confirm the new email.");
+      }
+    } finally {
+      setEmailBusy(false);
+    }
+  }
+
+  async function resendEmailChangeCode() {
+    setEmailError("");
+    try {
+      await sendUserAttributeVerificationCode({ userAttributeKey: "email" });
+      setEmailNotice("A new code is on its way.");
+    } catch (e) {
+      setEmailError(e?.message || "Couldn't resend the code.");
+    }
+  }
+
+  function cancelEmailChange() {
+    setEmailStage("idle");
+    setEmailForm({ newEmail: "", code: "" });
+    setEmailError("");
+    setEmailNotice("");
+  }
+
+  // Pull the freshest email from Cognito after a change and reflect it locally.
+  async function refreshCognitoEmail() {
+    try {
+      const session = await fetchAuthSession({ forceRefresh: true });
+      const tokenEmail = String(
+        session?.tokens?.idToken?.payload?.email || "",
+      ).trim();
+      if (tokenEmail) setCognitoEmail(tokenEmail);
+    } catch {
+      /* best-effort: display refresh only */
     }
   }
 
@@ -2174,6 +2389,75 @@ export default function App() {
     }
   }
 
+  // Per-section save: identity fields (preferred name + date of birth) only.
+  // Used by the "My Account" page so saving one section can't clobber others.
+  async function saveBioProfile() {
+    setProfileError("");
+    setProfileNotice("");
+    if (!isAuthed) return false;
+    const preferred = (bioProfile.preferred_name || "").trim();
+    if (!preferred) {
+      setProfileError("Preferred name is required.");
+      return false;
+    }
+    const dateOfBirth = String(bioProfile.date_of_birth || "").trim();
+    if (!dateOfBirth) {
+      setProfileError("Date of birth is required.");
+      return false;
+    }
+    if (!isValidDateOfBirth(dateOfBirth)) {
+      setProfileError("Date of birth must be a valid date in YYYY-MM-DD format.");
+      return false;
+    }
+    setProfileBusy(true);
+    try {
+      const parsed = await putProfile({
+        biography_user_profile: {
+          preferred_name: preferred,
+          date_of_birth: dateOfBirth,
+        },
+      });
+      setAccessBlocked(null);
+      applyBioProfileFromPayload(parsed);
+      setProfileNotice("Profile saved.");
+      return true;
+    } catch (e) {
+      setProfileErrorFromException(e);
+      return false;
+    } finally {
+      setProfileBusy(false);
+    }
+  }
+
+  // Per-section save: reminder rhythm. Optimistic like the other toggles —
+  // flip local state, PUT, revert on failure.
+  async function saveReminderCadence(weeks) {
+    if (!isAuthed) return false;
+    setProfileError("");
+    setProfileNotice("");
+    const desired = Number(weeks);
+    const previous = continuitySettings;
+    setContinuitySettings((prev) => ({
+      ...prev,
+      reminder_cadence_weeks: desired,
+    }));
+    try {
+      const parsed = await putProfile({
+        continuity_settings: {
+          reminder_cadence_weeks: desired,
+          reminder_channel: "email",
+        },
+      });
+      applyContinuityFromPayload(parsed);
+      setProfileNotice("Reminder rhythm updated.");
+      return true;
+    } catch (e) {
+      setContinuitySettings(previous);
+      setProfileErrorFromException(e);
+      return false;
+    }
+  }
+
   // Persist the Reunion on/off privacy switch immediately, without waiting
   // for the user to hit "Save" on the Settings page. Optimistic: local state
   // flips first, then we PUT. On failure we revert and surface a banner —
@@ -2426,6 +2710,43 @@ export default function App() {
     }
   }
 
+  // Per-section save: account executor slice only. sendInvite controls whether
+  // Cognito/SES emails the invite. Returns true on success.
+  async function saveAccountExecutor({ sendInvite = true, notice = "" } = {}) {
+    setProfileError("");
+    setProfileNotice("");
+    if (!isAuthed) return false;
+    const validation = validateExecutorDraft();
+    if (!validation.ok) {
+      setProfileError(validation.message);
+      return false;
+    }
+    if (!validation.hasAny) {
+      setProfileError("Enter your trusted contact's name and email.");
+      return false;
+    }
+    setProfileBusy(true);
+    try {
+      const parsed = await putProfile({
+        account_executor: {
+          name: validation.draft.name,
+          email: validation.draft.email,
+          send_invite: !!sendInvite,
+        },
+      });
+      applyAccountExecutorFromPayload(parsed);
+      setProfileNotice(
+        notice || (sendInvite ? "Trusted contact saved and invited." : "Trusted contact saved."),
+      );
+      return true;
+    } catch (e) {
+      setProfileErrorFromException(e);
+      return false;
+    } finally {
+      setProfileBusy(false);
+    }
+  }
+
   async function resendAccountExecutorInvite() {
     const validation = validateExecutorDraft();
     const statusNorm = (accountExecutor?.status || "").trim().toLowerCase();
@@ -2440,16 +2761,12 @@ export default function App() {
       setProfileError("Enter account executor details before sending an invite.");
       return;
     }
-    const ok = await saveProfile({
-      closeAfterSave: false,
-      navigateAfterSave: false,
-      executorNotice: firstSend
+    await saveAccountExecutor({
+      sendInvite: true,
+      notice: firstSend
         ? "Account executor invitation email sent."
         : "Account executor invitation email resent.",
     });
-    if (ok) {
-      setProfileError("");
-    }
   }
 
   async function removeAccountExecutor() {
@@ -2749,16 +3066,29 @@ export default function App() {
             </div>
           )}
           {isAuthed ? (
-            <button
-              type="button"
-              className="km-sidebar-item is-bottom"
-              onClick={() => {
-                setMenuOpen(false);
-                openProfile();
-              }}
-            >
-              My Account
-            </button>
+            <>
+              <button
+                type="button"
+                className="km-sidebar-item is-bottom"
+                onClick={() => {
+                  setMenuOpen(false);
+                  openProfile();
+                }}
+              >
+                My Account
+              </button>
+              <button
+                type="button"
+                className="km-sidebar-item is-bottom"
+                onClick={() => {
+                  setMenuOpen(false);
+                  navigateToPage("settings");
+                }}
+              >
+                <SettingsIcon className="km-sidebar-icon" size={18} strokeWidth={1.5} />
+                Settings
+              </button>
+            </>
           ) : null}
         {visibleBottomItems.length ? <div className="km-sidebar-divider" /> : null}
         {visibleBottomItems.map((item) => (
@@ -3070,26 +3400,37 @@ export default function App() {
           beginLabel="Back to Admin"
         />
       ) : activePage === "account" ? (
-        <KininSettingsPage
+        <MyAccountPage
           profileSchema={profileSchema}
           bioProfile={bioProfile}
           setBioProfile={setBioProfile}
-          continuitySettings={continuitySettings}
-          setContinuitySettings={setContinuitySettings}
           accountExecutor={accountExecutor}
           setAccountExecutor={setAccountExecutor}
           profileBusy={profileBusy}
           profileNotice={profileNotice}
           profileError={profileError}
-          saveProfile={saveProfile}
-          ttsVoiceUuid={ttsVoiceUuid}
-          setTtsVoiceUuid={setTtsVoiceUuid}
-          reunionSettings={reunionSettings}
-          saveReunionEnabled={saveReunionEnabled}
-          voiceFeaturesEnabled={voiceFeaturesEnabled}
-          saveVoiceFeaturesEnabled={saveVoiceFeaturesEnabled}
-          apiBase={API_BASE}
-          getAccessToken={getAccessToken}
+          security={{
+            email: cognitoEmail,
+            isFederatedUser,
+            emailForm,
+            setEmailForm,
+            emailStage,
+            emailBusy,
+            emailError,
+            emailNotice,
+            requestEmailChange,
+            confirmEmailChange,
+            resendEmailChangeCode,
+            cancelEmailChange,
+            passwordForm,
+            setPasswordForm,
+            passwordBusy,
+            passwordError,
+            passwordNotice,
+            changePassword,
+          }}
+          saveBioProfile={saveBioProfile}
+          saveAccountExecutor={saveAccountExecutor}
           resendAccountExecutorInvite={resendAccountExecutorInvite}
           removeAccountExecutor={removeAccountExecutor}
           onOpenDangerZone={() => navigateToPage("danger-zone")}
@@ -3097,6 +3438,29 @@ export default function App() {
             setShowProfile(false);
             navigateToPage("interview");
           }}
+        />
+      ) : activePage.startsWith("settings") ? (
+        <SettingsPage
+          category={SETTINGS_PAGE_TO_CATEGORY[activePage] || null}
+          categories={SETTINGS_CATEGORIES}
+          onNavigateCategory={(page) => navigateToPage(page)}
+          onClose={() => navigateToPage("interview")}
+          profileBusy={profileBusy}
+          profileNotice={profileNotice}
+          profileError={profileError}
+          ttsVoiceUuid={ttsVoiceUuid}
+          setTtsVoiceUuid={(uuid) => {
+            setTtsVoiceUuid(uuid);
+            void saveVoicePreferences(uuid);
+          }}
+          voiceFeaturesEnabled={voiceFeaturesEnabled}
+          saveVoiceFeaturesEnabled={saveVoiceFeaturesEnabled}
+          continuitySettings={continuitySettings}
+          saveReminderCadence={saveReminderCadence}
+          reunionSettings={reunionSettings}
+          saveReunionEnabled={saveReunionEnabled}
+          apiBase={API_BASE}
+          getAccessToken={getAccessToken}
           interviewDetails={{
             isAuthed,
             busy,
