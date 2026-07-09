@@ -143,6 +143,11 @@ a:hover {
   position: relative;
 }
 .km-section:first-of-type { border-top: none; }
+/* The first section sits right under the shared masthead, so its full
+   --section-y top padding makes the header→content gap feel loose on every
+   non-chat page. Trim it to roughly halve that gap (the chat page has no
+   Section, so it's unaffected). */
+.km-section:first-of-type { padding-top: 30px; }
 .km-section .km-section-meta {
   position: absolute;
   top: var(--doc-header-y);
@@ -158,6 +163,7 @@ a:hover {
 
 @media (max-width: 900px) {
   .km-section { padding: var(--section-y-mobile) 0; }
+  .km-section:first-of-type { padding-top: 20px; }
   .km-section .km-section-meta { display: none; }
 }
 

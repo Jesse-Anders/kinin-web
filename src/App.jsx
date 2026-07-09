@@ -3149,7 +3149,7 @@ export default function App() {
         <div
           style={{
             maxWidth: 900,
-            margin: "40px auto",
+            margin: "20px auto 40px",
             padding: 16,
           }}
         >
