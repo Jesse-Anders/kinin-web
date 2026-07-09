@@ -3066,7 +3066,8 @@ export default function App() {
             </div>
           )}
           {isAuthed ? (
-            <>
+            <div className="km-sidebar-account">
+              <div className="km-sidebar-divider km-sidebar-divider-tight" />
               <button
                 type="button"
                 className="km-sidebar-item is-bottom"
@@ -3077,6 +3078,7 @@ export default function App() {
               >
                 My Account
               </button>
+              <div className="km-sidebar-divider km-sidebar-divider-tight" />
               <button
                 type="button"
                 className="km-sidebar-item is-bottom"
@@ -3088,7 +3090,7 @@ export default function App() {
                 <SettingsIcon className="km-sidebar-icon" size={18} strokeWidth={1.5} />
                 Settings
               </button>
-            </>
+            </div>
           ) : null}
         {visibleBottomItems.length ? <div className="km-sidebar-divider" /> : null}
         {visibleBottomItems.map((item) => (
@@ -3277,6 +3279,7 @@ export default function App() {
           isAuthed={isAuthed}
           getAccessToken={getAccessToken}
           apiBase={API_BASE}
+          voiceFeaturesEnabled={voiceFeaturesEnabled}
           openEntryId={journalOpenEntryId}
           onEntryOpened={() => setJournalOpenEntryId("")}
         />

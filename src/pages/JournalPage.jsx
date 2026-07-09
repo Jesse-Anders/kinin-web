@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { Banner, Button, Frame, Section, Spinner, TextArea, TextInput } from "../theme";
+import DictationMic from "../components/DictationMic";
 import {
   createEntry,
   deleteEntry,
@@ -129,6 +130,7 @@ export default function JournalPage({
   isAuthed,
   getAccessToken,
   apiBase,
+  voiceFeaturesEnabled = false,
   openEntryId = "",
   onEntryOpened,
 }) {
@@ -457,6 +459,29 @@ export default function JournalPage({
     setNotes((prev) => prev.filter((n) => n !== note));
   }
 
+  // Append dictated speech to the body at the caret (or end), matching how
+  // the chat mic feeds transcript into its input.
+  const appendDictation = useCallback((chunk) => {
+    const clean = String(chunk || "").trim();
+    if (!clean) return;
+    setBody((prev) => {
+      const base = prev || "";
+      const joiner = base && !/\s$/.test(base) ? " " : "";
+      return base + joiner + clean;
+    });
+    requestAnimationFrame(() => {
+      const el = bodyRef.current;
+      if (el) {
+        el.focus();
+        try {
+          el.setSelectionRange(el.value.length, el.value.length);
+        } catch {
+          /* noop */
+        }
+      }
+    });
+  }, []);
+
   function handleTitleBlur() {
     if (!title.trim() && body.trim()) {
       // Mirror the backend: derive a title from the opening line.
@@ -542,9 +567,19 @@ export default function JournalPage({
                       <Eye size={15} strokeWidth={1.5} /> Preview
                     </Button>
                   </div>
-                  <span className="km-mono-label" style={{ opacity: 0.8 }}>
-                    {words} words {autosaveLabel ? `· ${autosaveLabel}` : ""}
-                  </span>
+                  <div className="km-row" style={{ gap: 10, alignItems: "center" }}>
+                    {voiceFeaturesEnabled && view === "write" ? (
+                      <DictationMic
+                        voiceFeaturesEnabled={voiceFeaturesEnabled}
+                        disabled={!isAuthed}
+                        onText={appendDictation}
+                        size={18}
+                      />
+                    ) : null}
+                    <span className="km-mono-label" style={{ opacity: 0.8 }}>
+                      {words} words {autosaveLabel ? `· ${autosaveLabel}` : ""}
+                    </span>
+                  </div>
                 </div>
 
                 {view === "write" ? (
