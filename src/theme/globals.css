@@ -979,12 +979,12 @@ a:hover {
 
 /* ─── Sidebar ─── */
 .km-sidebar {
-  width: 100px;
-  min-width: 100px;
+  width: 168px;
+  min-width: 168px;
   padding: 24px 8px 16px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 8px;
   border-right: 1px solid var(--thread);
   background: var(--cream);
   position: fixed;
@@ -1057,7 +1057,7 @@ a:hover {
 .km-sidebar-scroll {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 2px;
   flex: 0 1 auto;
   min-height: 0;
   overflow-y: auto;
@@ -1073,23 +1073,24 @@ a:hover {
 .km-sidebar-item {
   background: transparent;
   border: none;
-  padding: 8px 6px;
+  padding: 8px 12px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 6px;
+  justify-content: flex-start;
+  gap: 12px;
   cursor: pointer;
   font-family: var(--font-mono);
   font-size: 9.5px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-soft);
-  text-align: center;
+  text-align: left;
   transition: color var(--t-fast), background var(--t-fast);
   line-height: 1.25;
 }
 .km-sidebar-item:hover { color: var(--crimson); background: var(--cream-deep); }
-.km-sidebar-item .km-sidebar-icon { color: currentColor; }
+.km-sidebar-item .km-sidebar-icon { color: currentColor; flex-shrink: 0; }
 .km-sidebar-item.is-bottom { font-size: 9px; }
 .km-sidebar-spacer { flex: 1; }
 .km-sidebar-muted {
@@ -1098,13 +1099,13 @@ a:hover {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-faint);
-  padding: 0 6px 8px;
-  text-align: center;
+  padding: 2px 12px 8px;
+  text-align: left;
 }
 .km-sidebar-auth {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 2px;
 }
 .km-sidebar-popover {
@@ -1124,7 +1125,7 @@ a:hover {
   position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
 }
 .km-menu-toggle {
   display: none;
@@ -1155,7 +1156,7 @@ a:hover {
 }
 .km-main {
   flex: 1;
-  margin-left: 100px;
+  margin-left: 168px;
   padding: 24px 0 64px;
   min-width: 0;
 }
