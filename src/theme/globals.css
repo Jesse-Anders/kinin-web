@@ -439,6 +439,25 @@ a:hover {
 .km-form-input::placeholder { color: var(--ink-faint); }
 .km-form-input[disabled],
 .km-form-textarea[disabled] { opacity: 0.55; cursor: not-allowed; }
+/* Input with an inline trailing control (e.g. password show/hide eye). */
+.km-input-affix-wrap { position: relative; display: block; }
+.km-input-has-affix { padding-right: 36px; }
+.km-input-affix-btn {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--ink-soft);
+  display: inline-flex;
+  align-items: center;
+  transition: color var(--t-fast);
+}
+.km-input-affix-btn:hover { color: var(--crimson); }
+.km-input-affix-btn[disabled] { opacity: 0.5; cursor: not-allowed; }
 .km-form-help {
   margin-top: 6px;
   font-size: 13px;

@@ -1,4 +1,37 @@
+import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { Banner, Button, FormRow, Frame, TextInput } from "../theme";
+
+// A password input with an inline show/hide (eye) toggle. Each field manages
+// its own visibility so revealing one doesn't expose the others.
+function PasswordField({ label, help, value, onChange, autoComplete, disabled }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <FormRow label={label} help={help}>
+      <div className="km-input-affix-wrap">
+        <TextInput
+          type={visible ? "text" : "password"}
+          className="km-input-has-affix"
+          value={value}
+          onChange={onChange}
+          autoComplete={autoComplete}
+          disabled={disabled}
+        />
+        <button
+          type="button"
+          className="km-input-affix-btn"
+          onClick={() => setVisible((v) => !v)}
+          disabled={disabled}
+          aria-label={visible ? "Hide password" : "Show password"}
+          aria-pressed={visible}
+          title={visible ? "Hide password" : "Show password"}
+        >
+          {visible ? <EyeOff size={17} strokeWidth={1.5} /> : <Eye size={17} strokeWidth={1.5} />}
+        </button>
+      </div>
+    </FormRow>
+  );
+}
 
 // Sign-in & security controls: current email display, change-email (with code
 // confirmation), and change-password. All backed by Cognito self-service APIs
@@ -129,42 +162,34 @@ export default function AccountSecuritySection({
                 <span><strong>Error.</strong> {passwordError}</span>
               </Banner>
             ) : null}
-            <FormRow label="Current password">
-              <TextInput
-                type="password"
-                value={passwordForm.current}
-                onChange={(e) =>
-                  setPasswordForm((f) => ({ ...f, current: e.target.value }))
-                }
-                autoComplete="current-password"
-                disabled={passwordBusy}
-              />
-            </FormRow>
-            <FormRow
+            <PasswordField
+              label="Current password"
+              value={passwordForm.current}
+              onChange={(e) =>
+                setPasswordForm((f) => ({ ...f, current: e.target.value }))
+              }
+              autoComplete="current-password"
+              disabled={passwordBusy}
+            />
+            <PasswordField
               label="New password"
               help="At least 8 characters, with an uppercase and lowercase letter, a number, and a symbol."
-            >
-              <TextInput
-                type="password"
-                value={passwordForm.next}
-                onChange={(e) =>
-                  setPasswordForm((f) => ({ ...f, next: e.target.value }))
-                }
-                autoComplete="new-password"
-                disabled={passwordBusy}
-              />
-            </FormRow>
-            <FormRow label="Confirm new password">
-              <TextInput
-                type="password"
-                value={passwordForm.confirm}
-                onChange={(e) =>
-                  setPasswordForm((f) => ({ ...f, confirm: e.target.value }))
-                }
-                autoComplete="new-password"
-                disabled={passwordBusy}
-              />
-            </FormRow>
+              value={passwordForm.next}
+              onChange={(e) =>
+                setPasswordForm((f) => ({ ...f, next: e.target.value }))
+              }
+              autoComplete="new-password"
+              disabled={passwordBusy}
+            />
+            <PasswordField
+              label="Confirm new password"
+              value={passwordForm.confirm}
+              onChange={(e) =>
+                setPasswordForm((f) => ({ ...f, confirm: e.target.value }))
+              }
+              autoComplete="new-password"
+              disabled={passwordBusy}
+            />
             <div>
               <Button
                 variant="primary"
