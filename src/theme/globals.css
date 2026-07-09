@@ -979,8 +979,8 @@ a:hover {
 
 /* ─── Sidebar ─── */
 .km-sidebar {
-  width: 168px;
-  min-width: 168px;
+  width: 150px;
+  min-width: 150px;
   padding: 24px 8px 16px;
   display: flex;
   flex-direction: column;
@@ -1099,8 +1099,14 @@ a:hover {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-faint);
-  padding: 2px 12px 8px;
-  text-align: left;
+  padding: 2px 12px 6px;
+  text-align: center;
+}
+/* Lower-menu items with no icon (e.g. Sign Out) center their label instead of
+   left-aligning like the icon rows. */
+.km-sidebar-item.is-centered {
+  justify-content: center;
+  text-align: center;
 }
 .km-sidebar-auth {
   display: flex;
@@ -1156,7 +1162,7 @@ a:hover {
 }
 .km-main {
   flex: 1;
-  margin-left: 168px;
+  margin-left: 150px;
   padding: 24px 0 64px;
   min-width: 0;
 }

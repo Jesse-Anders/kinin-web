@@ -3057,23 +3057,8 @@ export default function App() {
               ) : null}
             </div>
           ) : (
-            <div className="km-sidebar-auth">
-              <button
-                type="button"
-                className="km-sidebar-item is-signin"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onLogout();
-                }}
-              >
-                <CircleUserRound className="km-sidebar-icon" size={20} strokeWidth={1.5} />
-                Sign Out
-              </button>
-              <div className="km-sidebar-muted">{navDisplayName || "Signed in"}</div>
-            </div>
-          )}
-          {isAuthed ? (
             <div className="km-sidebar-account">
+              <div className="km-sidebar-muted">{navDisplayName || "Signed in"}</div>
               <div className="km-sidebar-divider km-sidebar-divider-tight" />
               <button
                 type="button"
@@ -3083,6 +3068,7 @@ export default function App() {
                   openProfile();
                 }}
               >
+                <CircleUserRound className="km-sidebar-icon" size={18} strokeWidth={1.5} />
                 My Account
               </button>
               <div className="km-sidebar-divider km-sidebar-divider-tight" />
@@ -3097,8 +3083,19 @@ export default function App() {
                 <SettingsIcon className="km-sidebar-icon" size={18} strokeWidth={1.5} />
                 Settings
               </button>
+              <div className="km-sidebar-divider km-sidebar-divider-tight" />
+              <button
+                type="button"
+                className="km-sidebar-item is-bottom is-centered"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onLogout();
+                }}
+              >
+                Sign Out
+              </button>
             </div>
-          ) : null}
+          )}
         {visibleBottomItems.length ? <div className="km-sidebar-divider" /> : null}
         {visibleBottomItems.map((item) => (
           <button
