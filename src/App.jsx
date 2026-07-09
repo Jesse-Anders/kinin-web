@@ -2955,24 +2955,31 @@ export default function App() {
           <span className="km-sidebar-wordmark">Kinin</span>
         </button>
         <div className="km-sidebar-divider" />
-        {primaryTopItems.map((item) => {
-          const Icon = item.icon;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              className="km-sidebar-item"
-              onClick={() => {
-                setMenuOpen(false);
-                setMenuOverflowOpen(false);
-                item.onClick();
-              }}
-            >
-              {Icon ? <Icon className="km-sidebar-icon" size={20} strokeWidth={1.5} /> : null}
-              {item.label}
-            </button>
-          );
-        })}
+        {/* Only the primary nav items scroll when the viewport is short, so the
+            pinned "+" menu, admin links, and bottom account/settings section
+            can never slide off the bottom of the window. The "+" popover
+            escapes to the right and needs overflow:visible, so it stays out of
+            this scroll container. */}
+        <div className="km-sidebar-scroll">
+          {primaryTopItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className="km-sidebar-item"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setMenuOverflowOpen(false);
+                  item.onClick();
+                }}
+              >
+                {Icon ? <Icon className="km-sidebar-icon" size={20} strokeWidth={1.5} /> : null}
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
         <div className="km-sidebar-overflow-toggle">
           <button
             type="button"

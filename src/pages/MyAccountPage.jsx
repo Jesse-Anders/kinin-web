@@ -218,7 +218,7 @@ export default function MyAccountPage({
           </div>
         </Frame>
 
-        <Frame label="Danger zone">
+        <Frame label="Danger zone / Delete account">
           <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
             <p>
               Need to walk away? You can permanently delete your account and
