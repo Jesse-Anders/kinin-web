@@ -1,0 +1,147 @@
+{
+  "_generated": "DERIVED from kinin-lambda src/kinin/data/kinin_help_content.json via scripts/gen_faq_from_kb.py — do not edit by hand.",
+  "version": "2026.07.14.1",
+  "generated_at": "2026-07-14T16:55:41+00:00",
+  "items": [
+    {
+      "q": "What is Kinin?",
+      "a": "Kinin is an AI biographer that helps you capture your life story through conversation. It walks you through meaningful topics — from early memories to beliefs and legacy — and preserves your words in a living, interactive biography."
+    },
+    {
+      "q": "How does the interview work?",
+      "a": "Kinin asks you questions about your life and listens, gently following up to draw out details, and builds a rich record of your story over time. Kinin has a planned path of topics it can take you through, but you can always steer the conversation yourself — Kinin will follow your lead, so feel free to talk about whatever matters to you. Each session picks up where you left off, so you can go at your own pace."
+    },
+    {
+      "q": "Do I have to follow Kinin's questions, or can I talk about what I want?",
+      "a": "Whatever you prefer. Kinin has a planned interview it can guide you through, but you're always welcome to lead the conversation yourself. Kinin will follow your lead, so feel free to bring up whatever you'd like to talk about."
+    },
+    {
+      "q": "Can I edit something I already told Kinin?",
+      "a": "Yes. Open the Review & Edit page (listed as Review in the menu) to search your past conversations by text or date and revise any of your own answers. Kinin's own replies stay as they were, as a faithful record of the conversation. It's your biography and your story to shape.",
+      "link": {
+        "page": "review-chats",
+        "label": "Review & Edit page"
+      }
+    },
+    {
+      "q": "Can Kinin tell me what I've already shared?",
+      "a": "Yes. If you're not sure whether you've already told a story, just ask Kinin during your interview — it can look back over what you've shared and let you know. You can also revisit your stories any time through Reunion."
+    },
+    {
+      "q": "Can I stop and come back later without losing my place?",
+      "a": "Absolutely. Your progress saves automatically, so you can stop anytime and pick up right where you left off — across as many sessions as you like."
+    },
+    {
+      "q": "Why did my conversation start fresh, and how do I begin a new one?",
+      "a": "You can start a new conversation any time with the 'Start a new conversation' button. Kinin also begins a fresh conversation on its own after a long break — a new session doesn't mean anything was lost, since your stories and your place are always saved."
+    },
+    {
+      "q": "What are pins?",
+      "a": "Pins are quick notes you can jot down when a memory comes to mind but you're not ready to tell the whole story yet. Later you can start a conversation or a journal entry from a pin, mark it complete, or remove it. You'll find them on the Pins page in the menu.",
+      "link": {
+        "page": "pins",
+        "label": "Pins page"
+      }
+    },
+    {
+      "q": "Can I write my stories on my own instead of chatting?",
+      "a": "Yes. The Journal lets you write entries at your own pace, with autosave and a preview. Kinin can gently review an entry for thin spots or tidy up spelling if you ask, but it never rewrites your voice. When you save an entry to your story, it becomes part of your biography just like a conversation does.",
+      "link": {
+        "page": "journal",
+        "label": "Journal"
+      }
+    },
+    {
+      "q": "Can I talk instead of type? How does voice work?",
+      "a": "Yes. You can dictate your answers with the microphone instead of typing, and Kinin can read its questions aloud in a voice you choose in settings."
+    },
+    {
+      "q": "How do I get help with Kinin?",
+      "a": "Tap 'Kinin Help' near the chat to ask questions about Kinin — how it works, your account, privacy, and anything else. Help conversations are separate from your interview and are not saved as part of your biography. You can return to your interview any time, right where you left off."
+    },
+    {
+      "q": "Where do I manage my account and preferences?",
+      "a": "Two places, both in the menu. 'My Account' holds your profile (your preferred name and date of birth), your sign-in and security details, your trusted contact, and the option to delete your account. 'Settings' is where you choose Kinin's speaking voice, your reminder rhythm, your Reunion sharing, and behind-the-scenes interview details."
+    },
+    {
+      "q": "Will Kinin remind me to keep going?",
+      "a": "Kinin can gently remind you to continue if you've been away for a while. You choose how often — from weekly up to monthly, or never — under Reminders in Settings. Reminders come by email."
+    },
+    {
+      "q": "Who can see my data?",
+      "a": "Your stories belong to you. By default, only you can see them. The Kinin team may access content only where needed to run and support the service — for example operating it, keeping it secure, or meeting legal obligations — and staff access is limited to those who need it. Kinin does not and never will share, sell, or provide your personal data to third parties for their own use."
+    },
+    {
+      "q": "Does Kinin sell my information to advertisers or data brokers?",
+      "a": "No — never. Kinin does not sell, rent, broker, license, or share your personal information with advertisers or data brokers for their own use. This is a core promise from Antry, the company behind Kinin, not just a policy."
+    },
+    {
+      "q": "Is my data used to train AI models?",
+      "a": "No. Your interview content is never used to train or fine-tune AI models — Kinin's or anyone else's. Kinin may use content to improve its own service, such as interview quality, safety, and how memories are organized, and where feasible it uses de-identified or aggregated data for that."
+    },
+    {
+      "q": "What AI powers Kinin?",
+      "a": "Kinin's conversations are powered by leading AI models from Anthropic and OpenAI. Whatever you share stays yours — Kinin does not sell your information and does not use your stories to train AI models."
+    },
+    {
+      "q": "How is my data stored and protected?",
+      "a": "Your data is encrypted both in transit and at rest on industry-standard infrastructure, and access is tightly restricted to the authenticated services and staff that need it. Kinin follows security best practices and reviews its safeguards regularly. No system can promise absolute security, but protecting your stories is a priority."
+    },
+    {
+      "q": "What are my rights over my data, and how long is it kept?",
+      "a": "You can access and correct your information, and you can delete it by deleting your account. While your account is active, your stories and biography are kept; if you delete your account, your data is removed, subject to normal backup cycles and any legal requirements. A self-serve way to download your own biography is coming soon."
+    },
+    {
+      "q": "Can I export or download my biography?",
+      "a": "Not just yet — a self-serve way to download your biography is on the way. In the meantime, if you need a copy, reach out through Contact and the team will help."
+    },
+    {
+      "q": "Can I delete my data or my account?",
+      "a": "Yes. From your My Account page you can permanently delete your account and all of your associated data — your conversations, profile, and biography. For your protection it requires signing in and confirming, and once it's done it can't be undone.",
+      "link": {
+        "page": "account",
+        "label": "My Account"
+      }
+    },
+    {
+      "q": "Who can see my stories, and can I share them?",
+      "a": "Your stories are private to you by default. If you'd like, you can invite specific people — such as family — to experience your biography through Reunion, and you can pause or remove that access whenever you want. Sharing only happens when you choose it."
+    },
+    {
+      "q": "What is Reunion?",
+      "a": "Reunion lets people you invite have a conversation with your biography — asking questions and hearing answers drawn from the stories you've shared, with each answer linked back to your own words. New stories become available to Reunion as soon as you finish sharing them. You're always in control: you can pause Reunion for everyone at any time."
+    },
+    {
+      "q": "How do I talk with someone's biography in Reunion?",
+      "a": "If someone has invited you, open Reunion from the menu to have a conversation with their biography and hear their stories in their own words, with each answer linked back to what they actually shared. If they've paused Reunion or haven't added stories yet, you'll see a gentle note letting you know.",
+      "link": {
+        "page": "reunion",
+        "label": "Reunion"
+      }
+    },
+    {
+      "q": "Will Reunion speak back in my own voice?",
+      "a": "That's something we're planning for the future. Today, Reunion answers in text, grounded in the stories you've shared. Hearing your biography speak back in your own voice is on our roadmap."
+    },
+    {
+      "q": "What is a trusted contact / account executor?",
+      "a": "You can designate a trusted family member or close friend as your account executor. You add their name and email in your My Account settings and send them an invite, which they confirm by email. It's optional, but strongly encouraged."
+    },
+    {
+      "q": "What happens when I first sign up?",
+      "a": "A short setup walks you through a warm welcome, a few profile details (like your preferred name and date of birth), the chance to name a trusted contact, and how often you'd like Kinin to check in. You can change any of it later in My Account and Settings."
+    },
+    {
+      "q": "How do I stop or change Kinin's emails?",
+      "a": "You can set how often Kinin checks in — or turn reminders off entirely — under Reminders in Settings. Every email Kinin sends also has an unsubscribe link at the bottom if you'd prefer to stop them from there."
+    },
+    {
+      "q": "How do I give feedback or report an issue?",
+      "a": "Use the Feedback option in the menu to tell us what's working, what's confusing, or what's missing — it's the best place for ideas, suggestions, and reporting anything that seems off. You can send it anonymously, or leave your name and email if you'd like a reply."
+    },
+    {
+      "q": "How do I contact the Kinin team or get help from a person?",
+      "a": "Use the Contact option in the menu to reach the Kinin team directly with a question or anything you need help with, and someone will follow up. (Feedback is the better spot for quick suggestions or reporting issues.) For privacy or data requests specifically, you can email jesse@kinin.ai."
+    }
+  ]
+}

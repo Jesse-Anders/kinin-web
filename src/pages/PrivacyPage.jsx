@@ -1,5 +1,19 @@
 import { Section } from "../theme";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// This page is the AUTHORITATIVE, hand-maintained privacy policy. It is NOT
+// generated. However, several answers given by the in-app "Kinin Help" agent and
+// the public FAQ are grounded in specific sections of THIS policy (no selling,
+// no AI training, who-sees-data, security, retention/rights).
+//
+// If you change a privacy commitment here, you MUST also update the matching
+// entries in the canonical help content so the Help agent + FAQ don't contradict
+// the policy:
+//   kinin-lambda/src/kinin/data/kinin_help_content.json  (edit + bump version)
+//   cd kinin-lambda && python scripts/gen_faq_from_kb.py  (regenerate FAQ)
+// Full guide: kinin-lambda/docs/help-content.md
+// ─────────────────────────────────────────────────────────────────────────────
+
 function pad(n) {
   return String(n).padStart(2, "0");
 }
@@ -214,7 +228,7 @@ export default function PrivacyPage() {
           <ul>
             <li>Access your data</li>
             <li>Correct inaccuracies</li>
-            <li>Delete data (delete all stored biographical content — stories, interviews, and biographies — from your My Account page)</li>
+            <li>Delete data (permanently delete your account and all associated data — your stories, interviews, and biography — from your My Account page)</li>
             <li>Export content by request</li>
           </ul>
         </PolicySection>
