@@ -2122,8 +2122,12 @@ export default function App() {
 
   // Manual entry: resume the in-session help thread if one exists, otherwise
   // open an empty help mode (the backend issues a session id on first send).
+  // HelpMode only renders on the interview/chat page (it's the fallback branch),
+  // so entry points from other pages (Journal, the "+" menu) must also navigate
+  // back to the chat page — otherwise flipping helpMode has no visible effect.
   function openHelpMode() {
     setHelpMode(true);
+    navigateToPage("interview");
   }
 
   function exitHelpMode() {
