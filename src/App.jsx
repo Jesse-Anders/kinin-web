@@ -1084,6 +1084,12 @@ export default function App() {
   const extraMenuItems = [
     ...nestedTopItems,
     {
+      id: "kinin-help",
+      label: "Kinin Help",
+      requiresAuth: true,
+      onClick: () => openHelpMode(),
+    },
+    {
       id: "contact",
       label: "Contact",
       requiresAuth: false,
@@ -3397,6 +3403,7 @@ export default function App() {
           voiceFeaturesEnabled={voiceFeaturesEnabled}
           openEntryId={journalOpenEntryId}
           onEntryOpened={() => setJournalOpenEntryId("")}
+          onOpenHelp={openHelpMode}
         />
       ) : activePage === "reunion" ? (
         <ReunionPage

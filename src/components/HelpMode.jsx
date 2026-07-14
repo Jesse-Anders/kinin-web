@@ -88,6 +88,10 @@ export default function HelpMode({
           {busy ? "Sending..." : "Send"}
         </Button>
       </div>
+
+      <p className="km-help-note">
+        Help chats are separate from your interview — they're not saved to your biography.
+      </p>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 {
   "_generated": "DERIVED from kinin-lambda src/kinin/data/kinin_help_content.json via scripts/gen_faq_from_kb.py — do not edit by hand.",
-  "version": "2026.07.14.1",
-  "generated_at": "2026-07-14T16:55:41+00:00",
+  "version": "2026.07.14.2",
+  "generated_at": "2026-07-14T17:59:48+00:00",
   "items": [
     {
       "q": "What is Kinin?",
@@ -137,7 +137,7 @@
     },
     {
       "q": "How do I give feedback or report an issue?",
-      "a": "Use the Feedback option in the menu to tell us what's working, what's confusing, or what's missing — it's the best place for ideas, suggestions, and reporting anything that seems off. You can send it anonymously, or leave your name and email if you'd like a reply."
+      "a": "Use the Feedback option in the menu to tell us what's working, what's confusing, or what's missing — it's the best place for ideas, suggestions, and reporting anything that seems off. Add your email if you'd like a reply."
     },
     {
       "q": "How do I contact the Kinin team or get help from a person?",

@@ -904,6 +904,13 @@ a:hover {
   padding-top: 14px;
   border-top: 1px solid var(--sage);
 }
+.km-help-note {
+  margin: 10px 2px 0;
+  text-align: center;
+  color: var(--ink-faint);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
 
 /* ─── Chat-session controls strip ─────────────────────────────────────────
    Right-aligned row that sits beneath the chat input. Holds per-session

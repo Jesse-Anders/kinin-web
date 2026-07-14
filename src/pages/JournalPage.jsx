@@ -133,6 +133,7 @@ export default function JournalPage({
   voiceFeaturesEnabled = false,
   openEntryId = "",
   onEntryOpened,
+  onOpenHelp,
 }) {
   const [entries, setEntries] = useState([]);
   const [loadingList, setLoadingList] = useState(false);
@@ -518,6 +519,14 @@ export default function JournalPage({
           spelling — it never rewrites your voice. Save an entry to add it to your
           story.
         </p>
+        {onOpenHelp ? (
+          <p style={{ marginTop: 10, marginBottom: 0 }}>
+            Questions about editing, privacy, or your account?{" "}
+            <button type="button" className="km-help-entry-link" onClick={onOpenHelp}>
+              Kinin Help
+            </button>
+          </p>
+        ) : null}
       </div>
 
       {statusMsg ? (
