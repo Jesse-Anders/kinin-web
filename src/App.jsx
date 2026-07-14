@@ -66,6 +66,7 @@ import ConfirmEmailPage from "./pages/ConfirmEmailPage";
 import AdminThemeStudioPage from "./pages/AdminThemeStudioPage";
 import AdminEmailStudioPage from "./pages/AdminEmailStudioPage";
 import InterviewDetailsPanel from "./components/InterviewDetailsPanel";
+import HelpMode from "./components/HelpMode";
 import {
   Banner,
   Button,
@@ -77,6 +78,7 @@ import {
   TypingDots,
 } from "./theme";
 import { streamTurn } from "./services/turnStreamClient";
+import { sendHelpTurn } from "./services/helpClient";
 import { synthesizeTts, warmTts } from "./services/ttsClient";
 import { transcribeAudio } from "./services/sttClient";
 import {
@@ -254,6 +256,15 @@ export default function App() {
   const [message, setMessage] = useState("");
   const [chat, setChat] = useState([]);
   const [busy, setBusy] = useState(false);
+  // Meta help mode. Fully separate from the interview: its own thread lives
+  // server-side and never touches the biography/memory pipeline. `helpMode`
+  // swaps the interview surface for the help wrapper in the same window; the
+  // interview `chat`/`sessionId` are untouched underneath and restored on exit.
+  // Not persisted across reload by design (help threads are ephemeral).
+  const [helpMode, setHelpMode] = useState(false);
+  const [helpSessionId, setHelpSessionId] = useState("");
+  const [helpChat, setHelpChat] = useState([]);
+  const [helpBusy, setHelpBusy] = useState(false);
   const [isSendingTurn, setIsSendingTurn] = useState(false);
   const [isStartingSession, setIsStartingSession] = useState(false);
   const [startingPinId, setStartingPinId] = useState("");
@@ -2043,6 +2054,76 @@ export default function App() {
     }
   }
 
+  // Send a message to the meta help agent. `explicitSessionId` lets callers
+  // (e.g. entering help mode from an offer) pass the freshly-issued help
+  // session id before React state has settled.
+  async function sendHelp(text, explicitSessionId) {
+    const trimmed = (text || "").trim();
+    if (!trimmed) return;
+    setHelpBusy(true);
+    const stamp = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const userMessageId = `help-user-${stamp}`;
+    const assistantMessageId = `help-assistant-${stamp}`;
+    setHelpChat((prev) => [
+      ...prev,
+      { id: userMessageId, role: "user", content: trimmed },
+      { id: assistantMessageId, role: "assistant", content: "" },
+    ]);
+    try {
+      const session = await fetchAuthSession();
+      const idToken = session.tokens?.idToken?.toString();
+      if (!idToken) throw new Error("Missing idToken. Are you logged in?");
+      const resp = await sendHelpTurn({
+        apiBase: API_BASE,
+        token: idToken,
+        message: trimmed,
+        helpSessionId: explicitSessionId || helpSessionId || undefined,
+      });
+      if (resp?.help_session_id) setHelpSessionId(resp.help_session_id);
+      const answer = typeof resp?.answer === "string" ? resp.answer : "";
+      setHelpChat((prev) =>
+        prev.map((m) => (m.id === assistantMessageId ? { ...m, content: answer } : m))
+      );
+    } catch {
+      setHelpChat((prev) =>
+        prev.map((m) =>
+          m.id === assistantMessageId
+            ? {
+                ...m,
+                content:
+                  "Sorry — I couldn't reach help just now. Please try again in a moment.",
+              }
+            : m
+        )
+      );
+    } finally {
+      setHelpBusy(false);
+    }
+  }
+
+  // Enter help mode from an interviewer offer: start a fresh thread on the
+  // offered help session and auto-send the user's original question so they
+  // land directly on the answer.
+  function enterHelpModeFromOffer(meta) {
+    const hsid = meta?.helpSessionId || "";
+    setHelpSessionId(hsid);
+    setHelpChat([]);
+    setHelpMode(true);
+    if (meta?.originalQuestion) {
+      void sendHelp(meta.originalQuestion, hsid);
+    }
+  }
+
+  // Manual entry: resume the in-session help thread if one exists, otherwise
+  // open an empty help mode (the backend issues a session id on first send).
+  function openHelpMode() {
+    setHelpMode(true);
+  }
+
+  function exitHelpMode() {
+    setHelpMode(false);
+  }
+
   async function sendTurn() {
     setError("");
     const trimmedMessage = message.trim();
@@ -2089,6 +2170,34 @@ export default function App() {
               : m
           )
         );
+      };
+      // If the backend short-circuited into a help-mode offer, the assistant
+      // bubble becomes the handoff line with an inline "Switch to help mode"
+      // CTA instead of a normal answer. Returns true when a meta offer was
+      // applied so the caller skips the normal final-text write.
+      const applyMetaSuggestion = (resp) => {
+        const ms = resp?.meta_suggestion;
+        if (!ms || typeof ms !== "object") return false;
+        const handoff =
+          (typeof resp.assistant === "string" && resp.assistant) ||
+          ms.handoff_message ||
+          "";
+        setChat((prev) =>
+          prev.map((m) =>
+            m.id === assistantMessageId
+              ? {
+                  ...m,
+                  content: handoff || m.content || "",
+                  metaSuggestion: {
+                    helpSessionId: ms.help_session_id || "",
+                    handoff,
+                    originalQuestion: trimmedMessage,
+                  },
+                }
+              : m
+          )
+        );
+        return true;
       };
 
       // If voice is on AND we have a WS stream, build a sentence-by-sentence
@@ -2188,7 +2297,7 @@ export default function App() {
             onDelta: onStreamDelta,
           });
           applyTurnResponse(streamed, sessionId);
-          if (typeof streamed.assistant === "string") {
+          if (!applyMetaSuggestion(streamed) && typeof streamed.assistant === "string") {
             setAssistantFinal(streamed.assistant);
           }
           if (streamQueue) {
@@ -2212,7 +2321,9 @@ export default function App() {
             trimmedMessage,
             clientRequestId,
           });
-          setAssistantFinal(typeof parsed.assistant === "string" ? parsed.assistant : "");
+          if (!applyMetaSuggestion(parsed)) {
+            setAssistantFinal(typeof parsed.assistant === "string" ? parsed.assistant : "");
+          }
           setMessage("");
         } catch (e) {
           setChat((prev) =>
@@ -3496,6 +3607,15 @@ export default function App() {
           closeAccount={closeAccount}
           onBack={() => openProfile()}
         />
+      ) : helpMode ? (
+        <HelpMode
+          messages={helpChat}
+          busy={helpBusy}
+          disabled={!isAuthed || !!accessBlocked}
+          onSend={(t) => sendHelp(t)}
+          onExit={exitHelpMode}
+          maxChars={CHAT_MESSAGE_MAX_CHARS}
+        />
       ) : (
         <div>
           <div className="km-chat-surface km-chat">
@@ -3515,7 +3635,20 @@ export default function App() {
                   {m.role === "assistant" && isSendingTurn && !m.content ? (
                     <TypingDots />
                   ) : (
-                    m.content
+                    <>
+                      {m.content}
+                      {m.metaSuggestion ? (
+                        <div className="km-meta-offer">
+                          <button
+                            type="button"
+                            className="km-meta-offer-btn"
+                            onClick={() => enterHelpModeFromOffer(m.metaSuggestion)}
+                          >
+                            Switch to help mode
+                          </button>
+                        </div>
+                      ) : null}
+                    </>
                   )}
                 </ChatRow>
               ))
@@ -3589,6 +3722,19 @@ export default function App() {
               {isSendingTurn ? "Sending..." : "Send"}
             </Button>
           </div>
+          {isAuthed ? (
+            <div className="km-help-entry-row">
+              <button
+                type="button"
+                className="km-help-entry-link"
+                onClick={openHelpMode}
+                disabled={busy || !!accessBlocked}
+                title="Ask questions about Kinin — editing, privacy, your account"
+              >
+                Ask about Kinin
+              </button>
+            </div>
+          ) : null}
           {voiceFeaturesEnabled &&
           (dictation.listening || isRecording || sttBusy || sttError) ? (
             <div

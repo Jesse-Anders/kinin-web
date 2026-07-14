@@ -778,6 +778,132 @@ a:hover {
 .km-chat-input::placeholder { color: var(--ink-faint); font-style: italic; }
 .km-chat-input[disabled] { opacity: 0.6; cursor: not-allowed; }
 
+/* ─── Meta-help offer (shown inline under a Kinin bubble when the interviewer
+   detects a product/help question and offers to switch into help mode) ─── */
+.km-meta-offer {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--sage);
+}
+.km-meta-offer-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--sage-deep);
+  background: var(--info-bg);
+  color: var(--sage-deep);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: background var(--t-fast), color var(--t-fast);
+}
+.km-meta-offer-btn:hover { background: var(--sage); color: var(--cream); }
+
+/* A quiet, always-available entry point into help mode. */
+.km-help-entry-row {
+  display: flex;
+  justify-content: center;
+  margin: 4px 0 16px;
+}
+.km-help-entry-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--t-fast);
+}
+.km-help-entry-link:hover:not([disabled]) { color: var(--sage-deep); }
+.km-help-entry-link[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+/* ─── Help mode (same-window wrapper; sage/info palette to signal a shift in
+   objective away from the crimson interview identity) ─── */
+.km-help {
+  border: 1px solid var(--sage);
+  background: var(--info-bg);
+  padding: 0 16px 8px;
+  margin-bottom: 16px;
+}
+.km-help-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 2px;
+  border-bottom: 1px solid var(--sage);
+}
+.km-help-banner-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  color: var(--cream);
+  background: var(--sage-deep);
+  border-radius: 50%;
+}
+.km-help-banner-text { flex: 1; min-width: 0; }
+.km-help-banner-title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 19px;
+  color: var(--ink);
+  line-height: 1.1;
+}
+.km-help-banner-sub {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-top: 2px;
+}
+.km-help-return-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--sage-deep);
+  background: transparent;
+  color: var(--sage-deep);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: background var(--t-fast), color var(--t-fast);
+}
+.km-help-return-btn:hover { background: var(--sage-deep); color: var(--cream); }
+.km-help-surface {
+  min-height: 220px;
+  padding: 12px 0 12px;
+}
+.km-help-empty {
+  text-align: center;
+  padding: 48px 12px 32px;
+  color: var(--ink-faint);
+  font-style: italic;
+  font-family: var(--font-display);
+  font-size: 17px;
+}
+.km-help-input-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  padding-top: 14px;
+  border-top: 1px solid var(--sage);
+}
+
 /* ─── Chat-session controls strip ─────────────────────────────────────────
    Right-aligned row that sits beneath the chat input. Holds per-session
    toggles (voice, and future preferences like autoplay, transcript-only,

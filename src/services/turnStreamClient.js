@@ -70,6 +70,14 @@ export function streamTurn({
         finalPayload = parsed;
         return;
       }
+      // A meta-help short-circuit: the interviewer didn't answer; instead the
+      // backend is offering to switch into help mode. Carry the whole payload
+      // (assistant handoff line + meta_suggestion) through so App can render the
+      // offer. stream.done resolves it just like a normal final.
+      if (type === "stream.meta_suggestion") {
+        finalPayload = parsed;
+        return;
+      }
       if (type === "stream.error") {
         done(() => reject(new Error(parsed.error || "stream_error")));
         return;
