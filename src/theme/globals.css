@@ -803,11 +803,12 @@ a:hover {
 }
 .km-meta-offer-btn:hover { background: var(--sage); color: var(--cream); }
 
-/* A quiet, always-available entry point into help mode. */
+/* A quiet, always-available entry point into help mode. Sits at the lower
+   right, just beneath the Kinin Voice toggle. */
 .km-help-entry-row {
   display: flex;
-  justify-content: center;
-  margin: 4px 0 16px;
+  justify-content: flex-end;
+  margin: 2px 0 16px;
 }
 .km-help-entry-link {
   display: inline-flex;

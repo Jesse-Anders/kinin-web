@@ -3722,19 +3722,6 @@ export default function App() {
               {isSendingTurn ? "Sending..." : "Send"}
             </Button>
           </div>
-          {isAuthed ? (
-            <div className="km-help-entry-row">
-              <button
-                type="button"
-                className="km-help-entry-link"
-                onClick={openHelpMode}
-                disabled={busy || !!accessBlocked}
-                title="Ask questions about Kinin — editing, privacy, your account"
-              >
-                Ask about Kinin
-              </button>
-            </div>
-          ) : null}
           {voiceFeaturesEnabled &&
           (dictation.listening || isRecording || sttBusy || sttError) ? (
             <div
@@ -3853,6 +3840,19 @@ export default function App() {
               <AudioLines size={20} />
             </button>
           </div>
+          {isAuthed ? (
+            <div className="km-help-entry-row">
+              <button
+                type="button"
+                className="km-help-entry-link"
+                onClick={openHelpMode}
+                disabled={busy || !!accessBlocked}
+                title="Ask questions about Kinin — editing, privacy, your account"
+              >
+                Kinin Help
+              </button>
+            </div>
+          ) : null}
           {voiceEnabled && voiceError ? (
             <div
               className="km-voice-error-note"
