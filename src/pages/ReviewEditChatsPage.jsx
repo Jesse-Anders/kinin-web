@@ -278,28 +278,31 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
             />
           </div>
 
-          <div className="km-row" style={{ gap: 10, flexWrap: "wrap" }}>
-            {[
-              { key: 7, label: "Last 7 days" },
-              { key: 30, label: "Last 30 days" },
-              { key: "month", label: "This month" },
-              { key: "all", label: "All time" },
-            ].map((preset) => (
-              <Button
-                key={String(preset.key)}
-                variant={activePreset === preset.key ? "primary" : "ghost"}
-                onClick={() => applyDatePreset(preset.key)}
-                disabled={!isAuthed || busy || editBusy}
-                aria-pressed={activePreset === preset.key}
-                style={{ fontSize: 13, letterSpacing: "0.12em", padding: "14px 26px" }}
-              >
-                {preset.label}
-              </Button>
-            ))}
-            <span
-              aria-hidden="true"
-              style={{ alignSelf: "stretch", width: 1, background: "var(--thread)", margin: "0 4px" }}
-            />
+          <div>
+            <div className="km-mono-label" style={{ marginBottom: 6 }}>Date range</div>
+            <div className="km-row" style={{ gap: 10, flexWrap: "wrap" }}>
+              {[
+                { key: 7, label: "Last 7 days" },
+                { key: 30, label: "Last 30 days" },
+                { key: "month", label: "This month" },
+                { key: "all", label: "All time" },
+              ].map((preset) => (
+                <Button
+                  key={String(preset.key)}
+                  variant={activePreset === preset.key ? "primary" : "ghost"}
+                  onClick={() => applyDatePreset(preset.key)}
+                  disabled={!isAuthed || busy || editBusy}
+                  aria-pressed={activePreset === preset.key}
+                  style={{ fontSize: 13, letterSpacing: "0.12em", padding: "14px 26px" }}
+                >
+                  {preset.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="km-mono-label" style={{ marginBottom: 6 }}>What to search</div>
             <Button
               variant={includeJournal ? "primary" : "ghost"}
               onClick={toggleIncludeJournal}
@@ -307,7 +310,7 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
               aria-pressed={includeJournal}
               style={{ fontSize: 13, letterSpacing: "0.12em", padding: "14px 26px" }}
             >
-              Include Journal Entries
+              {includeJournal ? "Including journal entries" : "Include journal entries"}
             </Button>
           </div>
 

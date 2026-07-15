@@ -73,6 +73,7 @@ import ClipLightbox from "./components/ClipLightbox";
 import {
   getWalkthrough,
   hasWalkthrough,
+  HELP_CLIPS_ENABLED,
   WALKTHROUGH_PAGE_KEYS,
 } from "./help/walkthroughs";
 import {
@@ -2216,6 +2217,21 @@ export default function App() {
     setClipPage(pageKey);
   }
 
+  // Fired by ReunionPage when a persona (biography) is first opened. Offers the
+  // contextual "how to ask / citations" sub-tour once, if tips are enabled and
+  // it hasn't been seen. Delayed so the chat surface + input have mounted.
+  function handleReunionPersonaOpen() {
+    if (!isAuthed || accessBlocked) return;
+    if (!helpPrefs.tips_enabled) return;
+    if (helpPrefs.walkthroughs_seen?.["reunion-persona"]) return;
+    if (autoTourAttemptedRef.current.has("reunion-persona")) return;
+    autoTourAttemptedRef.current.add("reunion-persona");
+    setTimeout(() => {
+      if (helpPrefs.walkthroughs_seen?.["reunion-persona"]) return;
+      startTour("reunion-persona");
+    }, 600);
+  }
+
   // Pages whose first-visit tour we've already attempted this session, so a
   // page that can't yet resolve its anchors doesn't retry on every render.
   const autoTourAttemptedRef = useRef(new Set());
@@ -3245,8 +3261,11 @@ export default function App() {
       {showNavigation ? (
         <HelpMenu
           hasTour={pageHasTour(activePage)}
-          hasClip={Boolean(getWalkthrough(activePage)?.clip)}
+          hasClip={HELP_CLIPS_ENABLED && Boolean(getWalkthrough(activePage)?.clip)}
           canAsk={isAuthed && !accessBlocked}
+          onOpenMenu={() => {
+            if (tourRun) handleTourDone();
+          }}
           onShowTour={() => startTour(activePage)}
           onAskKinin={() => openHelpMode()}
           onWatchClip={() => openClip(activePage)}
@@ -3616,6 +3635,7 @@ export default function App() {
           getAccessToken={getAccessToken}
           apiBase={API_BASE}
           onUpgraded={() => navigateToPage("interview")}
+          onPersonaOpen={handleReunionPersonaOpen}
         />
       ) : activePage === "unsubscribe" ? (
         <UnsubscribePage apiBase={API_BASE} />
@@ -3909,6 +3929,7 @@ export default function App() {
                 return (
                   <button
                     type="button"
+                    data-help-anchor="interview-voice"
                     onClick={dictationSupported ? dictation.toggle : toggleRecording}
                     disabled={!isAuthed || busy || !!accessBlocked || micBusy}
                     title={micTitle}

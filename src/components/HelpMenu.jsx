@@ -12,12 +12,23 @@ export default function HelpMenu({
   onShowTour,
   onAskKinin,
   onWatchClip,
+  onOpenMenu,
   hasTour = false,
   hasClip = false,
   canAsk = true,
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
+
+  function toggleOpen() {
+    setOpen((prev) => {
+      const next = !prev;
+      // Opening the menu ends any active walkthrough so the tour overlay/beacon
+      // can never be left orphaned behind the menu.
+      if (next) onOpenMenu?.();
+      return next;
+    });
+  }
 
   useEffect(() => {
     if (!open) return undefined;
@@ -71,7 +82,7 @@ export default function HelpMenu({
         data-help-anchor="help-menu"
         aria-haspopup="menu"
         aria-expanded={open}
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={toggleOpen}
       >
         <LifeBuoy size={20} strokeWidth={1.8} />
         <span>Help</span>

@@ -65,7 +65,7 @@ function formatSourceDate(value) {
  * when the user taps a citation. Dismiss via backdrop tap, close button, or
  * Escape key.
  */
-export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgraded }) {
+export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgraded, onPersonaOpen }) {
   const [bios, setBios] = useState([]);
   const [biosLoading, setBiosLoading] = useState(false);
   const [biosError, setBiosError] = useState("");
@@ -180,6 +180,9 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
     setDraft("");
     setActiveSource(null);
     requestAnimationFrame(() => inputRef.current?.focus());
+    // Let the parent offer a first-time "how to ask / citations" walkthrough
+    // now that a persona (biography) is open and its chat surface has rendered.
+    onPersonaOpen?.();
   }
 
   function startNewConversation() {
@@ -516,7 +519,7 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
             ) : null}
           </div>
 
-          <div ref={surfaceRef} className="km-chat-surface km-chat km-reunion-surface">
+          <div ref={surfaceRef} className="km-chat-surface km-chat km-reunion-surface" data-help-anchor="reunion-chat">
             {messages.length === 0 ? (
               <div className="km-chat-empty">
                 {selectedBio.is_self
@@ -549,7 +552,7 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
                       {m.role === "assistant" &&
                       Array.isArray(m.memories_used) &&
                       m.memories_used.length > 0 ? (
-                        <div className="km-reunion-citations">
+                        <div className="km-reunion-citations" data-help-anchor="reunion-citations">
                           <div className="km-mono-label km-reunion-citations-label">
                             Sources
                           </div>
@@ -603,7 +606,7 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
             </div>
           ) : null}
 
-          <div className="km-chat-input-row" style={{ marginTop: 12 }}>
+          <div className="km-chat-input-row" style={{ marginTop: 12 }} data-help-anchor="reunion-input">
             <textarea
               ref={inputRef}
               value={draft}

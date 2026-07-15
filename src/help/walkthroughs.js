@@ -19,7 +19,16 @@ export const WALKTHROUGH_PAGE_KEYS = [
   "pins",
   "reunion",
   "review-chats",
+  // Contextual sub-tour: triggered when a Reunion persona is first opened,
+  // not on page load. Not shown as a "Show me around this page" menu option.
+  "reunion-persona",
 ];
+
+// Master switch for the "Watch a quick video" help option. The clip framework
+// (ClipLightbox, registry `clip` metadata, captions pipeline) is in place, but
+// no real narrated clips have been produced yet — only placeholder posters. Flip
+// this to true once actual clip files exist in public/help/clips/.
+export const HELP_CLIPS_ENABLED = false;
 
 function anchor(name) {
   return `[data-help-anchor="${name}"]`;
@@ -44,7 +53,7 @@ export const WALKTHROUGHS = {
     label: "the Interview",
     steps: [
       welcomeStep(
-        "This is where you talk with Kinin. It asks gentle questions, and your answers become your life story. Here is a quick tour \u2014 it only takes a moment.",
+        "This is where you talk with Kinin. It asks questions, and your answers become your life story. Here is a quick tour \u2014 it only takes a moment.",
       ),
       {
         target: anchor("interview-chat"),
@@ -62,10 +71,17 @@ export const WALKTHROUGHS = {
         placement: "top",
       },
       {
+        target: anchor("interview-voice"),
+        title: "Prefer to talk?",
+        content:
+          "Tap the microphone to speak your answer instead of typing \u2014 Kinin turns your words into text. You can also hear Kinin's questions read aloud in a natural voice. (Voice features can be turned on in Settings.)",
+        placement: "top",
+      },
+      {
         target: anchor("help-menu"),
         title: "Help is always here",
         content:
-          "Whenever you have a question, open this Help button. You can retake this tour, ask Kinin a question, or watch a short video.",
+          "Whenever you have a question, open this Help button. You can retake this tour or ask Kinin a question.",
         placement: "bottom",
       },
     ],
@@ -104,7 +120,7 @@ export const WALKTHROUGHS = {
         target: anchor("help-menu"),
         title: "Help is always here",
         content:
-          "Open this Help button anytime to retake this tour, ask Kinin a question, or watch a short video.",
+          "Open this Help button anytime to retake this tour or ask Kinin a question.",
         placement: "bottom",
       },
     ],
@@ -143,7 +159,7 @@ export const WALKTHROUGHS = {
         target: anchor("help-menu"),
         title: "Help is always here",
         content:
-          "Open this Help button anytime to retake this tour, ask Kinin a question, or watch a short video.",
+          "Open this Help button anytime to retake this tour or ask Kinin a question.",
         placement: "bottom",
       },
     ],
@@ -175,7 +191,7 @@ export const WALKTHROUGHS = {
         target: anchor("help-menu"),
         title: "Help is always here",
         content:
-          "Open this Help button anytime to retake this tour, ask Kinin a question, or watch a short video.",
+          "Open this Help button anytime to retake this tour or ask Kinin a question.",
         placement: "bottom",
       },
     ],
@@ -187,6 +203,39 @@ export const WALKTHROUGHS = {
       caption:
         "Choose a shared biography and ask questions. Answers link back to the original memories they came from.",
     },
+  },
+
+  // Contextual sub-tour shown the first time a persona (biography) is opened.
+  // No centered welcome step (the user is already mid-flow), and no clip.
+  "reunion-persona": {
+    label: "Talking with a persona",
+    steps: [
+      {
+        target: anchor("reunion-chat"),
+        title: "Ask them anything",
+        content:
+          "This is where their answers appear, in their voice, drawn from the memories they shared. Try questions like \u201CWhat was your childhood home like?\u201D or \u201CTell me about the day you got married.\u201D",
+        placement: "bottom",
+        disableBeacon: true,
+      },
+      {
+        target: anchor("reunion-input"),
+        title: "Ask in your own words",
+        content:
+          "Type a question here and press Send. You can ask follow-ups just like a real conversation \u2014 \u201CWhat happened next?\u201D works well. When they answer, you'll see numbered \u201CSources\u201D you can open.",
+        placement: "top",
+        disableBeacon: true,
+      },
+      {
+        target: anchor("reunion-citations"),
+        title: "See where answers come from",
+        content:
+          "Each answer can show numbered \u201CSources.\u201D Tap one to read the original memory \u2014 an interview moment or journal entry \u2014 that the answer came from.",
+        placement: "top",
+        disableBeacon: true,
+      },
+    ],
+    clip: null,
   },
 
   "review-chats": {
@@ -214,7 +263,7 @@ export const WALKTHROUGHS = {
         target: anchor("help-menu"),
         title: "Help is always here",
         content:
-          "Open this Help button anytime to retake this tour, ask Kinin a question, or watch a short video.",
+          "Open this Help button anytime to retake this tour or ask Kinin a question.",
         placement: "bottom",
       },
     ],

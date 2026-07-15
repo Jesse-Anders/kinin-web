@@ -101,11 +101,19 @@ export default function Walkthrough({ steps = [], run = false, onDone }) {
     }
   }
 
-  if (!steps.length) return null;
+  // Force-disable the beacon on every step. We always run tours in continuous
+  // mode straight to the tooltip, so the pulsing beacon dot is never wanted;
+  // leaving it enabled could orphan a dot on the page if a tour is interrupted.
+  const normalizedSteps = useMemo(
+    () => steps.map((s) => ({ ...s, disableBeacon: true })),
+    [steps],
+  );
+
+  if (!normalizedSteps.length) return null;
 
   return (
     <Joyride
-      steps={steps}
+      steps={normalizedSteps}
       run={run}
       continuous
       scrollToFirstStep={!prefersReducedMotion}
