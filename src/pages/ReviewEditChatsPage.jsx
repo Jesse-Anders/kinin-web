@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Banner, Button, Frame, Section, Spinner, TextArea, TextInput } from "../theme";
 
 function parseApiPayload(text) {
@@ -42,6 +42,14 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
   const [editRowKey, setEditRowKey] = useState("");
   const [editDraft, setEditDraft] = useState("");
   const [editBusy, setEditBusy] = useState(false);
+  const [didInitialLoad, setDidInitialLoad] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthed || didInitialLoad) return;
+    setDidInitialLoad(true);
+    applyDatePreset(7);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthed, didInitialLoad]);
 
   const orderedItems = useMemo(() => {
     const roleOrder = { user: 0, assistant: 1 };
@@ -68,25 +76,28 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
     return parts.length ? `Showing results ${parts.join(" ")}` : "Showing all chats";
   }, [query, dateFrom, dateTo]);
 
-  function applyDatePreset(days) {
+  function computeDatePreset(days) {
     if (days === "all") {
-      setDateFrom("");
-      setDateTo("");
-      return;
+      return { from: "", to: "" };
     }
     const now = new Date();
     if (days === "month") {
       const first = new Date(now.getFullYear(), now.getMonth(), 1);
-      setDateFrom(toLocalDateInputValue(first));
-      setDateTo(toLocalDateInputValue(now));
-      return;
+      return { from: toLocalDateInputValue(first), to: toLocalDateInputValue(now) };
     }
     const delta = Number(days);
-    if (!Number.isFinite(delta) || delta < 1) return;
+    if (!Number.isFinite(delta) || delta < 1) return null;
     const start = new Date(now);
     start.setDate(now.getDate() - (delta - 1));
-    setDateFrom(toLocalDateInputValue(start));
-    setDateTo(toLocalDateInputValue(now));
+    return { from: toLocalDateInputValue(start), to: toLocalDateInputValue(now) };
+  }
+
+  function applyDatePreset(days) {
+    const preset = computeDatePreset(days);
+    if (!preset) return;
+    setDateFrom(preset.from);
+    setDateTo(preset.to);
+    searchChats({ append: false, overrideFrom: preset.from, overrideTo: preset.to });
   }
 
   function clearFilters() {
@@ -97,8 +108,10 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
     setStatus("Filters cleared.");
   }
 
-  async function searchChats({ append = false } = {}) {
-    if (invalidDateRange) {
+  async function searchChats({ append = false, overrideFrom, overrideTo } = {}) {
+    const effFrom = overrideFrom !== undefined ? overrideFrom : dateFrom;
+    const effTo = overrideTo !== undefined ? overrideTo : dateTo;
+    if (effFrom && effTo && effFrom > effTo) {
       setError("`From` date must be on or before `To` date.");
       setStatus("");
       return;
@@ -110,8 +123,8 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
       const accessToken = await getAccessToken();
       const payload = {
         query: (query || "").trim() || undefined,
-        date_from: formatDateInput(dateFrom) || undefined,
-        date_to: formatDateInput(dateTo) || undefined,
+        date_from: formatDateInput(effFrom) || undefined,
+        date_to: formatDateInput(effTo) || undefined,
         start_key: append ? nextKey || undefined : undefined,
         limit: 50,
       };
