@@ -3,6 +3,11 @@ import { Banner, Button, FormRow, Frame, Section, Skeleton, Spinner, TextInput }
 import InterviewDetailsPanel from "../components/InterviewDetailsPanel";
 import VoicePickerSection from "../components/VoicePickerSection";
 
+// Audio features (mic dictation + Kinin's spoken voice) are currently on for
+// every user, so the per-account enable/disable toggle is hidden. Flip this to
+// true (and re-open the backend STT gate) if we reintroduce it as an add-on.
+const SHOW_VOICE_FEATURES_TOGGLE = false;
+
 function parseSharesPayload(text) {
   try {
     const outer = JSON.parse(text);
@@ -265,41 +270,43 @@ export default function SettingsPage({
               />
             </Frame>
 
-            <Frame label="Voice features">
-              <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
-                <p>
-                  Voice features let you <strong>speak instead of type</strong> —
-                  tap the microphone in chat and Kinin turns your words into text
-                  you can edit before sending. This add-on also unlocks upcoming
-                  abilities to save your spoken recordings and let your Reunion
-                  persona speak back in your own voice.
-                </p>
-                <p className="km-muted">
-                  Kinin reading its turns aloud is always free and works without
-                  this add-on.
-                </p>
-              </div>
-              <label className="km-checkbox">
-                <input
-                  type="checkbox"
-                  checked={voiceFeaturesOn}
-                  onChange={(e) =>
-                    saveVoiceFeaturesEnabled &&
-                    saveVoiceFeaturesEnabled(e.target.checked)
-                  }
-                  disabled={profileBusy || !saveVoiceFeaturesEnabled}
-                />
-                <span>
-                  <strong>
-                    Voice features are {voiceFeaturesOn ? "on" : "off"}.
-                  </strong>
-                  {" "}
-                  {voiceFeaturesOn
-                    ? "The microphone is available in chat so you can dictate your messages."
-                    : "Turn this on to dictate messages with the microphone in chat."}
-                </span>
-              </label>
-            </Frame>
+            {SHOW_VOICE_FEATURES_TOGGLE ? (
+              <Frame label="Voice features">
+                <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
+                  <p>
+                    Voice features let you <strong>speak instead of type</strong> —
+                    tap the microphone in chat and Kinin turns your words into text
+                    you can edit before sending. This add-on also unlocks upcoming
+                    abilities to save your spoken recordings and let your Reunion
+                    persona speak back in your own voice.
+                  </p>
+                  <p className="km-muted">
+                    Kinin reading its turns aloud is always free and works without
+                    this add-on.
+                  </p>
+                </div>
+                <label className="km-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={voiceFeaturesOn}
+                    onChange={(e) =>
+                      saveVoiceFeaturesEnabled &&
+                      saveVoiceFeaturesEnabled(e.target.checked)
+                    }
+                    disabled={profileBusy || !saveVoiceFeaturesEnabled}
+                  />
+                  <span>
+                    <strong>
+                      Voice features are {voiceFeaturesOn ? "on" : "off"}.
+                    </strong>
+                    {" "}
+                    {voiceFeaturesOn
+                      ? "The microphone is available in chat so you can dictate your messages."
+                      : "Turn this on to dictate messages with the microphone in chat."}
+                  </span>
+                </label>
+              </Frame>
+            ) : null}
           </>
         ) : null}
 

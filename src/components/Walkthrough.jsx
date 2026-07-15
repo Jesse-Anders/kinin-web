@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Joyride, EVENTS, STATUS } from "react-joyride";
+import { Joyride, ACTIONS, EVENTS, ORIGIN, STATUS } from "react-joyride";
 
 // Senior-friendly coach-mark tour built on react-joyride (v3). Deliberately
 // constrained: one step visible at a time, large tap targets, plain-language
@@ -30,8 +30,13 @@ export default function Walkthrough({ steps = [], run = false, onDone }) {
       buttons: ["back", "skip", "primary"],
       showProgress: true,
       // Overlay/keyboard both cleanly end the tour rather than trapping people.
+      // (We finish the tour ourselves in handleEvent when either fires a CLOSE.)
       overlayClickAction: "close",
       dismissKeyAction: "close",
+      // Never show the pulsing beacon. In v3 this is the option that suppresses
+      // it (the v2 per-step `disableBeacon` prop is ignored); without this, a
+      // CLOSE in continuous mode would orphan a beacon dot on the page.
+      skipBeacon: true,
       disableFocusTrap: false,
       skipScroll: prefersReducedMotion,
       scrollDuration: prefersReducedMotion ? 0 : 300,
@@ -89,31 +94,33 @@ export default function Walkthrough({ steps = [], run = false, onDone }) {
   );
 
   function handleEvent(data) {
-    const status = data?.status;
-    // TOUR_END fires whenever the tour ends for any reason (Done, Skip, close
-    // via overlay/Escape), so we mark the walkthrough seen in every case.
+    const { type, action, origin, status } = data || {};
+    // Terminal events: Done (finished), Skip tour (skipped), or any tour:end.
     if (
-      data?.type === EVENTS.TOUR_END ||
+      type === EVENTS.TOUR_END ||
       status === STATUS.FINISHED ||
       status === STATUS.SKIPPED
     ) {
       onDone?.(status);
+      return;
+    }
+    // Clicking the overlay or pressing Escape fires a CLOSE action. In
+    // continuous mode that only closes the *current* step and would drop a
+    // beacon for the next one. Treat any such dismissal as ending the whole
+    // tour cleanly so nothing is left orphaned on the page.
+    if (
+      action === ACTIONS.CLOSE &&
+      (origin === ORIGIN.OVERLAY || origin === ORIGIN.KEYBOARD)
+    ) {
+      onDone?.(STATUS.SKIPPED);
     }
   }
 
-  // Force-disable the beacon on every step. We always run tours in continuous
-  // mode straight to the tooltip, so the pulsing beacon dot is never wanted;
-  // leaving it enabled could orphan a dot on the page if a tour is interrupted.
-  const normalizedSteps = useMemo(
-    () => steps.map((s) => ({ ...s, disableBeacon: true })),
-    [steps],
-  );
-
-  if (!normalizedSteps.length) return null;
+  if (!steps.length) return null;
 
   return (
     <Joyride
-      steps={normalizedSteps}
+      steps={steps}
       run={run}
       continuous
       scrollToFirstStep={!prefersReducedMotion}

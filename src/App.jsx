@@ -208,7 +208,7 @@ const PAGE_TO_PATH = {
 // Settings category pages, in menu order. Kept as data so the breakout menu
 // and the routing/render switch stay in sync.
 const SETTINGS_CATEGORIES = [
-  { id: "voice", page: "settings-voice", label: "Voice", blurb: "Kinin's speaking voice and voice-input add-on." },
+  { id: "voice", page: "settings-voice", label: "Voice", blurb: "Choose the voice Kinin speaks in." },
   { id: "reminders", page: "settings-reminders", label: "Reminders", blurb: "How often Kinin checks back in." },
   { id: "reunion", page: "settings-reunion", label: "Reunion", blurb: "Who can hear your story, and the on/off switch." },
   { id: "interview", page: "settings-interview", label: "Interview details", blurb: "Behind-the-scenes session context." },
@@ -314,7 +314,9 @@ export default function App() {
   const [reunionSettings, setReunionSettings] = useState({ enabled: true });
   // "Enable voice features" paid add-on (voice input, storage, Reunion
   // playback/reenactment). Defaults OFF — opt-in feature set, not a default.
-  const [voiceFeaturesEnabled, setVoiceFeaturesEnabled] = useState(false);
+  // Audio features are currently always on for all users (add-on toggle hidden,
+  // backend gate open). Default true so the mic renders before any profile load.
+  const [voiceFeaturesEnabled, setVoiceFeaturesEnabled] = useState(true);
   // In-app help / onboarding. `tips_enabled` gates first-visit auto-launch of
   // per-page walkthroughs; `walkthroughs_seen` records which page tours a user
   // has already been shown so they auto-launch only once. Persisted on the
@@ -1343,11 +1345,13 @@ export default function App() {
     });
   }
 
-  function applyVoiceFeaturesFromPayload(parsed) {
-    const vf = parsed?.voice_features;
-    setVoiceFeaturesEnabled(
-      !!(vf && typeof vf === "object" && vf.enabled === true),
-    );
+  function applyVoiceFeaturesFromPayload() {
+    // Audio features (microphone dictation + Kinin's spoken voice) are on for
+    // everyone right now — the per-account add-on toggle is hidden and the
+    // backend STT gate is open. We ignore the stored voice_features flag and
+    // always enable so the mic is available to all users. (If we reintroduce
+    // gating later, restore the payload-driven value here.)
+    setVoiceFeaturesEnabled(true);
   }
 
   function applyHelpPreferencesFromPayload(parsed) {
@@ -4060,6 +4064,7 @@ export default function App() {
             ) : null}
             <button
               type="button"
+              data-help-anchor="interview-listen"
               onClick={toggleVoice}
               disabled={!isAuthed}
               title={

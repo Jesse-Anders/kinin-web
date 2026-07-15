@@ -74,7 +74,14 @@ export const WALKTHROUGHS = {
         target: anchor("interview-voice"),
         title: "Prefer to talk?",
         content:
-          "Tap the microphone to speak your answer instead of typing \u2014 Kinin turns your words into text. You can also hear Kinin's questions read aloud in a natural voice. (Voice features can be turned on in Settings.)",
+          "Tap the microphone to speak your answer instead of typing \u2014 Kinin turns your words into text you can review before you send.",
+        placement: "top",
+      },
+      {
+        target: anchor("interview-listen"),
+        title: "Hear Kinin's voice",
+        content:
+          "Tap here to turn Kinin's voice on. When it's on, Kinin reads each question and reply aloud in a warm, natural voice. Tap it again to go back to silent reading.",
         placement: "top",
       },
       {
