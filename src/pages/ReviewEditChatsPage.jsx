@@ -44,6 +44,7 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
   const [editBusy, setEditBusy] = useState(false);
   const [didInitialLoad, setDidInitialLoad] = useState(false);
   const [activePreset, setActivePreset] = useState(null);
+  const [includeJournal, setIncludeJournal] = useState(false);
 
   useEffect(() => {
     if (!isAuthed || didInitialLoad) return;
@@ -74,8 +75,9 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
     if (dateFrom && dateTo) parts.push(`from ${dateFrom} to ${dateTo}`);
     else if (dateFrom) parts.push(`from ${dateFrom}`);
     else if (dateTo) parts.push(`through ${dateTo}`);
-    return parts.length ? `Showing results ${parts.join(" ")}` : "Showing all chats";
-  }, [query, dateFrom, dateTo]);
+    const base = parts.length ? `Showing results ${parts.join(" ")}` : "Showing all chats";
+    return includeJournal ? `${base} · including journal entries` : base;
+  }, [query, dateFrom, dateTo, includeJournal]);
 
   function computeDatePreset(days) {
     if (days === "all") {
@@ -107,13 +109,22 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
     setDateFrom("");
     setDateTo("");
     setActivePreset(null);
+    setIncludeJournal(false);
     setError("");
     setStatus("Filters cleared.");
   }
 
-  async function searchChats({ append = false, overrideFrom, overrideTo } = {}) {
+  function toggleIncludeJournal() {
+    const next = !includeJournal;
+    setIncludeJournal(next);
+    searchChats({ append: false, overrideIncludeJournal: next });
+  }
+
+  async function searchChats({ append = false, overrideFrom, overrideTo, overrideIncludeJournal } = {}) {
     const effFrom = overrideFrom !== undefined ? overrideFrom : dateFrom;
     const effTo = overrideTo !== undefined ? overrideTo : dateTo;
+    const effIncludeJournal =
+      overrideIncludeJournal !== undefined ? overrideIncludeJournal : includeJournal;
     if (effFrom && effTo && effFrom > effTo) {
       setError("`From` date must be on or before `To` date.");
       setStatus("");
@@ -130,6 +141,7 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
         date_to: formatDateInput(effTo) || undefined,
         start_key: append ? nextKey || undefined : undefined,
         limit: 50,
+        include_journal: effIncludeJournal || undefined,
       };
       const res = await fetch(`${apiBase}/review_chats/search`, {
         method: "POST",
@@ -283,6 +295,19 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
                 {preset.label}
               </Button>
             ))}
+            <span
+              aria-hidden="true"
+              style={{ alignSelf: "stretch", width: 1, background: "var(--thread)", margin: "0 4px" }}
+            />
+            <Button
+              variant={includeJournal ? "primary" : "ghost"}
+              onClick={toggleIncludeJournal}
+              disabled={!isAuthed || busy || editBusy}
+              aria-pressed={includeJournal}
+              style={{ fontSize: 13, letterSpacing: "0.12em", padding: "14px 26px" }}
+            >
+              Include Journal Entries
+            </Button>
           </div>
 
           <div className="km-row" style={{ gap: 24 }}>
