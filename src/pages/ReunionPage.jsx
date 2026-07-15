@@ -43,6 +43,19 @@ function autoResizeTextarea(el) {
   el.style.height = `${Math.min(el.scrollHeight, 240)}px`;
 }
 
+// Human-friendly source label for a citation (no raw turn ids shown to users).
+function sourceLabel(memory) {
+  return memory?.source_kind === "journal" ? "Journal Entry" : "Interview Moment";
+}
+
+function formatSourceDate(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const dt = new Date(raw);
+  if (Number.isNaN(dt.getTime())) return "";
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "long" }).format(dt);
+}
+
 /**
  * Reunion mode — the Listener experience.
  *
@@ -287,6 +300,9 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
             .map((m) => ({
               memory_id: m.memory_id,
               content: m.content,
+              source_kind: m.source_kind === "journal" ? "journal" : "interview",
+              source_date: typeof m.source_date === "string" ? m.source_date : "",
+              title: typeof m.title === "string" ? m.title : "",
               photos: Array.isArray(m.photos) ? m.photos.filter((p) => p && p.url) : [],
             }))
         : [];
@@ -334,6 +350,9 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
     setActiveSource({
       memory_id: memory.memory_id,
       content: memory.content,
+      source_kind: memory.source_kind,
+      source_date: memory.source_date,
+      title: memory.title,
       photos: Array.isArray(memory.photos) ? memory.photos : [],
     });
   }
@@ -545,7 +564,11 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
                                   className="km-reunion-citation"
                                   data-active={isActive ? "true" : "false"}
                                   onClick={() => openSource(mem)}
-                                  title={`View original passage (${mem.memory_id})`}
+                                  title={`${sourceLabel(mem)}${
+                                    formatSourceDate(mem.source_date)
+                                      ? ` · ${formatSourceDate(mem.source_date)}`
+                                      : ""
+                                  }`}
                                 >
                                   [{i + 1}]
                                 </button>
@@ -654,9 +677,17 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
         </div>
         {activeSource ? (
           <div className="km-reunion-sheet-body">
-            <div className="km-reunion-source-id">
-              <code>{activeSource.memory_id}</code>
+            <div className="km-reunion-source-meta">
+              <span className="km-reunion-source-kind">{sourceLabel(activeSource)}</span>
+              {formatSourceDate(activeSource.source_date) ? (
+                <span className="km-reunion-source-date">
+                  {formatSourceDate(activeSource.source_date)}
+                </span>
+              ) : null}
             </div>
+            {activeSource.source_kind === "journal" && activeSource.title ? (
+              <div className="km-reunion-source-title">{activeSource.title}</div>
+            ) : null}
             <div className="km-reunion-source-body">{activeSource.content}</div>
             {Array.isArray(activeSource.photos) && activeSource.photos.length ? (
               <div className="km-reunion-source-photos">

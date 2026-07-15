@@ -2565,6 +2565,37 @@ a:hover {
   margin-bottom: 10px;
   word-break: break-all;
 }
+.km-reunion-source-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.km-reunion-source-kind {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border: 1px solid var(--crimson);
+  border-radius: 999px;
+  background: var(--cream);
+  color: var(--crimson);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.km-reunion-source-date {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+.km-reunion-source-title {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
 .km-reunion-source-body {
   white-space: pre-wrap;
   font-family: var(--font-body, inherit);
