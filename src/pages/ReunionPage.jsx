@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Radio, X } from "lucide-react";
+import { Camera, ChevronLeft, ChevronRight, Radio, X } from "lucide-react";
 import {
   Banner,
   Button,
@@ -72,6 +72,8 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
 
   // The memory currently open in the bottom sheet, or null when hidden.
   const [activeSource, setActiveSource] = useState(null);
+  // Full-screen photo lightbox: { photos: [...], index } or null.
+  const [gallery, setGallery] = useState(null);
 
   const inputRef = useRef(null);
   const surfaceRef = useRef(null);
@@ -280,10 +282,19 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
         ? parsed.source_turn_ids
         : [];
       const memoriesUsed = Array.isArray(parsed?.memories_used)
-        ? parsed.memories_used.filter(
-            (m) => m && typeof m.memory_id === "string" && typeof m.content === "string",
-          )
+        ? parsed.memories_used
+            .filter((m) => m && typeof m.memory_id === "string" && typeof m.content === "string")
+            .map((m) => ({
+              memory_id: m.memory_id,
+              content: m.content,
+              photos: Array.isArray(m.photos) ? m.photos.filter((p) => p && p.url) : [],
+            }))
         : [];
+      // Flatten all cited photos into one gallery the listener can open without
+      // expanding individual citations.
+      const allPhotos = memoriesUsed.flatMap((m) =>
+        m.photos.map((p) => ({ ...p, memory_id: m.memory_id })),
+      );
       const contextCount = Number(parsed?.context_turn_ids_count || 0);
       const elapsedMs = Number(parsed?.elapsed_ms || 0);
       setMessages((prev) =>
@@ -295,6 +306,7 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
                 pending: false,
                 source_turn_ids: sources,
                 memories_used: memoriesUsed,
+                photos: allPhotos,
                 context_turn_ids_count: contextCount,
                 elapsed_ms: elapsedMs,
               }
@@ -319,8 +331,38 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
 
   function openSource(memory) {
     if (!memory) return;
-    setActiveSource({ memory_id: memory.memory_id, content: memory.content });
+    setActiveSource({
+      memory_id: memory.memory_id,
+      content: memory.content,
+      photos: Array.isArray(memory.photos) ? memory.photos : [],
+    });
   }
+
+  const openGallery = useCallback((photos, index = 0) => {
+    if (!Array.isArray(photos) || !photos.length) return;
+    setGallery({ photos, index: Math.max(0, Math.min(index, photos.length - 1)) });
+  }, []);
+
+  const closeGallery = useCallback(() => setGallery(null), []);
+
+  const stepGallery = useCallback((delta) => {
+    setGallery((g) => {
+      if (!g) return g;
+      const n = g.photos.length;
+      return { ...g, index: (g.index + delta + n) % n };
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!gallery) return undefined;
+    function onKey(e) {
+      if (e.key === "Escape") closeGallery();
+      else if (e.key === "ArrowRight") stepGallery(1);
+      else if (e.key === "ArrowLeft") stepGallery(-1);
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [gallery, closeGallery, stepGallery]);
 
   const sheetOpen = activeSource != null;
 
@@ -474,6 +516,17 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
                   ) : (
                     <>
                       <div style={{ whiteSpace: "pre-wrap" }}>{m.content}</div>
+                      {m.role === "assistant" && Array.isArray(m.photos) && m.photos.length > 0 ? (
+                        <button
+                          type="button"
+                          className="km-reunion-photo-chip"
+                          onClick={() => openGallery(m.photos, 0)}
+                          title="View attached photos"
+                        >
+                          <Camera size={15} strokeWidth={1.6} />
+                          {m.photos.length} {m.photos.length === 1 ? "photo" : "photos"}
+                        </button>
+                      ) : null}
                       {m.role === "assistant" &&
                       Array.isArray(m.memories_used) &&
                       m.memories_used.length > 0 ? (
@@ -605,9 +658,92 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
               <code>{activeSource.memory_id}</code>
             </div>
             <div className="km-reunion-source-body">{activeSource.content}</div>
+            {Array.isArray(activeSource.photos) && activeSource.photos.length ? (
+              <div className="km-reunion-source-photos">
+                <div className="km-mono-label" style={{ marginBottom: 6 }}>Photos</div>
+                <div className="km-reunion-thumbs">
+                  {activeSource.photos.map((p, i) => (
+                    <button
+                      key={p.photo_id || i}
+                      type="button"
+                      className="km-reunion-thumb"
+                      onClick={() => openGallery(activeSource.photos, i)}
+                      title={p.caption || "View photo"}
+                    >
+                      <img src={p.url} alt={p.caption || "Attached photo"} loading="lazy" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>
+
+      {/* Full-screen photo lightbox */}
+      {gallery ? (
+        <div
+          className="km-reunion-lightbox"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Photo viewer"
+          onClick={closeGallery}
+        >
+          <button
+            type="button"
+            className="km-reunion-lightbox-close"
+            onClick={closeGallery}
+            aria-label="Close photos"
+          >
+            <X size={20} aria-hidden="true" />
+          </button>
+          {gallery.photos.length > 1 ? (
+            <button
+              type="button"
+              className="km-reunion-lightbox-nav km-reunion-lightbox-prev"
+              onClick={(e) => {
+                e.stopPropagation();
+                stepGallery(-1);
+              }}
+              aria-label="Previous photo"
+            >
+              <ChevronLeft size={28} aria-hidden="true" />
+            </button>
+          ) : null}
+          <figure
+            className="km-reunion-lightbox-figure"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={gallery.photos[gallery.index]?.url}
+              alt={gallery.photos[gallery.index]?.caption || "Attached photo"}
+            />
+            <figcaption className="km-reunion-lightbox-caption">
+              {gallery.photos[gallery.index]?.caption ? (
+                <span>{gallery.photos[gallery.index].caption}</span>
+              ) : null}
+              {gallery.photos.length > 1 ? (
+                <span className="km-mono-label">
+                  {gallery.index + 1} / {gallery.photos.length}
+                </span>
+              ) : null}
+            </figcaption>
+          </figure>
+          {gallery.photos.length > 1 ? (
+            <button
+              type="button"
+              className="km-reunion-lightbox-nav km-reunion-lightbox-next"
+              onClick={(e) => {
+                e.stopPropagation();
+                stepGallery(1);
+              }}
+              aria-label="Next photo"
+            >
+              <ChevronRight size={28} aria-hidden="true" />
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </Section>
   );
 }

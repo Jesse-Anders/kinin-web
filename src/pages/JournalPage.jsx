@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   Eye,
+  ImagePlus,
   MapPin,
   Pencil,
   Plus,
@@ -14,19 +15,56 @@ import {
 import { Banner, Button, Frame, Section, Spinner, TextArea, TextInput } from "../theme";
 import DictationMic from "../components/DictationMic";
 import {
+  confirmPhoto,
   createEntry,
   deleteEntry,
+  deletePhoto,
   getEntry,
   listEntries,
+  presignPhoto,
   reviewEntry,
   saveEntry,
   updateEntry,
+  updatePhotoCaption,
+  uploadPhotoToS3,
 } from "../services/journalClient";
 import { updatePin } from "../services/pinsClient";
 
 const TITLE_MAX_CHARS = 200;
 const REVIEW_MAX_WORDS = 6000;
 const AUTOSAVE_DEBOUNCE_MS = 1200;
+const MAX_PHOTOS = 3;
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
+const PHOTO_CAPTION_MAX = 300;
+const SUPPORTED_PHOTO_MIME = ["image/jpeg", "image/png", "image/webp"];
+
+// Convert iOS HEIC/HEIF to JPEG on-device (most browsers can't render HEIC).
+// Non-HEIC files are returned untouched (we store originals, no recompression).
+async function prepareImageFile(file) {
+  const isHeic = /heic|heif/i.test(file.type) || /\.hei[cf]$/i.test(file.name);
+  if (!isHeic) return file;
+  const { default: heic2any } = await import("heic2any");
+  const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.92 });
+  const blob = Array.isArray(converted) ? converted[0] : converted;
+  const name = file.name.replace(/\.(heic|heif)$/i, ".jpg") || "photo.jpg";
+  return new File([blob], name, { type: "image/jpeg" });
+}
+
+function readImageDims(file) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      resolve({ width: img.naturalWidth || 0, height: img.naturalHeight || 0 });
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => {
+      resolve({ width: 0, height: 0 });
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  });
+}
 
 const NOTE_LABELS = {
   thin: "Feels thin",
@@ -149,6 +187,10 @@ export default function JournalPage({
   const [sourcePinCompleted, setSourcePinCompleted] = useState(false);
   const [completingPin, setCompletingPin] = useState(false);
 
+  const [attachments, setAttachments] = useState([]);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoInputRef = useRef(null);
+
   const [autosave, setAutosave] = useState("idle"); // idle | saving | saved
   const [view, setView] = useState("write"); // write | preview
   const [savingEntry, setSavingEntry] = useState(false);
@@ -223,6 +265,7 @@ export default function JournalPage({
         setEntryStatus(entry.status || "draft");
         setSourcePinId(entry.source_pin_id || "");
         setSourcePinCompleted(Boolean(entry.source_pin_completed));
+        setAttachments(Array.isArray(entry.attachments) ? entry.attachments : []);
         savedSnapshotRef.current = { title: entry.title || "", body: entry.body || "" };
         setAutosave("idle");
       }
@@ -249,6 +292,7 @@ export default function JournalPage({
         setEntryStatus("draft");
         setSourcePinId(entry.source_pin_id || "");
         setSourcePinCompleted(Boolean(entry.source_pin_completed));
+        setAttachments([]);
         savedSnapshotRef.current = { title: entry.title || "", body: "" };
         setNotes([]);
         setFixes([]);
@@ -356,6 +400,7 @@ export default function JournalPage({
       setActiveId("");
       setTitle("");
       setBody("");
+      setAttachments([]);
       setNotes([]);
       setFixes([]);
       setReviewMode("");
@@ -389,6 +434,108 @@ export default function JournalPage({
       setError(describeError("Couldn't mark the linked pin complete", e));
     } finally {
       setCompletingPin(false);
+    }
+  }
+
+  async function handleAddPhotos(fileList) {
+    if (!activeId) return;
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    const remaining = MAX_PHOTOS - attachments.length;
+    if (remaining <= 0) {
+      setError(`You can attach up to ${MAX_PHOTOS} photos per entry.`);
+      return;
+    }
+    setError("");
+    setStatusMsg("");
+    setUploadingPhoto(true);
+    try {
+      const token = await getAccessToken();
+      let latest = attachments;
+      for (const raw of files.slice(0, remaining)) {
+        let file;
+        try {
+          file = await prepareImageFile(raw);
+        } catch {
+          setError("Couldn't read that image (HEIC conversion failed).");
+          continue;
+        }
+        const mime = file.type;
+        if (!SUPPORTED_PHOTO_MIME.includes(mime)) {
+          setError("Unsupported image type. Use JPEG, PNG, or WebP.");
+          continue;
+        }
+        if (file.size > MAX_PHOTO_BYTES) {
+          setError(`Each photo must be under ${Math.round(MAX_PHOTO_BYTES / 1024 / 1024)}MB.`);
+          continue;
+        }
+        const dims = await readImageDims(file);
+        const pre = await presignPhoto({
+          apiBase,
+          token,
+          entryId: activeId,
+          mime,
+          bytes: file.size,
+          filename: file.name,
+        });
+        await uploadPhotoToS3({ uploadUrl: pre.upload_url, file, mime });
+        const confirmed = await confirmPhoto({
+          apiBase,
+          token,
+          entryId: activeId,
+          photoId: pre.photo_id,
+          mime,
+          width: dims.width,
+          height: dims.height,
+          caption: "",
+        });
+        if (Array.isArray(confirmed?.attachments)) latest = confirmed.attachments;
+        setAttachments(latest);
+      }
+      const count = latest.length;
+      setEntries((prev) =>
+        prev.map((e) => (e.entry_id === activeId ? { ...e, photo_count: count } : e)),
+      );
+    } catch (e) {
+      setError(describeError("Couldn't attach that photo", e));
+    } finally {
+      setUploadingPhoto(false);
+      if (photoInputRef.current) photoInputRef.current.value = "";
+    }
+  }
+
+  async function handleRemovePhoto(photoId) {
+    if (!activeId || !photoId) return;
+    const confirmed = window.confirm("Remove this photo from the entry? This cannot be undone.");
+    if (!confirmed) return;
+    setError("");
+    try {
+      const token = await getAccessToken();
+      const data = await deletePhoto({ apiBase, token, entryId: activeId, photoId });
+      const next = Array.isArray(data?.attachments) ? data.attachments : [];
+      setAttachments(next);
+      setEntries((prev) =>
+        prev.map((e) => (e.entry_id === activeId ? { ...e, photo_count: next.length } : e)),
+      );
+    } catch (e) {
+      setError(describeError("Couldn't remove that photo", e));
+    }
+  }
+
+  function handleCaptionChange(photoId, value) {
+    setAttachments((prev) =>
+      prev.map((a) => (a.photo_id === photoId ? { ...a, caption: value.slice(0, PHOTO_CAPTION_MAX) } : a)),
+    );
+  }
+
+  async function handleCaptionBlur(photoId) {
+    const att = attachments.find((a) => a.photo_id === photoId);
+    if (!att) return;
+    try {
+      const token = await getAccessToken();
+      await updatePhotoCaption({ apiBase, token, entryId: activeId, photoId, caption: att.caption || "" });
+    } catch (e) {
+      setError(describeError("Couldn't save that caption", e));
     }
   }
 
@@ -653,6 +800,69 @@ export default function JournalPage({
                     Reviews are limited to {REVIEW_MAX_WORDS.toLocaleString()} words. This entry has {words.toLocaleString()}.
                   </div>
                 ) : null}
+
+                {/* Photo attachments */}
+                <div className="km-stack" style={{ gap: 8 }}>
+                  <div className="km-row" style={{ justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                    <span className="km-mono-label">
+                      Photos ({attachments.length}/{MAX_PHOTOS})
+                    </span>
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
+                      multiple
+                      style={{ display: "none" }}
+                      onChange={(ev) => handleAddPhotos(ev.target.files)}
+                    />
+                    <Button
+                      size="sm"
+                      onClick={() => photoInputRef.current?.click()}
+                      disabled={!isAuthed || uploadingPhoto || attachments.length >= MAX_PHOTOS}
+                    >
+                      {uploadingPhoto ? <Spinner /> : <ImagePlus size={15} strokeWidth={1.5} />} Add photo
+                    </Button>
+                  </div>
+
+                  {attachments.length ? (
+                    <div className="km-journal-photos">
+                      {attachments.map((att) => (
+                        <div key={att.photo_id} className="km-journal-photo">
+                          <div className="km-journal-photo-frame">
+                            {att.url ? (
+                              <img src={att.url} alt={att.caption || "Journal photo"} loading="lazy" />
+                            ) : (
+                              <div className="km-journal-photo-fallback">Photo</div>
+                            )}
+                            <button
+                              type="button"
+                              className="km-journal-photo-remove"
+                              onClick={() => handleRemovePhoto(att.photo_id)}
+                              aria-label="Remove photo"
+                              title="Remove photo"
+                            >
+                              <X size={14} strokeWidth={2} />
+                            </button>
+                          </div>
+                          <TextInput
+                            value={att.caption || ""}
+                            onChange={(ev) => handleCaptionChange(att.photo_id, ev.target.value)}
+                            onBlur={() => handleCaptionBlur(att.photo_id)}
+                            placeholder="Add a caption (optional)"
+                            maxLength={PHOTO_CAPTION_MAX}
+                            disabled={!isAuthed}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {attachments.length ? (
+                    <div className="km-form-help">
+                      Photos are shared with family in Reunion once you Save this entry to your story.
+                    </div>
+                  ) : null}
+                </div>
 
                 <div className="km-row" style={{ gap: 8, flexWrap: "wrap", justifyContent: "space-between" }}>
                   <div className="km-row" style={{ gap: 8, flexWrap: "wrap", alignItems: "center" }}>

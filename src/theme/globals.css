@@ -2572,3 +2572,184 @@ a:hover {
   line-height: 1.6;
 }
 
+/* ─── Journal photo attachments ─── */
+.km-journal-photos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.km-journal-photo {
+  width: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.km-journal-photo-frame {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  border: 1px solid var(--thread);
+  background: var(--cream-warm);
+  overflow: hidden;
+  border-radius: 4px;
+}
+.km-journal-photo-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.km-journal-photo-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+.km-journal-photo-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  cursor: pointer;
+  transition: background var(--t-fast);
+}
+.km-journal-photo-remove:hover {
+  background: rgba(0, 0, 0, 0.82);
+}
+
+/* ─── Reunion photos (chip, thumbnails, lightbox) ─── */
+.km-reunion-photo-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 5px 12px;
+  border: 1px solid var(--crimson);
+  border-radius: 999px;
+  background: var(--cream);
+  color: var(--crimson);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: all var(--t-fast);
+}
+.km-reunion-photo-chip:hover {
+  background: var(--crimson);
+  color: var(--cream);
+}
+.km-reunion-source-photos {
+  margin-top: 16px;
+}
+.km-reunion-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.km-reunion-thumb {
+  width: 72px;
+  height: 72px;
+  padding: 0;
+  border: 1px solid var(--thread);
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--cream-warm);
+}
+.km-reunion-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.km-reunion-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.9);
+  padding: 24px;
+}
+.km-reunion-lightbox-figure {
+  margin: 0;
+  max-width: 92vw;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.km-reunion-lightbox-figure img {
+  max-width: 92vw;
+  max-height: 78vh;
+  object-fit: contain;
+  border-radius: 4px;
+}
+.km-reunion-lightbox-caption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: #f2f2f2;
+  text-align: center;
+  font-size: 14px;
+}
+.km-reunion-lightbox-caption .km-mono-label {
+  color: rgba(255, 255, 255, 0.7);
+}
+.km-reunion-lightbox-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  cursor: pointer;
+}
+.km-reunion-lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+.km-reunion-lightbox-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  cursor: pointer;
+}
+.km-reunion-lightbox-nav:hover {
+  background: rgba(255, 255, 255, 0.26);
+}
+.km-reunion-lightbox-prev {
+  left: 16px;
+}
+.km-reunion-lightbox-next {
+  right: 16px;
+}
+

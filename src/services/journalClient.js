@@ -84,3 +84,54 @@ export async function saveEntry({ apiBase, token, entryId, title, body } = {}) {
     body: { title, body },
   });
 }
+
+// --- Media attachments (journal photos) --------------------------------------
+
+// Step 1: ask the server for a presigned S3 PUT URL for one photo.
+export async function presignPhoto({ apiBase, token, entryId, mime, bytes, filename } = {}) {
+  return request(apiBase, token, `/journal/${encodeURIComponent(entryId)}/media/presign`, {
+    method: "POST",
+    body: { mime, bytes, filename },
+  });
+}
+
+// Step 2: upload the bytes straight to S3. No Authorization header — the URL is
+// pre-signed. The Content-Type MUST match what was signed (the photo's mime).
+export async function uploadPhotoToS3({ uploadUrl, file, mime } = {}) {
+  const res = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Type": mime || file.type || "application/octet-stream" },
+    body: file,
+  });
+  if (!res.ok) {
+    const err = new Error(`Photo upload failed (${res.status})`);
+    err.status = res.status;
+    throw err;
+  }
+}
+
+// Step 3: confirm the upload so the server records attachment metadata.
+export async function confirmPhoto({ apiBase, token, entryId, photoId, mime, width, height, caption } = {}) {
+  return request(apiBase, token, `/journal/${encodeURIComponent(entryId)}/media`, {
+    method: "POST",
+    body: { photo_id: photoId, mime, width, height, caption },
+  });
+}
+
+export async function updatePhotoCaption({ apiBase, token, entryId, photoId, caption } = {}) {
+  return request(
+    apiBase,
+    token,
+    `/journal/${encodeURIComponent(entryId)}/media/${encodeURIComponent(photoId)}`,
+    { method: "PATCH", body: { caption } }
+  );
+}
+
+export async function deletePhoto({ apiBase, token, entryId, photoId } = {}) {
+  return request(
+    apiBase,
+    token,
+    `/journal/${encodeURIComponent(entryId)}/media/${encodeURIComponent(photoId)}`,
+    { method: "DELETE" }
+  );
+}
