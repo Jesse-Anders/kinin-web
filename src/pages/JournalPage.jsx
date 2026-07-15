@@ -519,14 +519,6 @@ export default function JournalPage({
           spelling — it never rewrites your voice. Save an entry to add it to your
           story.
         </p>
-        {onOpenHelp ? (
-          <p style={{ marginTop: 10, marginBottom: 0 }}>
-            Questions about editing, privacy, or your account?{" "}
-            <button type="button" className="km-help-entry-link" onClick={onOpenHelp}>
-              Kinin Help
-            </button>
-          </p>
-        ) : null}
       </div>
 
       {statusMsg ? (
@@ -633,6 +625,15 @@ export default function JournalPage({
                     {deleting ? <Spinner /> : <Trash2 size={16} strokeWidth={1.5} />} Delete
                   </Button>
                 </div>
+
+                {onOpenHelp ? (
+                  <div className="km-form-help">
+                    Questions about editing, privacy, or your account?{" "}
+                    <button type="button" className="km-help-entry-link" onClick={onOpenHelp}>
+                      Kinin Help
+                    </button>
+                  </div>
+                ) : null}
 
                 {sourcePinId ? (
                   <div className="km-row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap" }}>

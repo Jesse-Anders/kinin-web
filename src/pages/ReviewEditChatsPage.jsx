@@ -43,6 +43,7 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
   const [editDraft, setEditDraft] = useState("");
   const [editBusy, setEditBusy] = useState(false);
   const [didInitialLoad, setDidInitialLoad] = useState(false);
+  const [activePreset, setActivePreset] = useState(null);
 
   useEffect(() => {
     if (!isAuthed || didInitialLoad) return;
@@ -95,6 +96,7 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
   function applyDatePreset(days) {
     const preset = computeDatePreset(days);
     if (!preset) return;
+    setActivePreset(days);
     setDateFrom(preset.from);
     setDateTo(preset.to);
     searchChats({ append: false, overrideFrom: preset.from, overrideTo: preset.to });
@@ -104,6 +106,7 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
     setQuery("");
     setDateFrom("");
     setDateTo("");
+    setActivePreset(null);
     setError("");
     setStatus("Filters cleared.");
   }
@@ -262,19 +265,24 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
             />
           </div>
 
-          <div className="km-row" style={{ gap: 8 }}>
-            <Button size="sm" onClick={() => applyDatePreset(7)} disabled={!isAuthed || busy || editBusy}>
-              Last 7 days
-            </Button>
-            <Button size="sm" onClick={() => applyDatePreset(30)} disabled={!isAuthed || busy || editBusy}>
-              Last 30 days
-            </Button>
-            <Button size="sm" onClick={() => applyDatePreset("month")} disabled={!isAuthed || busy || editBusy}>
-              This month
-            </Button>
-            <Button size="sm" onClick={() => applyDatePreset("all")} disabled={!isAuthed || busy || editBusy}>
-              All time
-            </Button>
+          <div className="km-row" style={{ gap: 10, flexWrap: "wrap" }}>
+            {[
+              { key: 7, label: "Last 7 days" },
+              { key: 30, label: "Last 30 days" },
+              { key: "month", label: "This month" },
+              { key: "all", label: "All time" },
+            ].map((preset) => (
+              <Button
+                key={String(preset.key)}
+                variant={activePreset === preset.key ? "primary" : "ghost"}
+                onClick={() => applyDatePreset(preset.key)}
+                disabled={!isAuthed || busy || editBusy}
+                aria-pressed={activePreset === preset.key}
+                style={{ fontSize: 13, letterSpacing: "0.12em", padding: "14px 26px" }}
+              >
+                {preset.label}
+              </Button>
+            ))}
           </div>
 
           <div className="km-row" style={{ gap: 24 }}>
@@ -283,7 +291,10 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
               <TextInput
                 type="date"
                 value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
+                onChange={(e) => {
+                  setActivePreset(null);
+                  setDateFrom(e.target.value);
+                }}
                 aria-label="From date"
                 disabled={!isAuthed || busy || editBusy}
               />
@@ -293,7 +304,10 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
               <TextInput
                 type="date"
                 value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
+                onChange={(e) => {
+                  setActivePreset(null);
+                  setDateTo(e.target.value);
+                }}
                 aria-label="To date"
                 disabled={!isAuthed || busy || editBusy}
               />
