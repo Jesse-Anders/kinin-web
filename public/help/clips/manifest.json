@@ -1,0 +1,10 @@
+{
+  "description": "Short, muted, looping feature walkthrough clips shown in the in-app Help menu ('Watch a quick video'). Keep each clip under ~60 seconds. Provide an .mp4 (H.264) plus a timed .vtt captions file and, optionally, replace the placeholder .poster.svg with a real poster frame. GIFs (.gif) are also supported by the ClipLightbox if preferred over video.",
+  "clips": {
+    "interview": { "video": "interview.mp4", "poster": "interview.poster.svg", "captions": "interview.vtt" },
+    "journal": { "video": "journal.mp4", "poster": "journal.poster.svg", "captions": "journal.vtt" },
+    "pins": { "video": "pins.mp4", "poster": "pins.poster.svg", "captions": "pins.vtt" },
+    "reunion": { "video": "reunion.mp4", "poster": "reunion.poster.svg", "captions": "reunion.vtt" },
+    "review-chats": { "video": "review-chats.mp4", "poster": "review-chats.poster.svg", "captions": "review-chats.vtt" }
+  }
+}

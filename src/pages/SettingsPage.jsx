@@ -36,12 +36,17 @@ export default function SettingsPage({
   // reunion
   reunionSettings,
   saveReunionEnabled,
+  // help & tips
+  helpTipsEnabled,
+  saveHelpTipsEnabled,
+  replayWalkthroughs,
   apiBase,
   getAccessToken,
   // interview
   interviewDetails,
 }) {
   const reunionEnabled = reunionSettings?.enabled !== false;
+  const helpTipsOn = helpTipsEnabled !== false;
   const voiceFeaturesOn = voiceFeaturesEnabled === true;
   const cadenceValue = String(continuitySettings?.reminder_cadence_weeks ?? 2);
   const canManageShares =
@@ -55,6 +60,7 @@ export default function SettingsPage({
   const [shareNotice, setShareNotice] = useState("");
   const [shareEmail, setShareEmail] = useState("");
   const [shareRelationship, setShareRelationship] = useState("");
+  const [replayNotice, setReplayNotice] = useState("");
 
   const loadShares = useCallback(async () => {
     if (!canManageShares) return;
@@ -345,6 +351,65 @@ export default function SettingsPage({
                   <span>Text <span className="km-muted">— coming soon</span></span>
                 </label>
               </div>
+            </div>
+          </Frame>
+        ) : null}
+
+        {category === "help" ? (
+          <Frame label="Help & tips">
+            <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
+              <p>
+                Kinin can show short, friendly pop-up tips and a quick guided
+                tour the first time you visit each part of the app. You can turn
+                these off any time, and turn them back on whenever you like.
+              </p>
+            </div>
+            <label className="km-checkbox">
+              <input
+                type="checkbox"
+                checked={helpTipsOn}
+                onChange={(e) => {
+                  setReplayNotice("");
+                  if (saveHelpTipsEnabled) saveHelpTipsEnabled(e.target.checked);
+                }}
+                disabled={profileBusy || !saveHelpTipsEnabled}
+              />
+              <span>
+                <strong>
+                  Helpful tips and walkthroughs are {helpTipsOn ? "on" : "off"}.
+                </strong>
+                {" "}
+                {helpTipsOn
+                  ? "You'll see a short guided tour the first time you open each page."
+                  : "You won't see guided tours automatically. You can still open them anytime from the Help button."}
+              </span>
+            </label>
+
+            <div style={{ marginTop: 28 }}>
+              <div className="km-mono-label" style={{ marginBottom: 12 }}>
+                Start the tours over
+              </div>
+              <div className="km-prose" style={{ maxWidth: 560, marginBottom: 14 }}>
+                <p>
+                  Already seen the tours? You can replay them. The next time you
+                  visit each page, its guided tour will appear again.
+                </p>
+              </div>
+              <Button
+                onClick={async () => {
+                  setReplayNotice("");
+                  const ok = replayWalkthroughs ? await replayWalkthroughs() : false;
+                  if (ok) setReplayNotice("Done — the tours will show again as you visit each page.");
+                }}
+                disabled={profileBusy || !replayWalkthroughs}
+              >
+                Replay walkthroughs
+              </Button>
+              {replayNotice ? (
+                <div style={{ marginTop: 12 }}>
+                  <Banner tone="info">{replayNotice}</Banner>
+                </div>
+              ) : null}
             </div>
           </Frame>
         ) : null}

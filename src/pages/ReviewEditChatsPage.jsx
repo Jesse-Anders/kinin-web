@@ -265,6 +265,7 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
         </p>
       </div>
 
+      <div data-help-anchor="review-filters">
       <Frame label="Filters">
         <div className="km-stack" style={{ gap: 18 }}>
           <div>
@@ -375,6 +376,7 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
           </div>
         </div>
       </Frame>
+      </div>
 
       {status ? (
         <div style={{ marginTop: 20 }}>
@@ -387,7 +389,7 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
         </div>
       ) : null}
 
-      <div className="km-review-results">
+      <div className="km-review-results" data-help-anchor="review-results">
         {orderedItems.length ? (
           orderedItems.map((item, idx) => {
             const rowTurnId = String(item?.turn_id || "");

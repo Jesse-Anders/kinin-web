@@ -67,6 +67,14 @@ import AdminThemeStudioPage from "./pages/AdminThemeStudioPage";
 import AdminEmailStudioPage from "./pages/AdminEmailStudioPage";
 import InterviewDetailsPanel from "./components/InterviewDetailsPanel";
 import HelpMode from "./components/HelpMode";
+import HelpMenu from "./components/HelpMenu";
+import Walkthrough from "./components/Walkthrough";
+import ClipLightbox from "./components/ClipLightbox";
+import {
+  getWalkthrough,
+  hasWalkthrough,
+  WALKTHROUGH_PAGE_KEYS,
+} from "./help/walkthroughs";
 import {
   Banner,
   Button,
@@ -194,6 +202,7 @@ const PAGE_TO_PATH = {
   "settings-reminders": "/settings/reminders",
   "settings-reunion": "/settings/reunion",
   "settings-interview": "/settings/interview",
+  "settings-help": "/settings/help",
 };
 // Settings category pages, in menu order. Kept as data so the breakout menu
 // and the routing/render switch stay in sync.
@@ -202,6 +211,7 @@ const SETTINGS_CATEGORIES = [
   { id: "reminders", page: "settings-reminders", label: "Reminders", blurb: "How often Kinin checks back in." },
   { id: "reunion", page: "settings-reunion", label: "Reunion", blurb: "Who can hear your story, and the on/off switch." },
   { id: "interview", page: "settings-interview", label: "Interview details", blurb: "Behind-the-scenes session context." },
+  { id: "help", page: "settings-help", label: "Help & tips", blurb: "Guided tours and helpful pop-up tips." },
 ];
 const SETTINGS_PAGE_TO_CATEGORY = Object.fromEntries(
   SETTINGS_CATEGORIES.map((c) => [c.page, c.id]),
@@ -265,6 +275,13 @@ export default function App() {
   const [helpSessionId, setHelpSessionId] = useState("");
   const [helpChat, setHelpChat] = useState([]);
   const [helpBusy, setHelpBusy] = useState(false);
+  // Coach-mark tour + clip-lightbox UI state (see HelpMenu / Walkthrough /
+  // ClipLightbox). `tourPage` freezes which page's steps are running so a mid-
+  // tour navigation can't swap the steps out from under the user.
+  const [tourRun, setTourRun] = useState(false);
+  const [tourPage, setTourPage] = useState("");
+  const [tourSteps, setTourSteps] = useState([]);
+  const [clipPage, setClipPage] = useState("");
   const [isSendingTurn, setIsSendingTurn] = useState(false);
   const [isStartingSession, setIsStartingSession] = useState(false);
   const [startingPinId, setStartingPinId] = useState("");
@@ -297,6 +314,11 @@ export default function App() {
   // "Enable voice features" paid add-on (voice input, storage, Reunion
   // playback/reenactment). Defaults OFF — opt-in feature set, not a default.
   const [voiceFeaturesEnabled, setVoiceFeaturesEnabled] = useState(false);
+  // In-app help / onboarding. `tips_enabled` gates first-visit auto-launch of
+  // per-page walkthroughs; `walkthroughs_seen` records which page tours a user
+  // has already been shown so they auto-launch only once. Persisted on the
+  // profile so the state follows the user across devices. Defaults ON.
+  const [helpPrefs, setHelpPrefs] = useState({ tips_enabled: true, walkthroughs_seen: {} });
   // Voice-to-text (dictation) recording state — Phase 1: transient, no storage.
   const [isRecording, setIsRecording] = useState(false);
   const [sttBusy, setSttBusy] = useState(false);
@@ -1327,6 +1349,20 @@ export default function App() {
     );
   }
 
+  function applyHelpPreferencesFromPayload(parsed) {
+    const hp = parsed?.help_preferences;
+    if (!hp || typeof hp !== "object") return;
+    const seen =
+      hp.walkthroughs_seen && typeof hp.walkthroughs_seen === "object"
+        ? hp.walkthroughs_seen
+        : {};
+    setHelpPrefs({
+      // Default ON: only an explicit false disables tips.
+      tips_enabled: hp.tips_enabled !== false,
+      walkthroughs_seen: { ...seen },
+    });
+  }
+
   function applyBioProfileFromPayload(parsed) {
     const bp = parsed?.biography_user_profile || {};
     // Sticky required fields: never blank a populated name/DOB from a response
@@ -1379,6 +1415,7 @@ export default function App() {
     applyAccountExecutorFromPayload(parsed);
     applyReunionSettingsFromPayload(parsed);
     applyVoiceFeaturesFromPayload(parsed);
+    applyHelpPreferencesFromPayload(parsed);
   }
 
   function normalizedExecutorDraft() {
@@ -2134,6 +2171,86 @@ export default function App() {
     setHelpMode(false);
   }
 
+  // ---- In-app help walkthroughs (coach marks + clips) ---------------------
+
+  // Resolve a page's steps to only those whose anchor is currently on-screen
+  // (the centered "welcome" step targets body and is always kept). This keeps a
+  // tour robust across empty/loading states so react-joyride never stalls on a
+  // missing target.
+  function resolveTourSteps(pageKey) {
+    const wt = getWalkthrough(pageKey);
+    if (!wt) return [];
+    return wt.steps.filter(
+      (s) => s.target === "body" || document.querySelector(s.target),
+    );
+  }
+
+  // A page has a launchable tour when it has a walkthrough and at least one of
+  // its steps resolves. The interview tour is suppressed while Ask Kinin (help
+  // mode) has replaced the interview surface.
+  function pageHasTour(pageKey) {
+    if (!hasWalkthrough(pageKey)) return false;
+    if (pageKey === "interview" && helpMode) return false;
+    return true;
+  }
+
+  function startTour(pageKey) {
+    if (pageKey === "interview" && helpMode) return;
+    const steps = resolveTourSteps(pageKey);
+    if (!steps.length) return;
+    setTourPage(pageKey);
+    setTourSteps(steps);
+    setTourRun(true);
+  }
+
+  function handleTourDone() {
+    setTourRun(false);
+    setTourSteps([]);
+    const finishedPage = tourPage;
+    setTourPage("");
+    if (finishedPage) void markWalkthroughSeen(finishedPage);
+  }
+
+  function openClip(pageKey) {
+    if (!getWalkthrough(pageKey)?.clip) return;
+    setClipPage(pageKey);
+  }
+
+  // Pages whose first-visit tour we've already attempted this session, so a
+  // page that can't yet resolve its anchors doesn't retry on every render.
+  const autoTourAttemptedRef = useRef(new Set());
+
+  // First-visit auto-launch: when help tips are on and the current page's tour
+  // has never been seen, launch it once (after a short delay so the page's
+  // anchors have mounted). Runs at most once per page per session.
+  useEffect(() => {
+    if (!isAuthed || accessBlocked) return undefined;
+    if (!helpPrefs.tips_enabled) return undefined;
+    if (tourRun || clipPage) return undefined;
+    const key = activePage;
+    if (!pageHasTour(key)) return undefined;
+    if (helpPrefs.walkthroughs_seen?.[key]) return undefined;
+    if (autoTourAttemptedRef.current.has(key)) return undefined;
+    const timer = setTimeout(() => {
+      autoTourAttemptedRef.current.add(key);
+      // Re-check conditions at fire time (page/help state may have changed).
+      if (helpPrefs.walkthroughs_seen?.[key]) return;
+      if (!pageHasTour(key)) return;
+      startTour(key);
+    }, 700);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    activePage,
+    isAuthed,
+    accessBlocked,
+    helpMode,
+    helpPrefs.tips_enabled,
+    helpPrefs.walkthroughs_seen,
+    tourRun,
+    clipPage,
+  ]);
+
   async function sendTurn() {
     setError("");
     const trimmedMessage = message.trim();
@@ -2633,6 +2750,71 @@ export default function App() {
     }
   }
 
+  // Toggle "show helpful tips and walkthroughs" (optimistic + revert on error).
+  async function saveHelpTipsEnabled(nextEnabled) {
+    if (!isAuthed) return false;
+    const desired = !!nextEnabled;
+    const previous = helpPrefs;
+    setProfileError("");
+    setHelpPrefs((prev) => ({ ...prev, tips_enabled: desired }));
+    try {
+      const parsed = await putProfile({ help_preferences: { tips_enabled: desired } });
+      applyHelpPreferencesFromPayload(parsed);
+      return true;
+    } catch (e) {
+      setHelpPrefs(previous);
+      setProfileErrorFromException(e);
+      return false;
+    }
+  }
+
+  // Record that a page's coach-mark tour has been shown so it does not
+  // auto-launch again. Merge-patch: the backend merges into walkthroughs_seen.
+  async function markWalkthroughSeen(pageKey) {
+    if (!isAuthed || !pageKey) return false;
+    if (helpPrefs.walkthroughs_seen?.[pageKey]) return true;
+    const previous = helpPrefs;
+    setHelpPrefs((prev) => ({
+      ...prev,
+      walkthroughs_seen: { ...prev.walkthroughs_seen, [pageKey]: true },
+    }));
+    try {
+      const parsed = await putProfile({
+        help_preferences: { walkthroughs_seen: { [pageKey]: true } },
+      });
+      applyHelpPreferencesFromPayload(parsed);
+      return true;
+    } catch (e) {
+      setHelpPrefs(previous);
+      setProfileErrorFromException(e);
+      return false;
+    }
+  }
+
+  // Reset all seen flags so every page tour auto-launches again (Settings
+  // "Replay walkthroughs"). Clears local state and overwrites the server map.
+  async function replayWalkthroughs() {
+    if (!isAuthed) return false;
+    const previous = helpPrefs;
+    setProfileError("");
+    const cleared = WALKTHROUGH_PAGE_KEYS.reduce((acc, key) => {
+      acc[key] = false;
+      return acc;
+    }, {});
+    setHelpPrefs((prev) => ({ ...prev, walkthroughs_seen: {} }));
+    try {
+      const parsed = await putProfile({
+        help_preferences: { walkthroughs_seen: cleared },
+      });
+      applyHelpPreferencesFromPayload(parsed);
+      return true;
+    } catch (e) {
+      setHelpPrefs(previous);
+      setProfileErrorFromException(e);
+      return false;
+    }
+  }
+
   // ---- Voice-to-text dictation (Phase 1: transient, no storage) ----
   const STT_MAX_RECORD_MS = 180000; // 3-minute cap
 
@@ -3060,6 +3242,25 @@ export default function App() {
 
   return (
     <div className="km-app-shell">
+      {showNavigation ? (
+        <HelpMenu
+          hasTour={pageHasTour(activePage)}
+          hasClip={Boolean(getWalkthrough(activePage)?.clip)}
+          canAsk={isAuthed && !accessBlocked}
+          onShowTour={() => startTour(activePage)}
+          onAskKinin={() => openHelpMode()}
+          onWatchClip={() => openClip(activePage)}
+        />
+      ) : null}
+      {showNavigation ? (
+        <Walkthrough steps={tourSteps} run={tourRun} onDone={handleTourDone} />
+      ) : null}
+      {clipPage ? (
+        <ClipLightbox
+          clip={getWalkthrough(clipPage)?.clip}
+          onClose={() => setClipPage("")}
+        />
+      ) : null}
       {showNavigation ? (
       <aside className={`km-sidebar ${menuOpen ? "is-open" : ""}`} ref={sidebarRef}>
         <button
@@ -3588,6 +3789,9 @@ export default function App() {
           saveReminderCadence={saveReminderCadence}
           reunionSettings={reunionSettings}
           saveReunionEnabled={saveReunionEnabled}
+          helpTipsEnabled={helpPrefs.tips_enabled !== false}
+          saveHelpTipsEnabled={saveHelpTipsEnabled}
+          replayWalkthroughs={replayWalkthroughs}
           apiBase={API_BASE}
           getAccessToken={getAccessToken}
           interviewDetails={{
@@ -3629,7 +3833,7 @@ export default function App() {
         />
       ) : (
         <div>
-          <div className="km-chat-surface km-chat">
+          <div className="km-chat-surface km-chat" data-help-anchor="interview-chat">
             {chat.length === 0 ? (
               isStartingSession ? (
                 <div className="km-chat-loading">
@@ -3666,7 +3870,7 @@ export default function App() {
             )}
           </div>
 
-          <div className="km-chat-input-row">
+          <div className="km-chat-input-row" data-help-anchor="interview-composer">
             <textarea
               ref={messageInputRef}
               value={

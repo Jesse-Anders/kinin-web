@@ -912,6 +912,193 @@ a:hover {
   line-height: 1.4;
 }
 
+/* ─── Help menu (persistent top-right entry point) ─────────────────────────
+   One predictable, clearly-labeled place for all help. Fixed to the top-right
+   on every page. Large targets and text for the 65+ audience. ─────────────── */
+.km-help-menu {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1100;
+}
+.km-help-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 10px 18px;
+  border: 1px solid var(--sage-deep);
+  background: var(--cream);
+  color: var(--sage-deep);
+  font-family: var(--font-body);
+  font-size: 17px;
+  font-weight: 500;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(33, 27, 23, 0.12);
+  transition: background var(--t-fast), color var(--t-fast);
+}
+.km-help-menu-btn:hover { background: var(--sage-deep); color: var(--cream); }
+.km-help-menu-btn:focus-visible {
+  outline: 3px solid var(--sage);
+  outline-offset: 2px;
+}
+.km-help-menu-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 288px;
+  background: var(--cream);
+  border: 1px solid var(--sage);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 28px rgba(33, 27, 23, 0.18);
+  padding: 8px;
+  animation: km-help-menu-in var(--t-fast) ease-out;
+}
+@keyframes km-help-menu-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .km-help-menu-popover { animation: none; }
+}
+.km-help-menu-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  border-bottom: 1px solid var(--thread-soft);
+  margin-bottom: 6px;
+}
+.km-help-menu-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  border-radius: 50%;
+}
+.km-help-menu-x:hover { background: var(--cream-deep); color: var(--ink); }
+.km-help-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 12px;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 17px;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius);
+}
+.km-help-menu-item:hover { background: var(--cream-deep); }
+.km-help-menu-item:focus-visible {
+  outline: 3px solid var(--sage);
+  outline-offset: -2px;
+}
+.km-help-menu-item-icon { flex-shrink: 0; color: var(--sage-deep); }
+
+@media (max-width: 768px) {
+  /* Nudge below the mobile hamburger so it never overlaps navigation. */
+  .km-help-menu { top: 12px; right: 12px; }
+  .km-help-menu-btn { min-height: 44px; padding: 9px 14px; }
+  .km-help-menu-popover {
+    min-width: 0;
+    width: min(320px, calc(100vw - 24px));
+  }
+}
+
+/* ─── Clip lightbox (short looping feature walkthroughs) ───────────────────── */
+.km-clip-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 13000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(33, 27, 23, 0.6);
+}
+.km-clip-dialog {
+  width: min(720px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  background: var(--cream);
+  border: 1px solid var(--sage);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 40px rgba(33, 27, 23, 0.32);
+  padding: 18px 18px 20px;
+}
+.km-clip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.km-clip-title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 22px;
+  color: var(--ink);
+}
+.km-clip-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border: 1px solid var(--thread-soft);
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  border-radius: 50%;
+}
+.km-clip-close:hover { background: var(--cream-deep); color: var(--ink); }
+.km-clip-close:focus-visible {
+  outline: 3px solid var(--sage);
+  outline-offset: 2px;
+}
+.km-clip-media {
+  background: var(--cream-deep);
+  border-radius: var(--radius);
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+}
+.km-clip-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: var(--cream-deep);
+}
+.km-clip-caption {
+  margin: 16px 2px 0;
+  font-family: var(--font-body);
+  font-size: 18px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.km-clip-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
 /* ─── Chat-session controls strip ─────────────────────────────────────────
    Right-aligned row that sits beneath the chat input. Holds per-session
    toggles (voice, and future preferences like autoplay, transcript-only,

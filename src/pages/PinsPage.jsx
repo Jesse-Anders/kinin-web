@@ -161,6 +161,7 @@ export default function PinsPage({
         </p>
       </div>
 
+      <div data-help-anchor="pins-new">
       <Frame label="New pin">
         <div className="km-stack" style={{ gap: 12 }}>
           <TextArea
@@ -189,6 +190,7 @@ export default function PinsPage({
           </div>
         </div>
       </Frame>
+      </div>
 
       {status ? (
         <div style={{ marginTop: 20 }}>
@@ -201,7 +203,7 @@ export default function PinsPage({
         </div>
       ) : null}
 
-      <div style={{ marginTop: 32 }}>
+      <div style={{ marginTop: 32 }} data-help-anchor="pins-list">
         <div className="km-row" style={{ gap: 8, marginBottom: 16 }}>
           {STATUS_TABS.map((tab) => (
             <Button

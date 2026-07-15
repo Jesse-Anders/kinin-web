@@ -394,7 +394,7 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
         </>
       }
     >
-      <div className="km-prose" style={{ maxWidth: 680, marginBottom: 32 }}>
+      <div className="km-prose" style={{ maxWidth: 680, marginBottom: 32 }} data-help-anchor="reunion-main">
         <p>
           Reunion lets you speak with the people whose stories Kinin has
           captured. The voice you hear is built from the interviewee&apos;s own
