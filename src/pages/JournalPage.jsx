@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   Eye,
@@ -139,6 +139,8 @@ export default function JournalPage({
   const [loadingList, setLoadingList] = useState(false);
   const [activeId, setActiveId] = useState("");
   const [loadingEntry, setLoadingEntry] = useState(false);
+  const [listFilter, setListFilter] = useState("all"); // all | draft | finalized
+  const [entrySearch, setEntrySearch] = useState("");
 
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -501,6 +503,52 @@ export default function JournalPage({
       ? "Autosave paused — use Save"
       : "";
 
+  const statusCounts = useMemo(() => {
+    let draft = 0;
+    let finalized = 0;
+    for (const e of entries) {
+      if (e.status === "finalized") finalized += 1;
+      else draft += 1;
+    }
+    return { all: entries.length, draft, finalized };
+  }, [entries]);
+
+  const filteredEntries = useMemo(() => {
+    const q = entrySearch.trim().toLowerCase();
+    return entries.filter((e) => {
+      if (listFilter === "draft" && e.status !== "draft") return false;
+      if (listFilter === "finalized" && e.status !== "finalized") return false;
+      if (!q) return true;
+      return `${e.title || ""} ${e.preview || ""}`.toLowerCase().includes(q);
+    });
+  }, [entries, listFilter, entrySearch]);
+
+  // Entries arrive newest-first, so month buckets come out newest-first too.
+  const groupedEntries = useMemo(() => {
+    const groups = [];
+    let currentKey = null;
+    for (const e of filteredEntries) {
+      const raw = e.updated_at || e.created_at || "";
+      const d = new Date(raw);
+      const key = Number.isNaN(d.getTime())
+        ? "Undated"
+        : new Intl.DateTimeFormat(undefined, { year: "numeric", month: "long" }).format(d);
+      if (key !== currentKey) {
+        groups.push({ label: key, items: [e] });
+        currentKey = key;
+      } else {
+        groups[groups.length - 1].items.push(e);
+      }
+    }
+    return groups;
+  }, [filteredEntries]);
+
+  const listTabs = [
+    { key: "all", label: "All", count: statusCounts.all },
+    { key: "draft", label: "Drafts", count: statusCounts.draft },
+    { key: "finalized", label: "In your story", count: statusCounts.finalized },
+  ];
+
   return (
     <Section
       eyebrow="Journal"
@@ -657,35 +705,84 @@ export default function JournalPage({
         </div>
 
         {/* Entries — RIGHT */}
-        <div style={{ flex: "1 1 180px", minWidth: 170, maxWidth: 220 }}>
-          <div className="km-row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <div style={{ flex: "2 1 240px", minWidth: 230, maxWidth: 320 }}>
+          <div className="km-row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <span className="km-mono-label">Entries</span>
             <Button size="sm" variant="primary" onClick={handleNewEntry} disabled={!isAuthed || creating}>
               {creating ? <Spinner /> : <Plus size={16} strokeWidth={1.5} />} New
             </Button>
           </div>
+
+          <div style={{ marginBottom: 8 }}>
+            <TextInput
+              value={entrySearch}
+              onChange={(ev) => setEntrySearch(ev.target.value)}
+              placeholder="Search entries..."
+              aria-label="Search entries"
+              disabled={!isAuthed}
+            />
+          </div>
+
+          <div className="km-row" style={{ gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+            {listTabs.map((tab) => (
+              <Button
+                key={tab.key}
+                size="sm"
+                variant={listFilter === tab.key ? "primary" : "ghost"}
+                onClick={() => setListFilter(tab.key)}
+                aria-pressed={listFilter === tab.key}
+              >
+                {tab.label} ({tab.count})
+              </Button>
+            ))}
+          </div>
+
           {loadingList ? (
             <div className="km-chat-empty">
               <Spinner /> Loading...
             </div>
-          ) : entries.length ? (
-            <div className="km-stack" style={{ gap: 8 }}>
-              {entries.map((e) => (
-                <button
-                  key={e.entry_id}
-                  type="button"
-                  onClick={() => openEntry(e.entry_id)}
-                  className={`km-journal-entry${e.entry_id === activeId ? " is-active" : ""}`}
-                >
-                  <div className="km-journal-entry-title">{e.title || "Untitled entry"}</div>
-                  <div className="km-mono-label km-journal-entry-meta">
-                    {e.status === "finalized" ? "In your story" : "Draft"} · {formatDate(e.updated_at)}
-                  </div>
-                </button>
-              ))}
+          ) : !entries.length ? (
+            <div className="km-chat-empty">No entries yet. Start a new one.</div>
+          ) : !filteredEntries.length ? (
+            <div className="km-chat-empty">
+              {entrySearch.trim() ? "No entries match your search." : "Nothing in this view yet."}
             </div>
           ) : (
-            <div className="km-chat-empty">No entries yet. Start a new one.</div>
+            <div
+              className="km-journal-entry-list"
+              style={{ maxHeight: "60vh", overflowY: "auto", paddingRight: 4 }}
+            >
+              {groupedEntries.map((group) => (
+                <div key={group.label} className="km-stack" style={{ gap: 8, marginBottom: 14 }}>
+                  <div
+                    className="km-mono-label"
+                    style={{
+                      position: "sticky",
+                      top: 0,
+                      background: "var(--cream)",
+                      padding: "4px 0",
+                      opacity: 0.75,
+                      zIndex: 1,
+                    }}
+                  >
+                    {group.label}
+                  </div>
+                  {group.items.map((e) => (
+                    <button
+                      key={e.entry_id}
+                      type="button"
+                      onClick={() => openEntry(e.entry_id)}
+                      className={`km-journal-entry${e.entry_id === activeId ? " is-active" : ""}`}
+                    >
+                      <div className="km-journal-entry-title">{e.title || "Untitled entry"}</div>
+                      <div className="km-mono-label km-journal-entry-meta">
+                        {e.status === "finalized" ? "In your story" : "Draft"} · {formatDate(e.updated_at)}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>
