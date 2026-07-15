@@ -170,6 +170,7 @@ function isSessionStale() {
 }
 const PAGE_TO_PATH = {
   interview: "/",
+  help: "/help",
   about: "/about",
   faq: "/faq",
   feedback: "/feedback",
@@ -267,12 +268,12 @@ export default function App() {
   const [message, setMessage] = useState("");
   const [chat, setChat] = useState([]);
   const [busy, setBusy] = useState(false);
-  // Meta help mode. Fully separate from the interview: its own thread lives
-  // server-side and never touches the biography/memory pipeline. `helpMode`
-  // swaps the interview surface for the help wrapper in the same window; the
-  // interview `chat`/`sessionId` are untouched underneath and restored on exit.
-  // Not persisted across reload by design (help threads are ephemeral).
-  const [helpMode, setHelpMode] = useState(false);
+  // Meta help ("Kinin Help"). Fully separate from the interview: its own thread
+  // lives server-side and never touches the biography/memory pipeline. It has
+  // its own page (activePage === "help", path /help); the interview
+  // `chat`/`sessionId` are untouched while the user is over there. The help
+  // thread persists in state across in-session navigation but is not persisted
+  // across reload by design (help threads are ephemeral).
   const [helpSessionId, setHelpSessionId] = useState("");
   const [helpChat, setHelpChat] = useState([]);
   const [helpBusy, setHelpBusy] = useState(false);
@@ -1178,7 +1179,8 @@ export default function App() {
       activePage === "review-chats" ||
       activePage === "pins" ||
       activePage === "journal" ||
-      activePage === "reunion";
+      activePage === "reunion" ||
+      activePage === "help";
     const isAdminPage =
       activePage === "admin" ||
       activePage === "admin-onboarding-preview" ||
@@ -2149,31 +2151,30 @@ export default function App() {
     }
   }
 
-  // Enter help mode from an interviewer offer: start a fresh thread on the
+  // Enter Kinin Help from an interviewer offer: start a fresh thread on the
   // offered help session and auto-send the user's original question so they
-  // land directly on the answer.
+  // land directly on the answer, on the dedicated Help page.
   function enterHelpModeFromOffer(meta) {
     const hsid = meta?.helpSessionId || "";
     setHelpSessionId(hsid);
     setHelpChat([]);
-    setHelpMode(true);
+    navigateToPage("help");
     if (meta?.originalQuestion) {
       void sendHelp(meta.originalQuestion, hsid);
     }
   }
 
-  // Manual entry: resume the in-session help thread if one exists, otherwise
-  // open an empty help mode (the backend issues a session id on first send).
-  // HelpMode only renders on the interview/chat page (it's the fallback branch),
-  // so entry points from other pages (Journal, the "+" menu) must also navigate
-  // back to the chat page — otherwise flipping helpMode has no visible effect.
+  // Manual entry: navigate to the dedicated Help page. The in-session help
+  // thread (helpChat / helpSessionId) lives in App state, so a user's help
+  // history stays intact when they leave and come back within a session.
   function openHelpMode() {
-    setHelpMode(true);
-    navigateToPage("interview");
+    navigateToPage("help");
   }
 
+  // "Return to interview" from the Help page. Leaves the help thread intact so
+  // it's still there if the user opens Help again this session.
   function exitHelpMode() {
-    setHelpMode(false);
+    navigateToPage("interview");
   }
 
   // ---- In-app help walkthroughs (coach marks + clips) ---------------------
@@ -2191,16 +2192,14 @@ export default function App() {
   }
 
   // A page has a launchable tour when it has a walkthrough and at least one of
-  // its steps resolves. The interview tour is suppressed while Ask Kinin (help
-  // mode) has replaced the interview surface.
+  // its steps resolves. (Kinin Help now lives on its own page, so the interview
+  // surface is always the real interview when this runs.)
   function pageHasTour(pageKey) {
     if (!hasWalkthrough(pageKey)) return false;
-    if (pageKey === "interview" && helpMode) return false;
     return true;
   }
 
   function startTour(pageKey) {
-    if (pageKey === "interview" && helpMode) return;
     const steps = resolveTourSteps(pageKey);
     if (!steps.length) return;
     setTourPage(pageKey);
@@ -2264,7 +2263,6 @@ export default function App() {
     activePage,
     isAuthed,
     accessBlocked,
-    helpMode,
     helpPrefs.tips_enabled,
     helpPrefs.walkthroughs_seen,
     tourRun,
@@ -3846,7 +3844,7 @@ export default function App() {
           closeAccount={closeAccount}
           onBack={() => openProfile()}
         />
-      ) : helpMode ? (
+      ) : activePage === "help" ? (
         <HelpMode
           messages={helpChat}
           busy={helpBusy}
@@ -3883,7 +3881,7 @@ export default function App() {
                             className="km-meta-offer-btn"
                             onClick={() => enterHelpModeFromOffer(m.metaSuggestion)}
                           >
-                            Switch to help mode
+                            Ask on the Kinin Help page
                           </button>
                         </div>
                       ) : null}
