@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Banner, Button, Frame, Section, Spinner } from "../theme";
 
 function normalizeEmail(value) {
@@ -62,6 +62,15 @@ export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
   const [emailPrefsEmail, setEmailPrefsEmail] = useState("");
   const [emailPrefsNote, setEmailPrefsNote] = useState("");
   const [emailPrefsRecord, setEmailPrefsRecord] = useState(null);
+
+  // Live access (entitlements) — governs already-signed-up users
+  const [accessEmail, setAccessEmail] = useState("");
+  const [accessPlan, setAccessPlan] = useState("beta_invited");
+  const [accessRecord, setAccessRecord] = useState(null);
+  const [accessResolvedUserId, setAccessResolvedUserId] = useState("");
+  const [accessLoaded, setAccessLoaded] = useState(false);
+  const [accessBusy, setAccessBusy] = useState(false);
+  const accessFrameRef = useRef(null);
 
   const filteredInvites = useMemo(() => {
     const q = (searchFilter || "").trim().toLowerCase();
@@ -214,6 +223,112 @@ export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function checkAccess(emailArg) {
+    const email = normalizeEmail(emailArg ?? accessEmail);
+    if (!email || !email.includes("@")) {
+      setErrorMessage("Enter a valid email to check live access.");
+      return;
+    }
+    setErrorMessage("");
+    setStatusMessage("");
+    setAccessBusy(true);
+    try {
+      const out = await adminPost("/admin/entitlements/get", { email });
+      setAccessRecord(out?.entitlement || null);
+      setAccessResolvedUserId(out?.user_id || "");
+      setAccessLoaded(true);
+      if (out?.entitlement?.plan_state) setAccessPlan(out.entitlement.plan_state);
+      setStatusMessage(
+        out?.entitlement
+          ? `Loaded live access for ${email}.`
+          : `No entitlement record for ${email}. They may not have signed up yet.`
+      );
+    } catch (e) {
+      setAccessRecord(null);
+      setAccessResolvedUserId("");
+      setAccessLoaded(false);
+      setErrorMessage(e?.message || String(e));
+    } finally {
+      setAccessBusy(false);
+    }
+  }
+
+  async function setAccess(nextState) {
+    const email = normalizeEmail(accessEmail);
+    if (!email || !email.includes("@")) {
+      setErrorMessage("Enter a valid email before changing access.");
+      return;
+    }
+    setErrorMessage("");
+    setStatusMessage("");
+    setAccessBusy(true);
+    try {
+      const payload = {
+        email,
+        access_state: nextState,
+        source: "admin_crm_ui",
+      };
+      if (nextState === "allowed") {
+        payload.plan_state = accessPlan || "beta_invited";
+      } else {
+        payload.plan_state = accessRecord?.plan_state || "none";
+        payload.block_reason = "admin_blocked";
+      }
+      const out = await adminPost("/admin/entitlements/upsert", payload);
+      setAccessRecord(out?.entitlement || null);
+      setAccessLoaded(true);
+      if (out?.entitlement?.plan_state) setAccessPlan(out.entitlement.plan_state);
+      setStatusMessage(
+        nextState === "allowed"
+          ? `Granted access to ${email}.`
+          : `Blocked access for ${email}.`
+      );
+    } catch (e) {
+      setErrorMessage(e?.message || String(e));
+    } finally {
+      setAccessBusy(false);
+    }
+  }
+
+  async function syncAccessFromInvite() {
+    const email = normalizeEmail(accessEmail);
+    if (!email || !email.includes("@")) {
+      setErrorMessage("Enter a valid email to sync from invite.");
+      return;
+    }
+    setErrorMessage("");
+    setStatusMessage("");
+    setAccessBusy(true);
+    try {
+      const out = await adminPost("/admin/entitlements/sync_invite", { email, source: "admin_crm_ui" });
+      setAccessRecord(out?.entitlement || null);
+      setAccessResolvedUserId(out?.user_id || "");
+      setAccessLoaded(true);
+      if (out?.entitlement?.plan_state) setAccessPlan(out.entitlement.plan_state);
+      setStatusMessage(
+        out?.invite_found
+          ? `Synced ${email} from their invite (access = ${out?.entitlement?.access_state || "?"}).`
+          : `No invite found for ${email}; access set to blocked.`
+      );
+    } catch (e) {
+      setErrorMessage(e?.message || String(e));
+    } finally {
+      setAccessBusy(false);
+    }
+  }
+
+  function manageAccessFor(email) {
+    const normalized = normalizeEmail(email);
+    setAccessEmail(normalized);
+    setAccessRecord(null);
+    setAccessResolvedUserId("");
+    setAccessLoaded(false);
+    if (accessFrameRef.current) {
+      accessFrameRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    checkAccess(normalized);
   }
 
   async function exportAllInvitesCsv() {
@@ -411,9 +526,20 @@ export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
       }
     >
     <div className="km-admin-page">
-      <div className="km-prose" style={{ maxWidth: 720, marginBottom: 24, fontSize: 15 }}>
+      <div className="km-prose" style={{ maxWidth: 720, marginBottom: 16, fontSize: 15 }}>
         Bulk add emails, list and filter invites, revoke access, and resend
         invite emails.
+      </div>
+
+      <div style={{ maxWidth: 720, marginBottom: 24 }}>
+        <Banner tone="info">
+          <strong>Two different controls.</strong> Sections A–D manage{" "}
+          <strong>invites</strong> — the pre-signup allowlist that decides who
+          may create an account. Section F manages <strong>live access</strong>{" "}
+          (entitlements) for people who have <em>already signed up</em>. Changing
+          an invite does <em>not</em> change access for someone who already has
+          an account — use Section F for that.
+        </Banner>
       </div>
 
       <Frame label="A — Bulk add / update">
@@ -535,6 +661,14 @@ export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
                         <Button size="sm" onClick={() => revokeInvite(row.email)} disabled={!isAuthed || busy}>
                           Revoke
                         </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => manageAccessFor(row.email)}
+                          disabled={!isAuthed || busy || accessBusy}
+                          title="Manage live access (entitlement) for this signed-up user"
+                        >
+                          Access
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -593,6 +727,145 @@ export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
           </div>
         </div>
       </Frame>
+
+      <div style={{ height: 24 }} />
+
+      <div ref={accessFrameRef}>
+        <Frame label="F — Live access (already signed-up users)">
+          <div
+            className="km-form-help"
+            style={{ marginBottom: 12, maxWidth: 640 }}
+          >
+            Use this to grant or block <strong>someone who has already created
+            an account</strong> (e.g. they signed up without an invite). This
+            edits their entitlement record directly — the same thing you were
+            changing by hand in DynamoDB. Look up by email; the account is
+            resolved automatically.
+          </div>
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+            <input
+              value={accessEmail}
+              onChange={(e) => setAccessEmail(e.target.value)}
+              placeholder="Email address"
+              style={{ flex: 1, minWidth: 220, padding: 8 }}
+              disabled={!isAuthed || accessBusy}
+            />
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => checkAccess()}
+              disabled={!isAuthed || accessBusy}
+            >
+              {accessBusy ? "Checking..." : "Check access"}
+            </Button>
+            <Button size="sm" onClick={syncAccessFromInvite} disabled={!isAuthed || accessBusy}>
+              Sync from invite
+            </Button>
+          </div>
+
+          {accessLoaded && accessRecord ? (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                flexWrap: "wrap",
+                padding: "10px 12px",
+                borderRadius: 8,
+                background: accessRecord.access_state === "allowed" ? "#f0fdf4" : "#fef2f2",
+                border: `1px solid ${accessRecord.access_state === "allowed" ? "#bbf7d0" : "#fecaca"}`,
+              }}
+            >
+              <span style={{ fontWeight: 700, fontSize: 14 }}>
+                Access:{" "}
+                <span style={{ color: accessRecord.access_state === "allowed" ? "#15803d" : "#b91c1c" }}>
+                  {accessRecord.access_state === "allowed" ? "ALLOWED" : "BLOCKED"}
+                </span>
+              </span>
+              <span style={{ opacity: 0.75, fontSize: 13 }}>Plan: {accessRecord.plan_state || "—"}</span>
+              {accessRecord.block_reason ? (
+                <span style={{ opacity: 0.75, fontSize: 13 }}>Reason: {accessRecord.block_reason}</span>
+              ) : null}
+              <span style={{ flex: 1 }} />
+              {accessRecord.access_state === "allowed" ? (
+                <Button size="sm" variant="danger" onClick={() => setAccess("blocked")} disabled={accessBusy}>
+                  {accessBusy ? "..." : "Block access"}
+                </Button>
+              ) : (
+                <Button size="sm" variant="primary" onClick={() => setAccess("allowed")} disabled={accessBusy}>
+                  {accessBusy ? "..." : "Grant access"}
+                </Button>
+              )}
+            </div>
+          ) : null}
+
+          {accessLoaded && !accessRecord ? (
+            <div
+              style={{
+                padding: "10px 12px",
+                borderRadius: 8,
+                background: "#fffbeb",
+                border: "1px solid #fde68a",
+                fontSize: 13,
+              }}
+            >
+              No entitlement record for this email. They likely have not signed
+              up yet — add them as an invite above. You can still grant access
+              now, which will create the record if the account already exists.
+              <div className="km-row" style={{ gap: 8, marginTop: 8 }}>
+                <Button size="sm" variant="primary" onClick={() => setAccess("allowed")} disabled={accessBusy}>
+                  Grant access
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 10, flexWrap: "wrap" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+              <span style={{ opacity: 0.7 }}>Plan when granting:</span>
+              <select
+                value={accessPlan}
+                onChange={(e) => setAccessPlan(e.target.value)}
+                disabled={!isAuthed || accessBusy}
+                style={{ padding: 6 }}
+              >
+                <option value="beta_invited">beta_invited</option>
+                <option value="reunion_only">reunion_only</option>
+                <option value="trialing">trialing</option>
+                <option value="active">active</option>
+                <option value="none">none</option>
+              </select>
+            </label>
+            {accessResolvedUserId ? (
+              <span style={{ fontSize: 12, opacity: 0.6 }}>
+                user_id: <code>{accessResolvedUserId}</code>
+              </span>
+            ) : null}
+          </div>
+
+          {accessLoaded && accessRecord ? (
+            <details style={{ marginTop: 10 }}>
+              <summary style={{ cursor: "pointer", fontSize: 12, opacity: 0.75 }}>
+                Full entitlement record
+              </summary>
+              <pre
+                style={{
+                  whiteSpace: "pre-wrap",
+                  margin: "8px 0 0",
+                  background: "#fafafa",
+                  padding: 8,
+                  borderRadius: 6,
+                  border: "1px solid #eee",
+                  fontSize: 12,
+                }}
+              >
+                {JSON.stringify(accessRecord, null, 2)}
+              </pre>
+            </details>
+          ) : null}
+        </Frame>
+      </div>
 
       {statusMessage ? (
         <div style={{ marginTop: 16 }}>
