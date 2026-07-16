@@ -1,7 +1,7 @@
 {
   "_generated": "DERIVED from kinin-lambda src/kinin/data/kinin_help_content.json via scripts/gen_faq_from_kb.py — do not edit by hand.",
-  "version": "2026.07.14.2",
-  "generated_at": "2026-07-14T17:59:48+00:00",
+  "version": "2026.07.16.1",
+  "generated_at": "2026-07-16T12:58:53+00:00",
   "items": [
     {
       "q": "What is Kinin?",
@@ -57,7 +57,7 @@
     },
     {
       "q": "How do I get help with Kinin?",
-      "a": "Tap 'Kinin Help' near the chat to ask questions about Kinin — how it works, your account, privacy, and anything else. Help conversations are separate from your interview and are not saved as part of your biography. You can return to your interview any time, right where you left off."
+      "a": "Open the Help menu at the top of the screen and choose 'Ask Kinin a question' to ask about Kinin — how it works, your account, privacy, and anything else. Help conversations open on their own Kinin Help page, separate from your interview, and are not saved as part of your biography. You can return to your interview any time, right where you left off."
     },
     {
       "q": "Where do I manage my account and preferences?",

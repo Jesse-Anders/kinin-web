@@ -171,7 +171,6 @@ export default function JournalPage({
   voiceFeaturesEnabled = false,
   openEntryId = "",
   onEntryOpened,
-  onOpenHelp,
 }) {
   const [entries, setEntries] = useState([]);
   const [loadingList, setLoadingList] = useState(false);
@@ -883,15 +882,6 @@ export default function JournalPage({
                     {deleting ? <Spinner /> : <Trash2 size={16} strokeWidth={1.5} />} Delete
                   </Button>
                 </div>
-
-                {onOpenHelp ? (
-                  <div className="km-form-help">
-                    Questions about editing, privacy, or your account?{" "}
-                    <button type="button" className="km-help-entry-link" onClick={onOpenHelp}>
-                      Kinin Help
-                    </button>
-                  </div>
-                ) : null}
 
                 {sourcePinId ? (
                   <div className="km-row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap" }}>
