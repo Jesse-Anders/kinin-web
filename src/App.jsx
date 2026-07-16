@@ -18,6 +18,7 @@ import {
   ScrollText,
   Settings as SettingsIcon,
   Square,
+  X,
 } from "lucide-react";
 import kininHomeIcon from "./assets/icons/kinin-icon-390sq.png";
 import {
@@ -241,122 +242,165 @@ function normalizePath(pathname, hash = "") {
   return pathname.replace(/\/+$/, "") || "/";
 }
 
+// The "Start a new conversation" control is hidden for now but left fully wired
+// (endSession) so we can re-enable it by flipping this flag.
+const SHOW_START_NEW_CONVERSATION = false;
+
 const TOPIC_KIND_LABEL = {
-  deferred: "Picking back up",
+  deferred: "Pick back up",
   never_seen: "Something new",
 };
 
-function TopicChooser({ loading, error, choices, switchingStepId, onChoose, onClose }) {
+function TopicChooser({
+  loading,
+  error,
+  choices,
+  switchingStepId,
+  submittingCustom,
+  onChoose,
+  onSubmitCustom,
+  onClose,
+}) {
+  const [customText, setCustomText] = useState("");
   const canSwitch = !choices || choices.can_switch !== false;
   const items = (choices && Array.isArray(choices.choices) ? choices.choices : []) || [];
+  const busyAny = Boolean(switchingStepId) || submittingCustom;
+  const trimmedCustom = customText.trim();
+
+  function submitCustom() {
+    if (!trimmedCustom || busyAny) return;
+    onSubmitCustom(trimmedCustom);
+  }
+
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Choose another topic"
-      onClick={onClose}
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.35)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 1000,
-        padding: 16,
-      }}
+      aria-label="Switch Topics"
+      className="km-topics-backdrop"
+      onClick={busyAny ? undefined : onClose}
     >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: "min(560px, 100%)",
-          background: "var(--km-surface, #fff)",
-          color: "inherit",
-          borderRadius: 14,
-          boxShadow: "0 10px 40px rgba(0,0,0,0.25)",
-          padding: 20,
-          maxHeight: "80vh",
-          overflowY: "auto",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <div style={{ fontSize: 18, fontWeight: 600 }}>Choose another topic</div>
+      <div className="km-topics-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="km-topics-header">
+          <div>
+            <span className="km-eyebrow">Your story</span>
+            <h2 className="km-topics-title">Switch Topics</h2>
+          </div>
           <button
             type="button"
-            className="km-btn km-btn-ghost km-btn-sm"
+            className="km-topics-close"
             onClick={onClose}
+            disabled={busyAny}
             aria-label="Close"
           >
-            Close
+            <X size={16} strokeWidth={1.75} />
           </button>
         </div>
 
         {loading ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 18 }}>
-            <Spinner /> <span>Finding topics…</span>
+          <div className="km-topics-state">
+            <Spinner /> <span>Gathering a few directions…</span>
           </div>
         ) : error ? (
-          <Banner tone="danger">
-            <span>{error}</span>
-          </Banner>
+          <div style={{ marginTop: 16 }}>
+            <Banner tone="danger">
+              <span>{error}</span>
+            </Banner>
+          </div>
         ) : !canSwitch ? (
-          <div style={{ marginTop: 16, lineHeight: 1.5 }}>
-            <p style={{ margin: 0 }}>
-              This part of your story is one we&apos;d like to finish before moving on. Once
-              you&apos;ve wrapped it up, you&apos;ll be able to switch topics from here.
-            </p>
-          </div>
-        ) : items.length === 0 ? (
-          <div style={{ marginTop: 16, lineHeight: 1.5 }}>
-            <p style={{ margin: 0 }}>
-              There aren&apos;t any other topics to jump to right now — keep going with your
-              current one.
-            </p>
-          </div>
+          <p className="km-topics-intro">
+            This is a part of your story we&apos;d like to finish together before moving on.
+            When you&apos;ve wrapped it up, more directions will open up here. In the meantime,
+            you can always start a fresh thread below.
+          </p>
         ) : (
-          <div style={{ marginTop: 8 }}>
-            <p style={{ marginTop: 8, marginBottom: 12, color: "var(--km-muted, #666)", fontSize: 14 }}>
-              We&apos;ll set your current topic aside (you can always come back to it) and pick up here.
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {items.map((c) => {
-                const busy = switchingStepId === c.step_id;
-                const disabled = Boolean(switchingStepId);
-                return (
-                  <button
-                    key={c.step_id}
-                    type="button"
-                    onClick={() => onChoose(c.step_id)}
-                    disabled={disabled}
-                    style={{
-                      textAlign: "left",
-                      border: "1px solid var(--km-border, #e2e2e2)",
-                      borderRadius: 10,
-                      padding: "12px 14px",
-                      background: "transparent",
-                      cursor: disabled ? "default" : "pointer",
-                      opacity: disabled && !busy ? 0.6 : 1,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 12,
-                    }}
-                  >
-                    <span>
-                      <span style={{ display: "block", fontWeight: 600 }}>
-                        {c.step_title || "Untitled topic"}
-                      </span>
-                      <span style={{ display: "block", fontSize: 12, color: "var(--km-muted, #888)", marginTop: 2 }}>
-                        {TOPIC_KIND_LABEL[c.kind] || "Topic"}
-                      </span>
-                    </span>
-                    {busy ? <Spinner /> : null}
-                  </button>
-                );
-              })}
+          <>
+            {items.length > 0 ? (
+              <>
+                <p className="km-topics-intro">
+                  We&apos;ll gently set your current thread aside — you can always return to
+                  it — and pick up somewhere new.
+                </p>
+                <div className="km-topics-list">
+                  {items.map((c) => {
+                    const busy = switchingStepId === c.step_id;
+                    return (
+                      <button
+                        key={c.step_id}
+                        type="button"
+                        className="km-topics-option"
+                        onClick={() => onChoose(c.step_id)}
+                        disabled={busyAny}
+                      >
+                        <span className="km-topics-option-body">
+                          <span className="km-topics-option-title">
+                            {c.step_title || "Untitled topic"}
+                          </span>
+                          <span className="km-topics-option-kind" data-kind={c.kind}>
+                            {TOPIC_KIND_LABEL[c.kind] || "Topic"}
+                          </span>
+                        </span>
+                        {busy ? <Spinner /> : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <p className="km-topics-intro">
+                There aren&apos;t any other set topics to jump to right now — but you can always
+                bring up something of your own below.
+              </p>
+            )}
+
+            <div className="km-topics-divider">or</div>
+            <div className="km-topics-custom">
+              <label className="km-topics-custom-label" htmlFor="km-topic-custom-input">
+                Talk about something specific
+              </label>
+              <p className="km-topics-custom-hint">
+                Name a memory, person, or moment you&apos;d like to explore, and we&apos;ll start
+                right there.
+              </p>
+              <div className="km-topics-custom-row">
+                <input
+                  id="km-topic-custom-input"
+                  className="km-topics-input"
+                  type="text"
+                  placeholder="e.g. the summer I learned to sail"
+                  value={customText}
+                  disabled={busyAny}
+                  onChange={(e) => setCustomText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      submitCustom();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className="km-btn km-btn-primary km-btn-sm"
+                  onClick={submitCustom}
+                  disabled={!trimmedCustom || busyAny}
+                >
+                  {submittingCustom ? <Spinner /> : "Begin"}
+                </button>
+              </div>
             </div>
-          </div>
+          </>
         )}
+
+        <div className="km-topics-footer">
+          <button
+            type="button"
+            className="km-topics-neveromind"
+            onClick={onClose}
+            disabled={busyAny}
+          >
+            Never mind, stay on topic
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -431,6 +475,7 @@ export default function App() {
   const [topicChoicesLoading, setTopicChoicesLoading] = useState(false);
   const [topicChoicesError, setTopicChoicesError] = useState("");
   const [switchingTopicStepId, setSwitchingTopicStepId] = useState("");
+  const [submittingCustomTopic, setSubmittingCustomTopic] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [reunionInvite, setReunionInvite] = useState(null);
   const [error, setError] = useState("");
@@ -2412,7 +2457,15 @@ export default function App() {
   // First-visit auto-launch: when help tips are on and the current page's tour
   // has never been seen, launch it once (after a short delay so the page's
   // anchors have mounted). Runs at most once per page per session.
+  //
+  // IMPORTANT: gate on `onboardingChecked`. Until the profile GET resolves,
+  // `helpPrefs.walkthroughs_seen` is still the empty default, so evaluating
+  // earlier would race the load — on a slow refresh the 700ms timer could fire
+  // with stale (empty) seen data and re-launch a tour the user already finished.
+  // `onboardingChecked` flips true only after the profile (incl. seen flags) is
+  // applied, so by the time this runs the seen map is authoritative.
   useEffect(() => {
+    if (!onboardingChecked) return undefined;
     if (!isAuthed || accessBlocked) return undefined;
     if (!helpPrefs.tips_enabled) return undefined;
     if (tourRun || clipPage) return undefined;
@@ -2430,6 +2483,7 @@ export default function App() {
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
+    onboardingChecked,
     activePage,
     isAuthed,
     accessBlocked,
@@ -2750,6 +2804,7 @@ export default function App() {
     setTopicChoices(null);
     setTopicChoicesError("");
     setSwitchingTopicStepId("");
+    setSubmittingCustomTopic(false);
   }
 
   // Switch the guided conversation to the chosen step. The backend defers the
@@ -2786,6 +2841,43 @@ export default function App() {
       );
     } finally {
       setSwitchingTopicStepId("");
+    }
+  }
+
+  // Start an open-ended conversation on a topic the user typed in. The backend
+  // seeds an interviewer opening anchored on their topic and follows their lead.
+  async function chooseCustomTopic(topicText) {
+    const topic = (topicText || "").trim();
+    if (!topic || submittingCustomTopic || switchingTopicStepId) return;
+    setSubmittingCustomTopic(true);
+    setTopicChoicesError("");
+    try {
+      const idToken = await getAccessToken();
+      const res = await fetch(`${API_BASE}/turn`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          session_id: sessionId || undefined,
+          custom_topic: topic,
+        }),
+      });
+      await ensureApiOk(res);
+      const data = await res.json();
+      const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
+      applyTurnResponse(parsed, sessionId);
+      if (parsed.assistant) {
+        setChat((prev) => [...prev, { role: "assistant", content: parsed.assistant }]);
+      }
+      closeTopicChooser();
+    } catch (e) {
+      setTopicChoicesError(
+        (e && e.message) || "Couldn't start that topic. Please try again."
+      );
+    } finally {
+      setSubmittingCustomTopic(false);
     }
   }
 
@@ -3805,25 +3897,29 @@ export default function App() {
             <div className="km-chat-header-tag">— a living biography, in conversation.</div>
             {isAuthed && activePage === "interview" && chat.length > 0 ? (
               <div style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  className="km-btn km-btn-ghost km-btn-sm"
-                  style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
-                  onClick={endSession}
-                  disabled={busy || isEndingSession}
-                  title="Start a fresh conversation. This won't log you out or delete anything."
-                >
-                  {isEndingSession ? <Spinner /> : <CirclePlus size={14} strokeWidth={1.5} />} Start a new conversation
-                </button>
+                {/* "Start a new conversation" is hidden for now but kept wired
+                    (endSession) in case we bring it back. */}
+                {SHOW_START_NEW_CONVERSATION ? (
+                  <button
+                    type="button"
+                    className="km-btn km-btn-ghost km-btn-sm"
+                    style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+                    onClick={endSession}
+                    disabled={busy || isEndingSession}
+                    title="Start a fresh conversation. This won't log you out or delete anything."
+                  >
+                    {isEndingSession ? <Spinner /> : <CirclePlus size={14} strokeWidth={1.5} />} Start a new conversation
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className="km-btn km-btn-ghost km-btn-sm"
                   style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
                   onClick={openTopicChooser}
                   disabled={busy || isEndingSession || topicChooserOpen}
-                  title="Pick a different topic to talk about. Your current topic is set aside, not lost."
+                  title="Switch to a different topic. Your current one is set aside, not lost."
                 >
-                  <Compass size={14} strokeWidth={1.5} /> Choose another topic
+                  <Compass size={14} strokeWidth={1.5} /> Switch Topics
                 </button>
               </div>
             ) : null}
@@ -3835,7 +3931,9 @@ export default function App() {
               error={topicChoicesError}
               choices={topicChoices}
               switchingStepId={switchingTopicStepId}
+              submittingCustom={submittingCustomTopic}
               onChoose={chooseTopic}
+              onSubmitCustom={chooseCustomTopic}
               onClose={closeTopicChooser}
             />
           ) : null}
