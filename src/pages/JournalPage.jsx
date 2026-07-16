@@ -38,10 +38,10 @@ const REVIEW_MAX_WORDS = 6000;
 // rendered editor to point at. Stays a draft; the copy invites replacement.
 const SEED_ENTRY_TITLE = "My First Journal Entry";
 const SEED_ENTRY_BODY =
-  "Write your first memory here \u2014 anything that comes to mind. It might be a " +
-  "place, a person, or a moment you'd love to keep.\n\n" +
-  "When you're ready, press \u201CSave Journal Entry\u201D to add it to your story. " +
-  "You can edit or delete this entry anytime.";
+  "Not sure where to begin? You might write about a place that always felt like " +
+  "home, a person who shaped who you are, or a day you'd love to live again.\n\n" +
+  "Write whatever comes to mind here. When you're ready, press \u201CSave Journal " +
+  "Entry\u201D to add it to your story \u2014 you can edit or delete this entry anytime.";
 
 const AUTOSAVE_DEBOUNCE_MS = 1200;
 const MAX_PHOTOS = 3;
@@ -898,7 +898,7 @@ export default function JournalPage({
                     ref={bodyRef}
                     value={body}
                     onChange={(ev) => setBody(ev.target.value)}
-                    placeholder="Write your memory here. Light Markdown works: **bold**, *italics*, # headings, - lists."
+                    placeholder="Write your memory here — a place, a person, or a moment you'd love to keep."
                     rows={18}
                     disabled={!isAuthed}
                   />
