@@ -106,21 +106,37 @@ export const WALKTHROUGHS = {
     label: "the Journal",
     steps: [
       welcomeStep(
-        "The Journal is your own space to write memories in your own words, whenever inspiration strikes. Here is a quick look around.",
+        "The Journal is your own space to write memories in your own words, whenever inspiration strikes. We've opened an example entry so you can see how it all works \u2014 here is a quick look around.",
       ),
       {
         target: anchor("journal-editor"),
         title: "Write here",
         content:
-          "Give your entry a title and write your memory. It saves automatically as you go, so you never have to worry about losing it.",
+          "Give your entry a title and write your memory in this box. It saves automatically as you go, so you never have to worry about losing your words. You can also add a photo or two.",
         placement: "right",
+        disableBeacon: true,
+      },
+      {
+        target: anchor("journal-save"),
+        title: "Save it to your story",
+        content:
+          "While you are still writing, an entry stays a private draft. When it feels finished, press Save Journal Entry and Kinin gently weaves it into your life story.",
+        placement: "top",
+        disableBeacon: true,
+      },
+      {
+        target: anchor("journal-ask"),
+        title: "A second pair of eyes",
+        content:
+          "Whenever you'd like, ask Kinin to gently point out spots that feel thin, or to tidy up spelling and punctuation. Kinin only suggests \u2014 it never rewrites your words. You choose what to change.",
+        placement: "top",
         disableBeacon: true,
       },
       {
         target: anchor("journal-entries"),
         title: "Your entries",
         content:
-          "All of your entries are listed here. Use the tabs to see drafts, finished entries, or everything at once.",
+          "All of your entries live here. Use the tabs to see drafts, finished entries, or everything at once \u2014 and press New anytime to start another memory.",
         placement: "left",
       },
       {

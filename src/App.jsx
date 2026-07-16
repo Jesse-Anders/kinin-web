@@ -331,7 +331,15 @@ export default function App() {
   // per-page walkthroughs; `walkthroughs_seen` records which page tours a user
   // has already been shown so they auto-launch only once. Persisted on the
   // profile so the state follows the user across devices. Defaults ON.
-  const [helpPrefs, setHelpPrefs] = useState({ tips_enabled: true, walkthroughs_seen: {} });
+  const [helpPrefs, setHelpPrefs] = useState({
+    tips_enabled: true,
+    walkthroughs_seen: {},
+    journal_seeded: false,
+  });
+  // Bumped whenever a Journal tour is requested. JournalPage watches this,
+  // ensures an entry is open (so entry-only anchors exist), then calls back to
+  // actually launch the coach marks.
+  const [journalTourNonce, setJournalTourNonce] = useState(0);
   // Voice-to-text (dictation) recording state — Phase 1: transient, no storage.
   const [isRecording, setIsRecording] = useState(false);
   const [sttBusy, setSttBusy] = useState(false);
@@ -1376,6 +1384,7 @@ export default function App() {
       // Default ON: only an explicit false disables tips.
       tips_enabled: hp.tips_enabled !== false,
       walkthroughs_seen: { ...seen },
+      journal_seeded: hp.journal_seeded === true,
     });
   }
 
@@ -2229,6 +2238,18 @@ export default function App() {
     setTourRun(true);
   }
 
+  // Entry point for launching a page tour. The Journal's key features only exist
+  // in the DOM once an entry is open, so its tour is routed through JournalPage
+  // (via a nonce): the page opens an entry, then calls startTour("journal").
+  // Every other page starts immediately.
+  function launchTour(pageKey) {
+    if (pageKey === "journal") {
+      setJournalTourNonce((n) => n + 1);
+      return;
+    }
+    startTour(pageKey);
+  }
+
   function handleTourDone() {
     setTourRun(false);
     setTourSteps([]);
@@ -2277,7 +2298,7 @@ export default function App() {
       // Re-check conditions at fire time (page/help state may have changed).
       if (helpPrefs.walkthroughs_seen?.[key]) return;
       if (!pageHasTour(key)) return;
-      startTour(key);
+      launchTour(key);
     }, 700);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2831,6 +2852,26 @@ export default function App() {
     }
   }
 
+  // Record that the one-time "My First Journal Entry" starter has been created
+  // (or intentionally skipped for an established account). Optimistic + merged.
+  async function markJournalSeeded() {
+    if (!isAuthed) return false;
+    if (helpPrefs.journal_seeded) return true;
+    const previous = helpPrefs;
+    setHelpPrefs((prev) => ({ ...prev, journal_seeded: true }));
+    try {
+      const parsed = await putProfile({
+        help_preferences: { journal_seeded: true },
+      });
+      applyHelpPreferencesFromPayload(parsed);
+      return true;
+    } catch (e) {
+      setHelpPrefs(previous);
+      setProfileErrorFromException(e);
+      return false;
+    }
+  }
+
   // Reset all seen flags so every page tour auto-launches again (Settings
   // "Replay walkthroughs"). Clears local state and overwrites the server map.
   async function replayWalkthroughs() {
@@ -3324,7 +3365,7 @@ export default function App() {
             onOpenMenu={() => {
               if (tourRun) handleTourDone();
             }}
-            onShowTour={() => startTour(activePage)}
+            onShowTour={() => launchTour(activePage)}
             onAskKinin={() => openHelpMode()}
             onWatchClip={() => openClip(activePage)}
           />
@@ -3686,6 +3727,12 @@ export default function App() {
           voiceFeaturesEnabled={voiceFeaturesEnabled}
           openEntryId={journalOpenEntryId}
           onEntryOpened={() => setJournalOpenEntryId("")}
+          seedFirstEntry={
+            onboardingChecked && helpPrefs.tips_enabled && !helpPrefs.journal_seeded
+          }
+          onMarkSeeded={markJournalSeeded}
+          tourNonce={journalTourNonce}
+          onReadyForTour={() => startTour("journal")}
         />
       ) : activePage === "reunion" ? (
         <ReunionPage

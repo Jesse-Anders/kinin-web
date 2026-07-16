@@ -32,6 +32,17 @@ import { updatePin } from "../services/pinsClient";
 
 const TITLE_MAX_CHARS = 200;
 const REVIEW_MAX_WORDS = 6000;
+
+// One-time starter draft ("option B"): titled, with a short inviting prompt so
+// the page never looks empty on a first visit and the walkthrough has a fully
+// rendered editor to point at. Stays a draft; the copy invites replacement.
+const SEED_ENTRY_TITLE = "My First Journal Entry";
+const SEED_ENTRY_BODY =
+  "Write your first memory here \u2014 anything that comes to mind. It might be a " +
+  "place, a person, or a moment you'd love to keep.\n\n" +
+  "When you're ready, press \u201CSave Journal Entry\u201D to add it to your story. " +
+  "You can edit or delete this entry anytime.";
+
 const AUTOSAVE_DEBOUNCE_MS = 1200;
 const MAX_PHOTOS = 3;
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
@@ -171,9 +182,14 @@ export default function JournalPage({
   voiceFeaturesEnabled = false,
   openEntryId = "",
   onEntryOpened,
+  seedFirstEntry = false,
+  onMarkSeeded,
+  tourNonce = 0,
+  onReadyForTour,
 }) {
   const [entries, setEntries] = useState([]);
   const [loadingList, setLoadingList] = useState(false);
+  const [listLoadedOnce, setListLoadedOnce] = useState(false);
   const [activeId, setActiveId] = useState("");
   const [loadingEntry, setLoadingEntry] = useState(false);
   const [listFilter, setListFilter] = useState("all"); // all | draft | finalized
@@ -205,6 +221,19 @@ export default function JournalPage({
 
   const savedSnapshotRef = useRef(null);
   const bodyRef = useRef(null);
+  // Mirrors so async seed/tour logic can read the latest values without stale
+  // closures, plus once-guards for the one-time starter and each tour request.
+  const activeIdRef = useRef("");
+  const entriesRef = useRef([]);
+  const starterPromiseRef = useRef(null);
+  const seedDecidedRef = useRef(false);
+  const tourHandledNonceRef = useRef(0);
+  useEffect(() => {
+    activeIdRef.current = activeId;
+  }, [activeId]);
+  useEffect(() => {
+    entriesRef.current = entries;
+  }, [entries]);
 
   const words = countWords(body);
   const overReviewCap = words > REVIEW_MAX_WORDS;
@@ -221,6 +250,7 @@ export default function JournalPage({
       setError(describeError("Couldn't load your entries", e));
     } finally {
       setLoadingList(false);
+      setListLoadedOnce(true);
     }
   }, [isAuthed, getAccessToken, apiBase]);
 
@@ -305,6 +335,92 @@ export default function JournalPage({
       setCreating(false);
     }
   }
+
+  // Create the one-time starter draft and open it. Deduped via a promise ref so
+  // the seed effect and a tour request can't create two starters in a race.
+  function createStarterEntry() {
+    if (starterPromiseRef.current) return starterPromiseRef.current;
+    starterPromiseRef.current = (async () => {
+      const token = await getAccessToken();
+      const data = await createEntry({
+        apiBase,
+        token,
+        title: SEED_ENTRY_TITLE,
+        body: SEED_ENTRY_BODY,
+      });
+      const entry = data?.entry;
+      if (entry) {
+        setEntries((prev) => [entry, ...prev]);
+        entriesRef.current = [entry, ...entriesRef.current];
+        setActiveId(entry.entry_id);
+        activeIdRef.current = entry.entry_id;
+        setTitle(entry.title || SEED_ENTRY_TITLE);
+        setBody(entry.body ?? SEED_ENTRY_BODY);
+        setEntryStatus(entry.status || "draft");
+        setSourcePinId(entry.source_pin_id || "");
+        setSourcePinCompleted(Boolean(entry.source_pin_completed));
+        setAttachments([]);
+        savedSnapshotRef.current = {
+          title: entry.title || SEED_ENTRY_TITLE,
+          body: entry.body ?? SEED_ENTRY_BODY,
+        };
+        setNotes([]);
+        setFixes([]);
+        setReviewMode("");
+        setView("write");
+        setAutosave("idle");
+      }
+    })().catch((e) => {
+      setError(describeError("Couldn't create your first entry", e));
+      // Allow a later retry (e.g. the tour path) if the seed attempt failed.
+      starterPromiseRef.current = null;
+    });
+    return starterPromiseRef.current;
+  }
+
+  // First-visit seed: once the list has loaded, create the starter draft if the
+  // journal is empty (otherwise just mark seeded so an established account is
+  // never seeded later). Runs at most once per mount.
+  useEffect(() => {
+    if (!seedFirstEntry || !listLoadedOnce) return;
+    if (seedDecidedRef.current) return;
+    seedDecidedRef.current = true;
+    (async () => {
+      if (entriesRef.current.length === 0) {
+        await createStarterEntry();
+      }
+      onMarkSeeded?.();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seedFirstEntry, listLoadedOnce]);
+
+  // Tour request: the Journal's key features (Save, Ask Kinin) only render once
+  // an entry is open, so before the coach marks run we ensure one is open —
+  // opening the most recent entry, or creating the starter if truly empty — then
+  // signal the parent to launch after a short settle so anchors have mounted.
+  useEffect(() => {
+    if (!tourNonce || tourNonce === tourHandledNonceRef.current) return;
+    tourHandledNonceRef.current = tourNonce;
+    let cancelled = false;
+    (async () => {
+      if (!activeIdRef.current) {
+        const latest = entriesRef.current[0]?.entry_id;
+        if (latest) {
+          await openEntry(latest);
+        } else if (seedFirstEntry) {
+          await createStarterEntry();
+        }
+      }
+      if (cancelled) return;
+      setTimeout(() => {
+        if (!cancelled) onReadyForTour?.();
+      }, 250);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tourNonce]);
 
   const persist = useCallback(async () => {
     if (!activeId) return;
@@ -863,7 +979,11 @@ export default function JournalPage({
                   ) : null}
                 </div>
 
-                <div className="km-row" style={{ gap: 8, flexWrap: "wrap", justifyContent: "space-between" }}>
+                <div
+                  className="km-row"
+                  style={{ gap: 8, flexWrap: "wrap", justifyContent: "space-between" }}
+                  data-help-anchor="journal-save"
+                >
                   <div className="km-row" style={{ gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                     <Button
                       variant="primary"
@@ -989,7 +1109,7 @@ export default function JournalPage({
 
       {/* Ask Kinin — BOTTOM, full width */}
       {activeId ? (
-        <div className="km-stack" style={{ gap: 12, marginTop: 20 }}>
+        <div className="km-stack" style={{ gap: 12, marginTop: 20 }} data-help-anchor="journal-ask">
           <Frame label="Ask Kinin">
             <div className="km-stack" style={{ gap: 12 }}>
               <div className="km-row" style={{ gap: 8, flexWrap: "wrap" }}>
