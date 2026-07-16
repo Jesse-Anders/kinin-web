@@ -4,6 +4,7 @@ import {
   BookOpen,
   CircleUserRound,
   CirclePlus,
+  Compass,
   Check,
   Key,
   MapPin,
@@ -240,6 +241,127 @@ function normalizePath(pathname, hash = "") {
   return pathname.replace(/\/+$/, "") || "/";
 }
 
+const TOPIC_KIND_LABEL = {
+  deferred: "Picking back up",
+  never_seen: "Something new",
+};
+
+function TopicChooser({ loading, error, choices, switchingStepId, onChoose, onClose }) {
+  const canSwitch = !choices || choices.can_switch !== false;
+  const items = (choices && Array.isArray(choices.choices) ? choices.choices : []) || [];
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Choose another topic"
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.35)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1000,
+        padding: 16,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "min(560px, 100%)",
+          background: "var(--km-surface, #fff)",
+          color: "inherit",
+          borderRadius: 14,
+          boxShadow: "0 10px 40px rgba(0,0,0,0.25)",
+          padding: 20,
+          maxHeight: "80vh",
+          overflowY: "auto",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <div style={{ fontSize: 18, fontWeight: 600 }}>Choose another topic</div>
+          <button
+            type="button"
+            className="km-btn km-btn-ghost km-btn-sm"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            Close
+          </button>
+        </div>
+
+        {loading ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 18 }}>
+            <Spinner /> <span>Finding topics…</span>
+          </div>
+        ) : error ? (
+          <Banner tone="danger">
+            <span>{error}</span>
+          </Banner>
+        ) : !canSwitch ? (
+          <div style={{ marginTop: 16, lineHeight: 1.5 }}>
+            <p style={{ margin: 0 }}>
+              This part of your story is one we&apos;d like to finish before moving on. Once
+              you&apos;ve wrapped it up, you&apos;ll be able to switch topics from here.
+            </p>
+          </div>
+        ) : items.length === 0 ? (
+          <div style={{ marginTop: 16, lineHeight: 1.5 }}>
+            <p style={{ margin: 0 }}>
+              There aren&apos;t any other topics to jump to right now — keep going with your
+              current one.
+            </p>
+          </div>
+        ) : (
+          <div style={{ marginTop: 8 }}>
+            <p style={{ marginTop: 8, marginBottom: 12, color: "var(--km-muted, #666)", fontSize: 14 }}>
+              We&apos;ll set your current topic aside (you can always come back to it) and pick up here.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {items.map((c) => {
+                const busy = switchingStepId === c.step_id;
+                const disabled = Boolean(switchingStepId);
+                return (
+                  <button
+                    key={c.step_id}
+                    type="button"
+                    onClick={() => onChoose(c.step_id)}
+                    disabled={disabled}
+                    style={{
+                      textAlign: "left",
+                      border: "1px solid var(--km-border, #e2e2e2)",
+                      borderRadius: 10,
+                      padding: "12px 14px",
+                      background: "transparent",
+                      cursor: disabled ? "default" : "pointer",
+                      opacity: disabled && !busy ? 0.6 : 1,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 12,
+                    }}
+                  >
+                    <span>
+                      <span style={{ display: "block", fontWeight: 600 }}>
+                        {c.step_title || "Untitled topic"}
+                      </span>
+                      <span style={{ display: "block", fontSize: 12, color: "var(--km-muted, #888)", marginTop: 2 }}>
+                        {TOPIC_KIND_LABEL[c.kind] || "Topic"}
+                      </span>
+                    </span>
+                    {busy ? <Spinner /> : null}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const LABEL_GROUPS = [
     { key: "user_focus_labels", label: "User focus" },
@@ -303,6 +425,12 @@ export default function App() {
   const [chatPinCompleted, setChatPinCompleted] = useState(false);
   const [completingChatPin, setCompletingChatPin] = useState(false);
   const [isEndingSession, setIsEndingSession] = useState(false);
+  // "Choose another topic" (guided journey step picker).
+  const [topicChooserOpen, setTopicChooserOpen] = useState(false);
+  const [topicChoices, setTopicChoices] = useState(null);
+  const [topicChoicesLoading, setTopicChoicesLoading] = useState(false);
+  const [topicChoicesError, setTopicChoicesError] = useState("");
+  const [switchingTopicStepId, setSwitchingTopicStepId] = useState("");
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [reunionInvite, setReunionInvite] = useState(null);
   const [error, setError] = useState("");
@@ -2584,6 +2712,83 @@ export default function App() {
     }
   }
 
+  // Open the "Choose another topic" picker and fetch candidate steps
+  // (one deferred + the next two never-seen) from the backend.
+  async function openTopicChooser() {
+    setTopicChooserOpen(true);
+    setTopicChoices(null);
+    setTopicChoicesError("");
+    setTopicChoicesLoading(true);
+    try {
+      const idToken = await getAccessToken();
+      const res = await fetch(`${API_BASE}/turn`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          session_id: sessionId || undefined,
+          list_topic_choices: true,
+        }),
+      });
+      await ensureApiOk(res);
+      const data = await res.json();
+      const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
+      setTopicChoices(parsed.topic_choices || { choices: [], can_switch: true });
+    } catch (e) {
+      setTopicChoicesError(
+        (e && e.message) || "Couldn't load topics. Please try again."
+      );
+    } finally {
+      setTopicChoicesLoading(false);
+    }
+  }
+
+  function closeTopicChooser() {
+    setTopicChooserOpen(false);
+    setTopicChoices(null);
+    setTopicChoicesError("");
+    setSwitchingTopicStepId("");
+  }
+
+  // Switch the guided conversation to the chosen step. The backend defers the
+  // current step and returns an interviewer message opening the new topic, which
+  // we append to the existing chat thread (same session).
+  async function chooseTopic(stepId) {
+    if (!stepId || switchingTopicStepId) return;
+    setSwitchingTopicStepId(stepId);
+    setTopicChoicesError("");
+    try {
+      const idToken = await getAccessToken();
+      const res = await fetch(`${API_BASE}/turn`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          session_id: sessionId || undefined,
+          enter_step_id: stepId,
+        }),
+      });
+      await ensureApiOk(res);
+      const data = await res.json();
+      const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
+      applyTurnResponse(parsed, sessionId);
+      if (parsed.assistant) {
+        setChat((prev) => [...prev, { role: "assistant", content: parsed.assistant }]);
+      }
+      closeTopicChooser();
+    } catch (e) {
+      setTopicChoicesError(
+        (e && e.message) || "Couldn't switch topics. Please try again."
+      );
+    } finally {
+      setSwitchingTopicStepId("");
+    }
+  }
+
   async function openProfile() {
     setProfileError("");
     setProfileNotice("");
@@ -3599,18 +3804,41 @@ export default function App() {
             <div className="km-chat-header-rule" />
             <div className="km-chat-header-tag">— a living biography, in conversation.</div>
             {isAuthed && activePage === "interview" && chat.length > 0 ? (
-              <button
-                type="button"
-                className="km-btn km-btn-ghost km-btn-sm"
-                style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 8 }}
-                onClick={endSession}
-                disabled={busy || isEndingSession}
-                title="Start a fresh conversation. This won't log you out or delete anything."
-              >
-                {isEndingSession ? <Spinner /> : <CirclePlus size={14} strokeWidth={1.5} />} Start a new conversation
-              </button>
+              <div style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  className="km-btn km-btn-ghost km-btn-sm"
+                  style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+                  onClick={endSession}
+                  disabled={busy || isEndingSession}
+                  title="Start a fresh conversation. This won't log you out or delete anything."
+                >
+                  {isEndingSession ? <Spinner /> : <CirclePlus size={14} strokeWidth={1.5} />} Start a new conversation
+                </button>
+                <button
+                  type="button"
+                  className="km-btn km-btn-ghost km-btn-sm"
+                  style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+                  onClick={openTopicChooser}
+                  disabled={busy || isEndingSession || topicChooserOpen}
+                  title="Pick a different topic to talk about. Your current topic is set aside, not lost."
+                >
+                  <Compass size={14} strokeWidth={1.5} /> Choose another topic
+                </button>
+              </div>
             ) : null}
           </div>
+
+          {topicChooserOpen ? (
+            <TopicChooser
+              loading={topicChoicesLoading}
+              error={topicChoicesError}
+              choices={topicChoices}
+              switchingStepId={switchingTopicStepId}
+              onChoose={chooseTopic}
+              onClose={closeTopicChooser}
+            />
+          ) : null}
 
       {error && (
         <Banner tone="danger">
