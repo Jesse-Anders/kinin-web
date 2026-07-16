@@ -27,19 +27,18 @@ function pad2(n) {
   return String(n).padStart(2, "0");
 }
 
+const ONBOARDING_TOTAL_STEPS = 3;
+
 const STEP_META = {
   1: { eyebrow: "A welcome", title: <>Welcome to <em>Kinin.</em></> },
   2: { eyebrow: "A few details", title: <>Tell us a little<br /><em>about you.</em></> },
-  3: { eyebrow: "Trusted contact", title: <>Choose someone<br /><em>you trust.</em></> },
-  4: { eyebrow: "Cadence", title: <>How often should<br />Kinin <em>nudge you?</em></> },
+  3: { eyebrow: "Cadence", title: <>How often should<br />Kinin <em>nudge you?</em></> },
 };
 
 export default function OnboardingPage({
   onboardingStep,
   bioProfile,
   setBioProfile,
-  accountExecutor,
-  setAccountExecutor,
   continuitySettings,
   setContinuitySettings,
   busy,
@@ -47,16 +46,11 @@ export default function OnboardingPage({
   onBack,
   onContinue,
   onBegin,
-  onSkip,
   previewMode = false,
   beginLabel = "Complete setup",
 }) {
   const step = Number(onboardingStep || 1);
   const cadenceValue = String(continuitySettings?.reminder_cadence_weeks ?? 2);
-  const executorEmailNorm = (accountExecutor?.email || "").trim().toLowerCase();
-  const executorConfirmEmailNorm = (accountExecutor?.confirm_email || "").trim().toLowerCase();
-  const showExecutorEmailMismatch =
-    !!executorEmailNorm && !!executorConfirmEmailNorm && executorEmailNorm !== executorConfirmEmailNorm;
   const selectedDobText = formatDateLong(bioProfile.date_of_birth);
   const derivedAge = deriveAgeFromDateOfBirth(bioProfile.date_of_birth);
 
@@ -65,9 +59,12 @@ export default function OnboardingPage({
   return (
     <div className="km-onboarding">
       <div className="km-onboarding-progress">
-        <Eyebrow>{`${pad2(step)} / 04 · onboarding`}</Eyebrow>
+        <Eyebrow>{`${pad2(step)} / ${pad2(ONBOARDING_TOTAL_STEPS)} · onboarding`}</Eyebrow>
         <div className="km-progress" style={{ marginTop: 14, maxWidth: 360 }}>
-          <div className="km-progress-bar" style={{ width: `${(step / 4) * 100}%` }} />
+          <div
+            className="km-progress-bar"
+            style={{ width: `${(step / ONBOARDING_TOTAL_STEPS) * 100}%` }}
+          />
         </div>
       </div>
 
@@ -87,7 +84,7 @@ export default function OnboardingPage({
 
       <h2 className="km-h2" style={{ marginTop: 24 }}>{meta.title}</h2>
 
-      <Frame label={`Step ${pad2(step)} of 04`}>
+      <Frame label={`Step ${pad2(step)} of ${pad2(ONBOARDING_TOTAL_STEPS)}`}>
         {step === 1 ? (
           <div className="km-prose" style={{ maxWidth: 640 }}>
             <p>
@@ -149,53 +146,6 @@ export default function OnboardingPage({
         ) : null}
 
         {step === 3 ? (
-          <>
-            <div className="km-prose" style={{ maxWidth: 640, marginBottom: 24 }}>
-              <p>
-                Kinin is designed to preserve your story for the people who
-                matter most. Add someone you trust who may be given access to
-                your Kinin account or biography in the future, according to
-                your account settings.
-              </p>
-            </div>
-            <div className="km-form-grid">
-              <FormRow label="Trusted contact name">
-                <TextInput
-                  value={accountExecutor?.name || ""}
-                  onChange={(e) => setAccountExecutor((p) => ({ ...p, name: e.target.value }))}
-                  disabled={busy}
-                  placeholder="Enter their full name"
-                />
-              </FormRow>
-              <FormRow label="Trusted contact email">
-                <TextInput
-                  value={accountExecutor?.email || ""}
-                  onChange={(e) => setAccountExecutor((p) => ({ ...p, email: e.target.value }))}
-                  disabled={busy}
-                  placeholder="Enter their email address"
-                  inputMode="email"
-                />
-              </FormRow>
-              <FormRow
-                label="Confirm trusted contact email"
-                error={showExecutorEmailMismatch ? "Email addresses do not match." : ""}
-                help="We'll send them an email to accept the invite and verify the address. You can review or change your trusted contact later in Settings."
-              >
-                <TextInput
-                  value={accountExecutor?.confirm_email || ""}
-                  onChange={(e) =>
-                    setAccountExecutor((p) => ({ ...p, confirm_email: e.target.value }))
-                  }
-                  disabled={busy}
-                  placeholder="Re-enter their email address"
-                  inputMode="email"
-                />
-              </FormRow>
-            </div>
-          </>
-        ) : null}
-
-        {step === 4 ? (
           <>
             <div className="km-prose" style={{ maxWidth: 640, marginBottom: 24 }}>
               <p>
@@ -263,17 +213,7 @@ export default function OnboardingPage({
           Back
         </Button>
         <div className="km-row">
-          {step === 3 ? (
-            <button
-              type="button"
-              onClick={onSkip}
-              disabled={busy}
-              className="km-link-button"
-            >
-              Skip for now
-            </button>
-          ) : null}
-          {step < 4 ? (
+          {step < ONBOARDING_TOTAL_STEPS ? (
             <Button variant="primary" onClick={onContinue} disabled={busy}>
               {step === 1 ? "Let's begin" : "Continue"}
             </Button>

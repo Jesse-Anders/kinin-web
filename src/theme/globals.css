@@ -915,11 +915,18 @@ a:hover {
 /* ─── Help menu (persistent top-right entry point) ─────────────────────────
    One predictable, clearly-labeled place for all help. Fixed to the top-right
    on every page. Large targets and text for the 65+ audience. ─────────────── */
-.km-help-menu {
+/* Fixed top-right cluster holding the notification bell + Help control. */
+.km-top-widgets {
   position: fixed;
   top: 16px;
   right: 16px;
   z-index: 1100;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.km-help-menu {
+  position: relative;
 }
 .km-help-menu-btn {
   display: inline-flex;
@@ -1013,12 +1020,159 @@ a:hover {
 
 @media (max-width: 768px) {
   /* Nudge below the mobile hamburger so it never overlaps navigation. */
-  .km-help-menu { top: 12px; right: 12px; }
+  .km-top-widgets { top: 12px; right: 12px; gap: 8px; }
   .km-help-menu-btn { min-height: 44px; padding: 9px 14px; }
   .km-help-menu-popover {
     min-width: 0;
     width: min(320px, calc(100vw - 24px));
   }
+}
+
+/* ─── Notifications / alerts widget (top-right, beside Help) ───────────────── */
+.km-alerts-menu { position: relative; }
+.km-alerts-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--sage-deep);
+  background: var(--cream);
+  color: var(--sage-deep);
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(33, 27, 23, 0.12);
+  transition: background var(--t-fast), color var(--t-fast);
+}
+.km-alerts-btn:hover { background: var(--sage-deep); color: var(--cream); }
+.km-alerts-btn:focus-visible {
+  outline: 3px solid var(--sage);
+  outline-offset: 2px;
+}
+/* Friendly count badge — sage, not red, so it never reads as an error. */
+.km-alerts-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--sage-deep);
+  color: var(--cream);
+  border: 2px solid var(--cream);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+.km-alerts-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: min(340px, calc(100vw - 24px));
+  background: var(--cream);
+  border: 1px solid var(--sage);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 28px rgba(33, 27, 23, 0.18);
+  padding: 8px;
+  animation: km-help-menu-in var(--t-fast) ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .km-alerts-popover { animation: none; }
+}
+.km-alerts-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  border-bottom: 1px solid var(--thread-soft);
+  margin-bottom: 6px;
+}
+.km-alerts-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  border-radius: 50%;
+}
+.km-alerts-x:hover { background: var(--cream-deep); color: var(--ink); }
+.km-alert-card {
+  padding: 12px 10px;
+  border-radius: var(--radius);
+}
+.km-alert-card + .km-alert-card {
+  border-top: 1px solid var(--thread-soft);
+}
+.km-alert-card-title {
+  font-family: var(--font-body);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+.km-alert-card-body {
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  margin-bottom: 12px;
+}
+.km-alert-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.km-alert-cta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 8px 16px;
+  border: none;
+  background: var(--sage-deep);
+  color: var(--cream);
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background var(--t-fast);
+}
+.km-alert-cta:hover { background: var(--ink); }
+.km-alert-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--thread);
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: var(--font-body);
+  font-size: 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background var(--t-fast), color var(--t-fast);
+}
+.km-alert-secondary:hover { background: var(--cream-deep); color: var(--ink); }
+.km-alert-secondary:focus-visible,
+.km-alert-cta:focus-visible {
+  outline: 3px solid var(--sage);
+  outline-offset: 2px;
 }
 
 /* ─── Clip lightbox (short looping feature walkthroughs) ───────────────────── */

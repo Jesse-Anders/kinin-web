@@ -68,6 +68,7 @@ import AdminEmailStudioPage from "./pages/AdminEmailStudioPage";
 import InterviewDetailsPanel from "./components/InterviewDetailsPanel";
 import HelpMode from "./components/HelpMode";
 import HelpMenu from "./components/HelpMenu";
+import AlertsMenu from "./components/AlertsMenu";
 import Walkthrough from "./components/Walkthrough";
 import ClipLightbox from "./components/ClipLightbox";
 import {
@@ -76,6 +77,10 @@ import {
   HELP_CLIPS_ENABLED,
   WALKTHROUGH_PAGE_KEYS,
 } from "./help/walkthroughs";
+import {
+  ALERT_SNOOZE_DAYS,
+  resolveActiveAlerts,
+} from "./notifications/alerts";
 import {
   Banner,
   Button,
@@ -284,6 +289,10 @@ export default function App() {
   const [tourPage, setTourPage] = useState("");
   const [tourSteps, setTourSteps] = useState([]);
   const [clipPage, setClipPage] = useState("");
+  // In-app alerts (top-right notification widget). `alertsState` is the backend
+  // snooze/dismiss map keyed by alert id; `signupAt` powers time-based triggers.
+  const [alertsState, setAlertsState] = useState({});
+  const [signupAt, setSignupAt] = useState(null);
   const [isSendingTurn, setIsSendingTurn] = useState(false);
   const [isStartingSession, setIsStartingSession] = useState(false);
   const [startingPinId, setStartingPinId] = useState("");
@@ -1423,6 +1432,19 @@ export default function App() {
     applyReunionSettingsFromPayload(parsed);
     applyVoiceFeaturesFromPayload(parsed);
     applyHelpPreferencesFromPayload(parsed);
+    applyAlertsFromPayload(parsed);
+  }
+
+  function applyAlertsFromPayload(parsed) {
+    // Only overwrite when the payload actually carries these keys, so a partial
+    // PUT response never wipes optimistic local state.
+    if (parsed && typeof parsed === "object" && "alerts" in parsed) {
+      const raw = parsed.alerts;
+      setAlertsState(raw && typeof raw === "object" ? raw : {});
+    }
+    if (parsed && typeof parsed === "object" && "signup_at" in parsed) {
+      setSignupAt(typeof parsed.signup_at === "string" ? parsed.signup_at : null);
+    }
   }
 
   function normalizedExecutorDraft() {
@@ -2833,6 +2855,56 @@ export default function App() {
     }
   }
 
+  // Snooze ("remind me later") or dismiss ("delete alert") an in-app alert.
+  // Optimistic + merge-patched to the server (per-alert-id) so it sticks across
+  // sessions and devices.
+  async function saveAlertAction(alertId, action) {
+    if (!isAuthed || !alertId) return false;
+    const patch =
+      action === "snooze"
+        ? {
+            status: "snoozed",
+            snoozed_until: new Date(
+              Date.now() + ALERT_SNOOZE_DAYS * 24 * 60 * 60 * 1000,
+            ).toISOString(),
+          }
+        : { status: "dismissed" };
+    const previous = alertsState;
+    setAlertsState((prev) => ({ ...prev, [alertId]: { ...patch } }));
+    setProfileError("");
+    try {
+      const parsed = await putProfile({ alerts: { [alertId]: patch } });
+      applyAlertsFromPayload(parsed);
+      return true;
+    } catch (e) {
+      setAlertsState(previous);
+      setProfileErrorFromException(e);
+      return false;
+    }
+  }
+
+  // A trusted contact (account executor) exists once both name and email are set
+  // (any invite status counts). Drives the "add a trusted contact" alert.
+  const hasAccountExecutor = Boolean(
+    (accountExecutor?.name || "").trim() && (accountExecutor?.email || "").trim(),
+  );
+  // Alerts to surface right now: eligible by trigger, minus dismissed/snoozed.
+  // Suppressed until the user is past onboarding and has app access.
+  const activeAlerts = useMemo(() => {
+    if (!isAuthed || accessBlocked || onboardingRequired) return [];
+    return resolveActiveAlerts(
+      { nowMs: Date.now(), signupAt, hasExecutor: hasAccountExecutor },
+      alertsState,
+    );
+  }, [
+    isAuthed,
+    accessBlocked,
+    onboardingRequired,
+    signupAt,
+    hasAccountExecutor,
+    alertsState,
+  ]);
+
   // ---- Voice-to-text dictation (Phase 1: transient, no storage) ----
   const STT_MAX_RECORD_MS = 180000; // 3-minute cap
 
@@ -3190,21 +3262,13 @@ export default function App() {
       return;
     }
     if (step === 2) {
-      const ok = await saveProfile({
+      // Save bio profile, then advance to the final step (reminder cadence).
+      await saveProfile({
         closeAfterSave: false,
         navigateAfterSave: false,
         onboardingStep: 3,
       });
-      if (!ok) return;
       return;
-    }
-    if (step === 3) {
-      const validation = validateExecutorDraft();
-      if (!validation.ok) {
-        setProfileError(validation.message || "Trusted contact requires valid details.");
-        return;
-      }
-      await updateOnboardingStep(4);
     }
   }
 
@@ -3212,24 +3276,11 @@ export default function App() {
     const ok = await saveProfile({
       closeAfterSave: false,
       navigateAfterSave: false,
-      onboardingStep: 4,
+      onboardingStep: 3,
       markOnboardingCompleted: true,
-      executorSendInvite: false,
     });
     if (!ok) return;
     navigateToPage("interview");
-  }
-
-  async function onOnboardingSkip() {
-    setAccountExecutor({
-      name: "",
-      email: "",
-      confirm_email: "",
-      status: "",
-      confirmed_at: null,
-      last_invite_sent_at: null,
-    });
-    await updateOnboardingStep(4);
   }
 
   function onOnboardingPreviewBack() {
@@ -3242,15 +3293,7 @@ export default function App() {
   function onOnboardingPreviewContinue() {
     setOnboardingPreview((prev) => ({
       ...prev,
-      step: Math.min(4, Number(prev.step || 1) + 1),
-    }));
-  }
-
-  function onOnboardingPreviewSkip() {
-    setOnboardingPreview((prev) => ({
-      ...prev,
-      accountExecutor: { name: "", email: "", confirm_email: "" },
-      step: 4,
+      step: Math.min(3, Number(prev.step || 1) + 1),
     }));
   }
 
@@ -3261,17 +3304,31 @@ export default function App() {
   return (
     <div className="km-app-shell">
       {showNavigation ? (
-        <HelpMenu
-          hasTour={pageHasTour(activePage)}
-          hasClip={HELP_CLIPS_ENABLED && Boolean(getWalkthrough(activePage)?.clip)}
-          canAsk={isAuthed && !accessBlocked}
-          onOpenMenu={() => {
-            if (tourRun) handleTourDone();
-          }}
-          onShowTour={() => startTour(activePage)}
-          onAskKinin={() => openHelpMode()}
-          onWatchClip={() => openClip(activePage)}
-        />
+        <div className="km-top-widgets">
+          <AlertsMenu
+            alerts={activeAlerts}
+            onCta={(alert) => {
+              if (alert?.cta?.page) navigateToPage(alert.cta.page);
+            }}
+            onSnooze={(alert) => {
+              void saveAlertAction(alert.id, "snooze");
+            }}
+            onDismiss={(alert) => {
+              void saveAlertAction(alert.id, "dismiss");
+            }}
+          />
+          <HelpMenu
+            hasTour={pageHasTour(activePage)}
+            hasClip={HELP_CLIPS_ENABLED && Boolean(getWalkthrough(activePage)?.clip)}
+            canAsk={isAuthed && !accessBlocked}
+            onOpenMenu={() => {
+              if (tourRun) handleTourDone();
+            }}
+            onShowTour={() => startTour(activePage)}
+            onAskKinin={() => openHelpMode()}
+            onWatchClip={() => openClip(activePage)}
+          />
+        </div>
       ) : null}
       {showNavigation ? (
         <Walkthrough steps={tourSteps} run={tourRun} onDone={handleTourDone} />
@@ -3706,8 +3763,6 @@ export default function App() {
           onboardingStep={Number(onboardingStatus?.current_step || 1)}
           bioProfile={bioProfile}
           setBioProfile={setBioProfile}
-          accountExecutor={accountExecutor}
-          setAccountExecutor={setAccountExecutor}
           continuitySettings={continuitySettings}
           setContinuitySettings={setContinuitySettings}
           busy={profileBusy || onboardingBusy}
@@ -3715,7 +3770,6 @@ export default function App() {
           onBack={onOnboardingBack}
           onContinue={onOnboardingContinue}
           onBegin={onOnboardingBegin}
-          onSkip={onOnboardingSkip}
         />
       ) : activePage === "admin-onboarding-preview" ? (
         <OnboardingPage
@@ -3725,13 +3779,6 @@ export default function App() {
             setOnboardingPreview((prev) => ({
               ...prev,
               bioProfile: typeof next === "function" ? next(prev.bioProfile) : next,
-            }))
-          }
-          accountExecutor={onboardingPreview.accountExecutor}
-          setAccountExecutor={(next) =>
-            setOnboardingPreview((prev) => ({
-              ...prev,
-              accountExecutor: typeof next === "function" ? next(prev.accountExecutor) : next,
             }))
           }
           continuitySettings={onboardingPreview.continuitySettings}
@@ -3746,7 +3793,6 @@ export default function App() {
           onBack={onOnboardingPreviewBack}
           onContinue={onOnboardingPreviewContinue}
           onBegin={onOnboardingPreviewBegin}
-          onSkip={onOnboardingPreviewSkip}
           previewMode
           beginLabel="Back to Admin"
         />
