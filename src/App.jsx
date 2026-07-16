@@ -4,7 +4,6 @@ import {
   BookOpen,
   CircleUserRound,
   CirclePlus,
-  Feather,
   Check,
   Key,
   MapPin,
@@ -956,7 +955,6 @@ export default function App() {
     {
       id: "feedback",
       label: "Feedback",
-      icon: Feather,
       requiresAuth: true,
       onClick: () => navigateToPage("feedback"),
     },
@@ -1108,7 +1106,8 @@ export default function App() {
   }, [message]);
   // About and FAQ sit on the main sidebar when logged out, but nest into the
   // "+" overflow menu (alongside Contact and Privacy) once a user is logged in.
-  const NESTED_WHEN_AUTHED_IDS = new Set(["about", "faq"]);
+  // Feedback is auth-only and always lives in that "+" overflow menu.
+  const NESTED_WHEN_AUTHED_IDS = new Set(["about", "faq", "feedback"]);
   const visibleTopItems = menuItems.filter(
     (item) =>
       item.section !== "bottom" &&
