@@ -318,7 +318,7 @@ function TopicChooser({
             {items.length > 0 ? (
               <>
                 <p className="km-topics-intro">
-                  We&apos;ll gently set your current thread aside — you can always return to
+                  We&apos;ll set your current thread aside — you can always return to
                   it — and pick up somewhere new.
                 </p>
                 <div className="km-topics-list">
