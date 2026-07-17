@@ -347,7 +347,7 @@ export default function FamilyCirclePage({
             <div className="km-prose" style={{ maxWidth: 560 }}>
               <p style={{ margin: 0 }}>
                 <UsersRound size={16} aria-hidden="true" style={{ verticalAlign: "-2px", marginRight: 6 }} />
-                Family Circle will grow into a warm, private space for your
+                Family Circle will grow into space for your
                 closest people — with more ways to share moments and stay
                 connected. This is just the beginning.
               </p>
