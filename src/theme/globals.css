@@ -2673,7 +2673,7 @@ a:hover {
   align-self: flex-end;
 }
 
-/* ─── Reunion share list (owner-side, Settings) ─── */
+/* ─── Biography share list (owner-side, Family Circle) ─── */
 .km-share-list {
   list-style: none;
   margin: 0;
@@ -2743,8 +2743,8 @@ a:hover {
   color: var(--ink-soft);
 }
 
-/* ─── Reunion mode (Listener) ─── */
-.km-reunion-bio {
+/* ─── Biographies experience ─── */
+.km-biography-bio {
   display: block;
   width: 100%;
   text-align: left;
@@ -2757,40 +2757,40 @@ a:hover {
   color: inherit;
   transition: border-color 0.12s ease, background 0.12s ease;
 }
-.km-reunion-bio:hover:not(:disabled) {
+.km-biography-bio:hover:not(:disabled) {
   background: var(--cream-warm);
   border-color: var(--ink-faint);
 }
-.km-reunion-bio:disabled { opacity: 0.6; cursor: default; }
-.km-reunion-bio[data-selected="true"] {
+.km-biography-bio:disabled { opacity: 0.6; cursor: default; }
+.km-biography-bio[data-selected="true"] {
   border-color: var(--ink);
   background: var(--cream-warm);
 }
 
-.km-reunion-surface {
+.km-biography-surface {
   min-height: 240px;
   max-height: 520px;
   overflow-y: auto;
 }
 
 /* Numbered citation badges under assistant replies. */
-.km-reunion-citations {
+.km-biography-citations {
   margin-top: 12px;
   padding-top: 10px;
   border-top: 1px solid var(--thread);
 }
-.km-reunion-citations-label {
+.km-biography-citations-label {
   display: block;
   margin-bottom: 6px;
   color: var(--ink-faint);
 }
-.km-reunion-citations-row {
+.km-biography-citations-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
 }
-.km-reunion-citation {
+.km-biography-citation {
   font-family: var(--font-mono);
   font-size: 11px;
   line-height: 1;
@@ -2803,11 +2803,11 @@ a:hover {
   cursor: pointer;
   transition: border-color 0.12s ease, background 0.12s ease;
 }
-.km-reunion-citation:hover {
+.km-biography-citation:hover {
   background: var(--cream-warm);
   border-color: var(--ink-faint);
 }
-.km-reunion-citation[data-active="true"] {
+.km-biography-citation[data-active="true"] {
   background: var(--ink);
   color: var(--cream);
   border-color: var(--ink);
@@ -2818,7 +2818,7 @@ a:hover {
    dimmed backdrop above the chat, grab-handle affordance at top, close via
    backdrop tap / X button / Escape. On desktop it's centered and capped in
    width for readability; on mobile it takes the full viewport width. */
-.km-reunion-sheet-backdrop {
+.km-biography-sheet-backdrop {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.35);
@@ -2827,11 +2827,11 @@ a:hover {
   transition: opacity 220ms ease;
   z-index: 90;
 }
-.km-reunion-sheet-backdrop[data-open="true"] {
+.km-biography-sheet-backdrop[data-open="true"] {
   opacity: 1;
   pointer-events: auto;
 }
-.km-reunion-sheet {
+.km-biography-sheet {
   position: fixed;
   left: 50%;
   bottom: 0;
@@ -2851,10 +2851,10 @@ a:hover {
   z-index: 100;
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
-.km-reunion-sheet[data-open="true"] {
+.km-biography-sheet[data-open="true"] {
   transform: translate(-50%, 0);
 }
-.km-reunion-sheet-handle {
+.km-biography-sheet-handle {
   width: 40px;
   height: 4px;
   border-radius: 999px;
@@ -2863,7 +2863,7 @@ a:hover {
   margin: 8px auto 6px;
   flex: 0 0 auto;
 }
-.km-reunion-sheet-header {
+.km-biography-sheet-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -2872,14 +2872,14 @@ a:hover {
   border-bottom: 1px solid var(--thread);
   flex: 0 0 auto;
 }
-.km-reunion-sheet-body {
+.km-biography-sheet-body {
   padding: 14px 16px 20px;
   overflow-y: auto;
   flex: 1 1 auto;
   min-height: 0;
   -webkit-overflow-scrolling: touch;
 }
-.km-reunion-source-close {
+.km-biography-source-close {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2893,27 +2893,27 @@ a:hover {
   padding: 0;
   transition: color 0.12s ease, border-color 0.12s ease;
 }
-.km-reunion-source-close:hover,
-.km-reunion-source-close:focus-visible {
+.km-biography-source-close:hover,
+.km-biography-source-close:focus-visible {
   color: var(--ink);
   border-color: var(--ink-faint);
   outline: none;
 }
-.km-reunion-source-id {
+.km-biography-source-id {
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--ink-faint);
   margin-bottom: 10px;
   word-break: break-all;
 }
-.km-reunion-source-meta {
+.km-biography-source-meta {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 8px;
 }
-.km-reunion-source-kind {
+.km-biography-source-kind {
   display: inline-flex;
   align-items: center;
   padding: 3px 10px;
@@ -2926,18 +2926,18 @@ a:hover {
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-.km-reunion-source-date {
+.km-biography-source-date {
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--ink-faint);
 }
-.km-reunion-source-title {
+.km-biography-source-title {
   font-weight: 600;
   font-size: 16px;
   color: var(--ink);
   margin-bottom: 8px;
 }
-.km-reunion-source-body {
+.km-biography-source-body {
   white-space: pre-wrap;
   font-family: var(--font-body, inherit);
   color: var(--ink);
@@ -3000,8 +3000,8 @@ a:hover {
   background: rgba(0, 0, 0, 0.82);
 }
 
-/* ─── Reunion photos (chip, thumbnails, lightbox) ─── */
-.km-reunion-photo-chip {
+/* ─── Biography photos (chip, thumbnails, lightbox) ─── */
+.km-biography-photo-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -3017,19 +3017,19 @@ a:hover {
   cursor: pointer;
   transition: all var(--t-fast);
 }
-.km-reunion-photo-chip:hover {
+.km-biography-photo-chip:hover {
   background: var(--crimson);
   color: var(--cream);
 }
-.km-reunion-source-photos {
+.km-biography-source-photos {
   margin-top: 16px;
 }
-.km-reunion-thumbs {
+.km-biography-thumbs {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
-.km-reunion-thumb {
+.km-biography-thumb {
   width: 72px;
   height: 72px;
   padding: 0;
@@ -3039,13 +3039,13 @@ a:hover {
   cursor: pointer;
   background: var(--cream-warm);
 }
-.km-reunion-thumb img {
+.km-biography-thumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
-.km-reunion-lightbox {
+.km-biography-lightbox {
   position: fixed;
   inset: 0;
   z-index: 1000;
@@ -3055,7 +3055,7 @@ a:hover {
   background: rgba(0, 0, 0, 0.9);
   padding: 24px;
 }
-.km-reunion-lightbox-figure {
+.km-biography-lightbox-figure {
   margin: 0;
   max-width: 92vw;
   max-height: 88vh;
@@ -3064,13 +3064,13 @@ a:hover {
   align-items: center;
   gap: 12px;
 }
-.km-reunion-lightbox-figure img {
+.km-biography-lightbox-figure img {
   max-width: 92vw;
   max-height: 78vh;
   object-fit: contain;
   border-radius: 4px;
 }
-.km-reunion-lightbox-caption {
+.km-biography-lightbox-caption {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3079,10 +3079,10 @@ a:hover {
   text-align: center;
   font-size: 14px;
 }
-.km-reunion-lightbox-caption .km-mono-label {
+.km-biography-lightbox-caption .km-mono-label {
   color: rgba(255, 255, 255, 0.7);
 }
-.km-reunion-lightbox-close {
+.km-biography-lightbox-close {
   position: absolute;
   top: 16px;
   right: 16px;
@@ -3097,10 +3097,10 @@ a:hover {
   color: #fff;
   cursor: pointer;
 }
-.km-reunion-lightbox-close:hover {
+.km-biography-lightbox-close:hover {
   background: rgba(255, 255, 255, 0.28);
 }
-.km-reunion-lightbox-nav {
+.km-biography-lightbox-nav {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
@@ -3115,13 +3115,13 @@ a:hover {
   color: #fff;
   cursor: pointer;
 }
-.km-reunion-lightbox-nav:hover {
+.km-biography-lightbox-nav:hover {
   background: rgba(255, 255, 255, 0.26);
 }
-.km-reunion-lightbox-prev {
+.km-biography-lightbox-prev {
   left: 16px;
 }
-.km-reunion-lightbox-next {
+.km-biography-lightbox-next {
   right: 16px;
 }
 

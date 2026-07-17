@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { Banner, Button, FormRow, Frame, Section, Skeleton, Spinner, TextInput } from "../theme";
+import { useState } from "react";
+import { Banner, Button, Frame, Section } from "../theme";
 import InterviewDetailsPanel from "../components/InterviewDetailsPanel";
 import VoicePickerSection from "../components/VoicePickerSection";
 
@@ -8,19 +8,12 @@ import VoicePickerSection from "../components/VoicePickerSection";
 // true (and re-open the backend STT gate) if we reintroduce it as an add-on.
 const SHOW_VOICE_FEATURES_TOGGLE = false;
 
-function parseSharesPayload(text) {
-  try {
-    const outer = JSON.parse(text);
-    return typeof outer?.body === "string" ? JSON.parse(outer.body) : outer;
-  } catch {
-    return null;
-  }
-}
-
 // Settings, split by category. `category` is one of the ids in
-// SETTINGS_CATEGORIES (voice | reminders | reunion | interview) or null for
+// SETTINGS_CATEGORIES (voice | reminders | biographies | interview) or null for
 // the index landing. A persistent breakout menu switches between them; each
-// section persists on its own (optimistic saves in App.jsx).
+// section persists on its own (optimistic saves in App.jsx). Managing who can
+// interact with your biography now lives on the Family Circle page — this
+// section keeps only the on/off switch plus a link there.
 export default function SettingsPage({
   category,
   categories,
@@ -38,170 +31,23 @@ export default function SettingsPage({
   // reminders
   continuitySettings,
   saveReminderCadence,
-  // reunion
-  reunionSettings,
-  saveReunionEnabled,
+  // biographies
+  biographySettings,
+  saveBiographyEnabled,
+  onManageFamilyCircle,
   // help & tips
   helpTipsEnabled,
   saveHelpTipsEnabled,
   replayWalkthroughs,
-  apiBase,
-  getAccessToken,
   // interview
   interviewDetails,
 }) {
-  const reunionEnabled = reunionSettings?.enabled !== false;
+  const biographyEnabled = biographySettings?.enabled !== false;
   const helpTipsOn = helpTipsEnabled !== false;
   const voiceFeaturesOn = voiceFeaturesEnabled === true;
   const cadenceValue = String(continuitySettings?.reminder_cadence_weeks ?? 2);
-  const canManageShares =
-    !!apiBase && typeof getAccessToken === "function" && category === "reunion";
 
-  const [shares, setShares] = useState([]);
-  const [pendingInvites, setPendingInvites] = useState([]);
-  const [sharesLoading, setSharesLoading] = useState(false);
-  const [sharesError, setSharesError] = useState("");
-  const [shareBusy, setShareBusy] = useState(false);
-  const [shareNotice, setShareNotice] = useState("");
-  const [shareEmail, setShareEmail] = useState("");
-  const [shareRelationship, setShareRelationship] = useState("");
   const [replayNotice, setReplayNotice] = useState("");
-
-  const loadShares = useCallback(async () => {
-    if (!canManageShares) return;
-    setSharesLoading(true);
-    setSharesError("");
-    try {
-      const token = await getAccessToken();
-      const res = await fetch(`${apiBase}/reunion/shares`, {
-        method: "GET",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const text = await res.text();
-      const parsed = parseSharesPayload(text);
-      if (!res.ok) {
-        throw new Error(parsed?.detail || parsed?.error || `Request failed (${res.status})`);
-      }
-      setShares(Array.isArray(parsed?.shares) ? parsed.shares : []);
-      setPendingInvites(Array.isArray(parsed?.pending_invites) ? parsed.pending_invites : []);
-    } catch (e) {
-      setSharesError(e?.message || String(e));
-    } finally {
-      setSharesLoading(false);
-    }
-  }, [apiBase, getAccessToken, canManageShares]);
-
-  useEffect(() => {
-    loadShares();
-  }, [loadShares]);
-
-  async function addShare(e) {
-    if (e?.preventDefault) e.preventDefault();
-    if (!canManageShares || shareBusy) return;
-    const email = shareEmail.trim();
-    const relationship = shareRelationship.trim();
-    if (!email) {
-      setSharesError("Enter an email address to share with.");
-      return;
-    }
-    setShareBusy(true);
-    setSharesError("");
-    setShareNotice("");
-    try {
-      const token = await getAccessToken();
-      const res = await fetch(`${apiBase}/reunion/shares`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ email, relationship }),
-      });
-      const text = await res.text();
-      const parsed = parseSharesPayload(text);
-      if (!res.ok) {
-        if (parsed?.error === "invite_limit_reached") {
-          throw new Error(
-            parsed?.detail || "You've reached the limit of pending invitations. Cancel one or wait for someone to join.",
-          );
-        }
-        throw new Error(parsed?.detail || parsed?.error || `Request failed (${res.status})`);
-      }
-      if (parsed?.pending) {
-        setShareNotice(
-          `Invitation sent to ${email}. They'll be able to hear your story as soon as they join Kinin.`,
-        );
-      } else {
-        const name = parsed?.share?.display_name || email;
-        setShareNotice(`${name} can now hear your story in Reunion.`);
-      }
-      setShareEmail("");
-      setShareRelationship("");
-      await loadShares();
-    } catch (err) {
-      setSharesError(err?.message || String(err));
-    } finally {
-      setShareBusy(false);
-    }
-  }
-
-  async function removeShare(listenerUserId, name) {
-    if (!canManageShares || shareBusy || !listenerUserId) return;
-    setShareBusy(true);
-    setSharesError("");
-    setShareNotice("");
-    try {
-      const token = await getAccessToken();
-      const res = await fetch(`${apiBase}/reunion/shares`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ listener_user_id: listenerUserId }),
-      });
-      const text = await res.text();
-      const parsed = parseSharesPayload(text);
-      if (!res.ok) {
-        throw new Error(parsed?.detail || parsed?.error || `Request failed (${res.status})`);
-      }
-      setShareNotice(`${name || "That person"}'s access has been removed.`);
-      await loadShares();
-    } catch (err) {
-      setSharesError(err?.message || String(err));
-    } finally {
-      setShareBusy(false);
-    }
-  }
-
-  async function cancelInvite(email) {
-    if (!canManageShares || shareBusy || !email) return;
-    setShareBusy(true);
-    setSharesError("");
-    setShareNotice("");
-    try {
-      const token = await getAccessToken();
-      const res = await fetch(`${apiBase}/reunion/shares`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ invitee_email: email }),
-      });
-      const text = await res.text();
-      const parsed = parseSharesPayload(text);
-      if (!res.ok) {
-        throw new Error(parsed?.detail || parsed?.error || `Request failed (${res.status})`);
-      }
-      setShareNotice(`Invitation to ${email} has been cancelled.`);
-      await loadShares();
-    } catch (err) {
-      setSharesError(err?.message || String(err));
-    } finally {
-      setShareBusy(false);
-    }
-  }
 
   const activeCategory = categories.find((c) => c.id === category) || null;
 
@@ -277,8 +123,8 @@ export default function SettingsPage({
                     Voice features let you <strong>speak instead of type</strong> —
                     tap the microphone in chat and Kinin turns your words into text
                     you can edit before sending. This add-on also unlocks upcoming
-                    abilities to save your spoken recordings and let your Reunion
-                    persona speak back in your own voice.
+                    abilities to save your spoken recordings and let your biography
+                    speak back in your own voice.
                   </p>
                   <p className="km-muted">
                     Kinin reading its turns aloud is always free and works without
@@ -421,157 +267,57 @@ export default function SettingsPage({
           </Frame>
         ) : null}
 
-        {category === "reunion" ? (
-          <Frame label="Reunion">
+        {category === "biographies" ? (
+          <Frame label="Biographies">
             <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
               <p>
-                Reunion lets family members you've invited talk directly with
-                your interview memories &mdash; asking questions and hearing
-                answers in your voice, grounded in what you've already shared
-                with Kinin. New memories become available to Reunion as soon as
-                you finish each turn.
+                Sharing lets the family &amp; close friends you invite interact
+                with your biography &mdash; asking questions and hearing answers
+                in your voice, grounded in what you&apos;ve already shared with
+                Kinin. New memories become available as soon as you finish each
+                turn.
               </p>
               <p>
-                You control access. Turn Reunion off any time to pause it for
-                everyone; turn it back on when you're ready. Individual
-                per-listener controls will come later &mdash; this is a blanket
-                switch for now.
+                You control access. Turn sharing off any time to pause it for
+                everyone; turn it back on when you&apos;re ready.
               </p>
             </div>
             <label className="km-checkbox">
               <input
                 type="checkbox"
-                checked={reunionEnabled}
+                checked={biographyEnabled}
                 onChange={(e) =>
-                  saveReunionEnabled && saveReunionEnabled(e.target.checked)
+                  saveBiographyEnabled && saveBiographyEnabled(e.target.checked)
                 }
-                disabled={profileBusy || !saveReunionEnabled}
+                disabled={profileBusy || !saveBiographyEnabled}
               />
               <span>
-                <strong>Reunion is {reunionEnabled ? "on" : "paused"}.</strong>
+                <strong>
+                  Biography sharing is {biographyEnabled ? "on" : "paused"}.
+                </strong>
                 {" "}
-                {reunionEnabled
-                  ? "Family members you've granted access can reach you through Reunion."
-                  : "No one can reach you through Reunion right now, even if you've granted them access."}
+                {biographyEnabled
+                  ? "The people in your Family Circle can interact with your biography."
+                  : "No one can interact with your biography right now, even the people in your Family Circle."}
               </span>
             </label>
 
-            {apiBase && typeof getAccessToken === "function" ? (
-              <div style={{ marginTop: 28 }}>
-                <div className="km-mono-label" style={{ marginBottom: 12 }}>
-                  Who can hear your story in Kinin's Reunion
-                </div>
-                <div className="km-prose" style={{ maxWidth: 560, marginBottom: 16 }}>
-                  <p>
-                    Invite a family member or friend by the email tied to their
-                    Kinin account. They'll be able to talk with your Reunion right
-                    away. You can remove access at any time.
-                  </p>
-                </div>
-
-                {shareNotice ? (
-                  <div style={{ marginBottom: 14 }}>
-                    <Banner tone="info">{shareNotice}</Banner>
-                  </div>
-                ) : null}
-                {sharesError ? (
-                  <div style={{ marginBottom: 14 }}>
-                    <Banner tone="danger">{sharesError}</Banner>
-                  </div>
-                ) : null}
-
-                <form className="km-form-grid" onSubmit={addShare}>
-                  <FormRow label="Their email">
-                    <TextInput
-                      value={shareEmail}
-                      onChange={(e) => setShareEmail(e.target.value)}
-                      disabled={shareBusy}
-                      inputMode="email"
-                      placeholder="name@example.com"
-                    />
-                  </FormRow>
-                  <FormRow label="Relationship (optional)" help="e.g. daughter, brother, close friend">
-                    <TextInput
-                      value={shareRelationship}
-                      onChange={(e) => setShareRelationship(e.target.value)}
-                      disabled={shareBusy}
-                      maxLength={60}
-                      placeholder="daughter"
-                    />
-                  </FormRow>
-                </form>
-                <div className="km-row" style={{ marginTop: 14 }}>
-                  <Button variant="primary" onClick={addShare} disabled={shareBusy || !shareEmail.trim()}>
-                    {shareBusy ? (
-                      <>
-                        <Spinner /> Working...
-                      </>
-                    ) : (
-                      "Share with this person"
-                    )}
-                  </Button>
-                </div>
-
-                <div style={{ marginTop: 22 }}>
-                  <div className="km-mono-label" style={{ marginBottom: 10 }}>
-                    Currently shared with
-                  </div>
-                  {sharesLoading ? (
-                    <div style={{ display: "grid", gap: 8, maxWidth: 480 }}>
-                      <Skeleton />
-                      <Skeleton short />
-                    </div>
-                  ) : shares.length === 0 ? (
-                    <div className="km-form-help" style={{ fontStyle: "normal" }}>
-                      You haven't shared your Reunion with anyone yet.
-                    </div>
-                  ) : (
-                    <ul className="km-share-list">
-                      {shares.map((s) => (
-                        <li key={s.listener_user_id} className="km-share-row">
-                          <div>
-                            <strong>{s.display_name || s.listener_user_id}</strong>
-                            {s.relationship ? (
-                              <span className="km-muted"> · {s.relationship}</span>
-                            ) : null}
-                          </div>
-                          <Button
-                            onClick={() => removeShare(s.listener_user_id, s.display_name)}
-                            disabled={shareBusy}
-                          >
-                            Remove
-                          </Button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-
-                {pendingInvites.length > 0 ? (
-                  <div style={{ marginTop: 20 }}>
-                    <div className="km-mono-label" style={{ marginBottom: 10 }}>
-                      Invited · not joined yet
-                    </div>
-                    <ul className="km-share-list">
-                      {pendingInvites.map((p) => (
-                        <li key={p.invitee_email} className="km-share-row">
-                          <div>
-                            <strong>{p.invitee_email}</strong>
-                            {p.relationship ? (
-                              <span className="km-muted"> · {p.relationship}</span>
-                            ) : null}
-                            <span className="km-muted"> · awaiting sign-up</span>
-                          </div>
-                          <Button onClick={() => cancelInvite(p.invitee_email)} disabled={shareBusy}>
-                            Cancel
-                          </Button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
+            <div style={{ marginTop: 28 }}>
+              <div className="km-mono-label" style={{ marginBottom: 12 }}>
+                Choose who can interact with your biography
               </div>
-            ) : null}
+              <div className="km-prose" style={{ maxWidth: 560, marginBottom: 14 }}>
+                <p>
+                  Invite and manage the family &amp; close friends who can reach
+                  your biography over in Family Circle.
+                </p>
+              </div>
+              {onManageFamilyCircle ? (
+                <Button variant="primary" onClick={onManageFamilyCircle}>
+                  Open Family Circle
+                </Button>
+              ) : null}
+            </div>
           </Frame>
         ) : null}
 

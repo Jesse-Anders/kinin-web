@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AudioLines,
+  BookMarked,
   BookOpen,
   CircleUserRound,
   CirclePlus,
@@ -14,10 +15,10 @@ import {
   NotebookPen,
   Play,
   Quote,
-  Radio,
   ScrollText,
   Settings as SettingsIcon,
   Square,
+  UsersRound,
   X,
 } from "lucide-react";
 import kininHomeIcon from "./assets/icons/kinin-icon-390sq.png";
@@ -59,7 +60,8 @@ import {
   findEntriesByPin as findJournalEntriesByPin,
 } from "./services/journalClient";
 import { updatePin } from "./services/pinsClient";
-import ReunionPage from "./pages/ReunionPage";
+import BiographiesPage from "./pages/BiographiesPage";
+import FamilyCirclePage from "./pages/FamilyCirclePage";
 import UnsubscribePage from "./pages/UnsubscribePage";
 import OnboardingPage from "./pages/OnboardingPage";
 import ExecutorAcceptPage from "./pages/ExecutorAcceptPage";
@@ -183,7 +185,8 @@ const PAGE_TO_PATH = {
   "review-chats": "/review-chats",
   pins: "/pins",
   journal: "/journal",
-  reunion: "/reunion",
+  biographies: "/biographies",
+  "family-circle": "/family-circle",
   contact: "/contact",
   privacy: "/privacy",
   unsubscribe: "/unsubscribe",
@@ -208,7 +211,7 @@ const PAGE_TO_PATH = {
   settings: "/settings",
   "settings-voice": "/settings/voice",
   "settings-reminders": "/settings/reminders",
-  "settings-reunion": "/settings/reunion",
+  "settings-biographies": "/settings/biographies",
   "settings-interview": "/settings/interview",
   "settings-help": "/settings/help",
 };
@@ -217,7 +220,7 @@ const PAGE_TO_PATH = {
 const SETTINGS_CATEGORIES = [
   { id: "voice", page: "settings-voice", label: "Voice", blurb: "Choose the voice Kinin speaks in." },
   { id: "reminders", page: "settings-reminders", label: "Reminders", blurb: "How often Kinin checks back in." },
-  { id: "reunion", page: "settings-reunion", label: "Reunion", blurb: "Who can hear your story, and the on/off switch." },
+  { id: "biographies", page: "settings-biographies", label: "Biographies", blurb: "Turn sharing of your biography on or off." },
   { id: "interview", page: "settings-interview", label: "Interview details", blurb: "Behind-the-scenes session context." },
   { id: "help", page: "settings-help", label: "Help & tips", blurb: "Guided tours and helpful pop-up tips." },
 ];
@@ -477,7 +480,7 @@ export default function App() {
   const [switchingTopicStepId, setSwitchingTopicStepId] = useState("");
   const [submittingCustomTopic, setSubmittingCustomTopic] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
-  const [reunionInvite, setReunionInvite] = useState(null);
+  const [biographyInvite, setBiographyInvite] = useState(null);
   const [error, setError] = useState("");
   // Errors from the profile-editing surfaces (account/settings + onboarding).
   // Kept separate from the global `error` so they render ONLY on those pages
@@ -490,11 +493,11 @@ export default function App() {
   const [_showProfile, setShowProfile] = useState(false);
   const [profileSchema, setProfileSchema] = useState(null);
   const [bioProfile, setBioProfile] = useState({ preferred_name: "", date_of_birth: "" });
-  // Blanket privacy switch: when false, listeners can't reach this interviewee
-  // via Reunion. Defaults to true so legacy users stay accessible until they
-  // explicitly opt out.
-  const [reunionSettings, setReunionSettings] = useState({ enabled: true });
-  // "Enable voice features" paid add-on (voice input, storage, Reunion
+  // Blanket privacy switch: when false, family members can't reach this
+  // interviewee's biography. Defaults to true so legacy users stay accessible
+  // until they explicitly opt out.
+  const [biographySettings, setBiographySettings] = useState({ enabled: true });
+  // "Enable voice features" paid add-on (voice input, storage, biography
   // playback/reenactment). Defaults OFF — opt-in feature set, not a default.
   // Audio features are currently always on for all users (add-on toggle hidden,
   // backend gate open). Default true so the mic renders before any profile load.
@@ -653,7 +656,7 @@ export default function App() {
     }
   }, [ttsVoiceUuid]);
   // Serializes all PUT /profile writes. The full "Save" and the optimistic
-  // toggles (reunion / voice features / voice preference) all hit the same
+  // toggles (biography sharing / voice features / voice preference) all hit the same
   // conditional-write record; without ordering, overlapping requests can
   // resolve out of order and apply a stale server snapshot. Chaining them
   // guarantees writes (and the state reconciliation that follows each) run
@@ -1119,11 +1122,18 @@ export default function App() {
       onClick: () => navigateToPage("review-chats"),
     },
     {
-      id: "reunion",
-      label: "Reunion",
-      icon: Radio,
+      id: "biographies",
+      label: "Biographies",
+      icon: BookMarked,
       requiresAuth: true,
-      onClick: () => navigateToPage("reunion"),
+      onClick: () => navigateToPage("biographies"),
+    },
+    {
+      id: "family-circle",
+      label: "Family Circle",
+      icon: UsersRound,
+      requiresAuth: true,
+      onClick: () => navigateToPage("family-circle"),
     },
     {
       id: "feedback",
@@ -1368,7 +1378,8 @@ export default function App() {
       activePage === "review-chats" ||
       activePage === "pins" ||
       activePage === "journal" ||
-      activePage === "reunion" ||
+      activePage === "biographies" ||
+      activePage === "family-circle" ||
       activePage === "help";
     const isAdminPage =
       activePage === "admin" ||
@@ -1526,11 +1537,11 @@ export default function App() {
     }
   }
 
-  function applyReunionSettingsFromPayload(parsed) {
-    const reunion = parsed?.reunion_settings;
-    setReunionSettings({
+  function applyBiographySettingsFromPayload(parsed) {
+    const biography = parsed?.biography_settings;
+    setBiographySettings({
       enabled:
-        reunion && typeof reunion === "object" && reunion.enabled === false
+        biography && typeof biography === "object" && biography.enabled === false
           ? false
           : true,
     });
@@ -1610,7 +1621,7 @@ export default function App() {
       current_step: Number(onboarding.current_step || 1),
     });
     applyAccountExecutorFromPayload(parsed);
-    applyReunionSettingsFromPayload(parsed);
+    applyBiographySettingsFromPayload(parsed);
     applyVoiceFeaturesFromPayload(parsed);
     applyHelpPreferencesFromPayload(parsed);
     applyAlertsFromPayload(parsed);
@@ -1868,20 +1879,20 @@ export default function App() {
     setAccountUsername(user.username);
   }, [user]);
 
-  // Capture a Reunion invite deep link (?invite=reunion&email=&from=) so we can
-  // welcome the invitee by name and point them at signup. Persist it across the
-  // Hosted UI redirect, and strip the params so they don't linger in the URL.
+  // Capture a biography invite deep link (?invite=biography&email=&from=) so we
+  // can welcome the invitee by name and point them at signup. Persist it across
+  // the Hosted UI redirect, and strip the params so they don't linger in the URL.
   useEffect(() => {
     try {
       const sp = new URLSearchParams(window.location.search);
-      if ((sp.get("invite") || "").toLowerCase() === "reunion") {
+      if ((sp.get("invite") || "").toLowerCase() === "biography") {
         const invite = {
           email: (sp.get("email") || "").trim(),
           from: (sp.get("from") || "").trim(),
         };
-        setReunionInvite(invite);
+        setBiographyInvite(invite);
         try {
-          sessionStorage.setItem("kinin_reunion_invite", JSON.stringify(invite));
+          sessionStorage.setItem("kinin_biography_invite", JSON.stringify(invite));
         } catch { /* ignore storage errors */ }
         sp.delete("invite");
         sp.delete("email");
@@ -1893,8 +1904,8 @@ export default function App() {
           window.location.pathname + (qs ? `?${qs}` : "") + window.location.hash,
         );
       } else {
-        const stored = sessionStorage.getItem("kinin_reunion_invite");
-        if (stored) setReunionInvite(JSON.parse(stored));
+        const stored = sessionStorage.getItem("kinin_biography_invite");
+        if (stored) setBiographyInvite(JSON.parse(stored));
       }
     } catch { /* ignore malformed invite params */ }
   }, []);
@@ -1903,9 +1914,9 @@ export default function App() {
   // server-side at signup); clear the stored context.
   useEffect(() => {
     if (!isAuthed) return;
-    setReunionInvite(null);
+    setBiographyInvite(null);
     try {
-      sessionStorage.removeItem("kinin_reunion_invite");
+      sessionStorage.removeItem("kinin_biography_invite");
     } catch { /* ignore */ }
   }, [isAuthed]);
 
@@ -2435,18 +2446,18 @@ export default function App() {
     setClipPage(pageKey);
   }
 
-  // Fired by ReunionPage when a persona (biography) is first opened. Offers the
+  // Fired by BiographiesPage when a biography is first opened. Offers the
   // contextual "how to ask / citations" sub-tour once, if tips are enabled and
   // it hasn't been seen. Delayed so the chat surface + input have mounted.
-  function handleReunionPersonaOpen() {
+  function handleBiographyPersonaOpen() {
     if (!isAuthed || accessBlocked) return;
     if (!helpPrefs.tips_enabled) return;
-    if (helpPrefs.walkthroughs_seen?.["reunion-persona"]) return;
-    if (autoTourAttemptedRef.current.has("reunion-persona")) return;
-    autoTourAttemptedRef.current.add("reunion-persona");
+    if (helpPrefs.walkthroughs_seen?.["biographies-persona"]) return;
+    if (autoTourAttemptedRef.current.has("biographies-persona")) return;
+    autoTourAttemptedRef.current.add("biographies-persona");
     setTimeout(() => {
-      if (helpPrefs.walkthroughs_seen?.["reunion-persona"]) return;
-      startTour("reunion-persona");
+      if (helpPrefs.walkthroughs_seen?.["biographies-persona"]) return;
+      startTour("biographies-persona");
     }, 600);
   }
 
@@ -2953,8 +2964,8 @@ export default function App() {
         voice_preferences: ttsVoiceUuid
           ? { voice_uuid: ttsVoiceUuid }
           : null,
-        reunion_settings: {
-          enabled: reunionSettings?.enabled !== false,
+        biography_settings: {
+          enabled: biographySettings?.enabled !== false,
         },
         voice_features: {
           enabled: !!voiceFeaturesEnabled,
@@ -3053,37 +3064,37 @@ export default function App() {
     }
   }
 
-  // Persist the Reunion on/off privacy switch immediately, without waiting
-  // for the user to hit "Save" on the Settings page. Optimistic: local state
-  // flips first, then we PUT. On failure we revert and surface a banner —
+  // Persist the biography sharing on/off privacy switch immediately, without
+  // waiting for the user to hit "Save" on the Settings page. Optimistic: local
+  // state flips first, then we PUT. On failure we revert and surface a banner —
   // this is a privacy control so silent failure is unacceptable.
-  async function saveReunionEnabled(nextEnabled) {
+  async function saveBiographyEnabled(nextEnabled) {
     if (!isAuthed) return false;
     const desired = !!nextEnabled;
-    const previous = reunionSettings?.enabled !== false;
+    const previous = biographySettings?.enabled !== false;
     setProfileError("");
-    setReunionSettings({ enabled: desired });
+    setBiographySettings({ enabled: desired });
     try {
-      const parsed = await putProfile({ reunion_settings: { enabled: desired } });
+      const parsed = await putProfile({ biography_settings: { enabled: desired } });
       // Reconcile only this slice — never re-hydrate the whole form from a
       // partial-save response.
-      applyReunionSettingsFromPayload(parsed);
+      applyBiographySettingsFromPayload(parsed);
       setProfileNotice(
         desired
-          ? "Reunion is on. Family members you've granted access can talk with your interview memories."
-          : "Reunion is paused. Listeners won't see your biography until you turn it back on.",
+          ? "Biography sharing is on. The family members you've invited can interact with your biography."
+          : "Biography sharing is paused. No one can reach your biography until you turn it back on.",
       );
       return true;
     } catch (e) {
-      setReunionSettings({ enabled: previous });
+      setBiographySettings({ enabled: previous });
       setProfileErrorFromException(e);
       return false;
     }
   }
 
   // Persist the "Enable voice features" add-on toggle immediately (optimistic),
-  // mirroring saveReunionEnabled. Turning this on unlocks voice dictation now
-  // and voice storage / Reunion voice features in later phases.
+  // mirroring saveBiographyEnabled. Turning this on unlocks voice dictation now
+  // and voice storage / biography voice features in later phases.
   async function saveVoiceFeaturesEnabled(nextEnabled) {
     if (!isAuthed) return false;
     const desired = !!nextEnabled;
@@ -3944,23 +3955,23 @@ export default function App() {
         </Banner>
       )}
 
-      {!isAuthed && reunionInvite ? (
+      {!isAuthed && biographyInvite ? (
         <Banner tone="info">
           <div>
             <div>
               <strong>
-                {reunionInvite.from
-                  ? `${reunionInvite.from} invited you to hear their story on Kinin.`
-                  : "You've been invited to hear a story on Kinin."}
+                {biographyInvite.from
+                  ? `${biographyInvite.from} invited you to explore their biography on Kinin.`
+                  : "You've been invited to explore a biography on Kinin."}
               </strong>
             </div>
             <div style={{ marginTop: 6 }}>
-              Reunion lets you talk with a loved one&apos;s memories, in their own
+              Kinin lets you talk with a loved one&apos;s memories, in their own
               voice. Create your free account
-              {reunionInvite.email ? (
-                <> using <strong>{reunionInvite.email}</strong></>
+              {biographyInvite.email ? (
+                <> using <strong>{biographyInvite.email}</strong></>
               ) : null}{" "}
-              to start listening.
+              to start exploring.
             </div>
             <div style={{ marginTop: 10 }}>
               <Button variant="primary" onClick={() => onLogin()} disabled={isSigningIn}>
@@ -4059,13 +4070,21 @@ export default function App() {
           tourNonce={journalTourNonce}
           onReadyForTour={() => startTour("journal")}
         />
-      ) : activePage === "reunion" ? (
-        <ReunionPage
+      ) : activePage === "biographies" ? (
+        <BiographiesPage
           isAuthed={isAuthed}
           getAccessToken={getAccessToken}
           apiBase={API_BASE}
           onUpgraded={() => navigateToPage("interview")}
-          onPersonaOpen={handleReunionPersonaOpen}
+          onPersonaOpen={handleBiographyPersonaOpen}
+        />
+      ) : activePage === "family-circle" ? (
+        <FamilyCirclePage
+          isAuthed={isAuthed}
+          getAccessToken={getAccessToken}
+          apiBase={API_BASE}
+          biographyEnabled={biographySettings?.enabled !== false}
+          onManageSharing={() => navigateToPage("settings-biographies")}
         />
       ) : activePage === "unsubscribe" ? (
         <UnsubscribePage apiBase={API_BASE} />
@@ -4226,8 +4245,9 @@ export default function App() {
           saveVoiceFeaturesEnabled={saveVoiceFeaturesEnabled}
           continuitySettings={continuitySettings}
           saveReminderCadence={saveReminderCadence}
-          reunionSettings={reunionSettings}
-          saveReunionEnabled={saveReunionEnabled}
+          biographySettings={biographySettings}
+          saveBiographyEnabled={saveBiographyEnabled}
+          onManageFamilyCircle={() => navigateToPage("family-circle")}
           helpTipsEnabled={helpPrefs.tips_enabled !== false}
           saveHelpTipsEnabled={saveHelpTipsEnabled}
           replayWalkthroughs={replayWalkthroughs}

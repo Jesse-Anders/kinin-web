@@ -974,7 +974,7 @@ export default function JournalPage({
 
                   {attachments.length ? (
                     <div className="km-form-help">
-                      Photos are shared with family in Reunion once you Save this entry to your story.
+                      Photos become part of your biography once you Save this entry.
                     </div>
                   ) : null}
                 </div>

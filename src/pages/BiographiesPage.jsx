@@ -57,7 +57,7 @@ function formatSourceDate(value) {
 }
 
 /**
- * Reunion mode — the Listener experience.
+ * Biographies — where a family member interacts with a biography.
  *
  * Layout: single-column chat. Citation badges under each assistant reply
  * open a bottom sheet (iOS UISheetPresentationController pattern) that
@@ -65,7 +65,7 @@ function formatSourceDate(value) {
  * when the user taps a citation. Dismiss via backdrop tap, close button, or
  * Escape key.
  */
-export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgraded, onPersonaOpen }) {
+export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, onUpgraded, onPersonaOpen }) {
   const [bios, setBios] = useState([]);
   const [biosLoading, setBiosLoading] = useState(false);
   const [biosError, setBiosError] = useState("");
@@ -79,7 +79,7 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
   const [sending, setSending] = useState(false);
   const [chatError, setChatError] = useState("");
   // "danger" for real errors; "info" for expected soft states (no memories
-  // yet, interviewee paused Reunion) so listeners aren't greeted with a red
+  // yet, interviewee paused sharing) so family members aren't greeted with a red
   // banner for something benign.
   const [chatErrorTone, setChatErrorTone] = useState("danger");
 
@@ -97,7 +97,7 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
     [bios, selectedOwnerId],
   );
 
-  const speakerTag = selectedBio?.display_name || "Reunion";
+  const speakerTag = selectedBio?.display_name || "Biography";
   const sendDisabled =
     !isAuthed || sending || !selectedOwnerId || !(draft || "").trim();
 
@@ -118,7 +118,7 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
       setBiosError("");
       try {
         const token = await getAccessToken();
-        const res = await fetch(`${apiBase}/reunion/biographies`, {
+        const res = await fetch(`${apiBase}/biographies/list`, {
           method: "GET",
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -200,7 +200,7 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
     setUpgradeError("");
     try {
       const token = await getAccessToken();
-      const res = await fetch(`${apiBase}/reunion/upgrade`, {
+      const res = await fetch(`${apiBase}/biographies/upgrade`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -241,7 +241,7 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
     setSending(true);
     try {
       const token = await getAccessToken();
-      const res = await fetch(`${apiBase}/reunion/chat`, {
+      const res = await fetch(`${apiBase}/biographies/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -266,21 +266,21 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
           setChatErrorTone("info");
           setChatError(
             isSelf
-              ? "You haven't shared any memories with Kinin yet. Have your first interview session, then come back to preview your Reunion."
+              ? "You haven't shared any memories with Kinin yet. Have your first interview session, then come back to preview your biography."
               : `${speaker} hasn't shared any memories with Kinin yet. Check back after their next session.`,
           );
           return;
         }
-        if (code === "reunion_disabled_by_owner") {
+        if (code === "biography_disabled_by_owner") {
           setChatErrorTone("info");
           setChatError(
             isSelf
-              ? "You've paused Reunion. Turn it back on in Settings to preview or share your biography."
-              : `${speaker} has paused Reunion access for now. You'll be able to reach them again once they turn it back on.`,
+              ? "You've paused sharing. Turn it back on in Settings to preview or share your biography."
+              : `${speaker} has paused their biography for now. You'll be able to reach them again once they turn it back on.`,
           );
           return;
         }
-        if (code === "reunion_access_denied") {
+        if (code === "biography_access_denied") {
           setChatErrorTone("danger");
           setChatError(
             "You don't have access to this biography anymore. Ask an administrator to restore it.",
@@ -309,7 +309,7 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
               photos: Array.isArray(m.photos) ? m.photos.filter((p) => p && p.url) : [],
             }))
         : [];
-      // Flatten all cited photos into one gallery the listener can open without
+      // Flatten all cited photos into one gallery the family member can open without
       // expanding individual citations.
       const allPhotos = memoriesUsed.flatMap((m) =>
         m.photos.map((p) => ({ ...p, memory_id: m.memory_id })),
@@ -390,16 +390,16 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
 
   return (
     <Section
-      eyebrow="Reunion"
+      eyebrow="Biographies"
       title={
         <>
           Talk with those <br /><em>who came before.</em>
         </>
       }
     >
-      <div className="km-prose" style={{ maxWidth: 680, marginBottom: 32 }} data-help-anchor="reunion-main">
+      <div className="km-prose" style={{ maxWidth: 680, marginBottom: 32 }} data-help-anchor="biography-main">
         <p>
-          Reunion lets you speak with the people whose stories Kinin has
+          Biographies lets you interact with the people whose memories Kinin has
           captured. The voice you hear is built from the interviewee&apos;s own
           recorded memories — what they actually said, in their own words.
           Choose a biography below to begin.
@@ -408,7 +408,7 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
 
       {!isAuthed ? (
         <Banner tone="info">
-          <span>Sign in to use Reunion.</span>
+          <span>Sign in to open a biography.</span>
         </Banner>
       ) : null}
 
@@ -417,10 +417,10 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
           <Frame label="Start your own Kinin">
             <div className="km-prose" style={{ maxWidth: 620, marginBottom: 16 }}>
               <p style={{ margin: 0 }}>
-                You&apos;re here as a listener — but you have a story too. Start
-                your own Kinin interview and let your family talk with your
-                memories one day. You&apos;ll keep access to everyone who&apos;s
-                shared their Reunion with you.
+                You&apos;re here to explore someone&apos;s biography — but you
+                have a story too. Start your own Kinin interview and let your
+                family talk with your memories one day. You&apos;ll keep access
+                to everyone who&apos;s shared their biography with you.
               </p>
             </div>
             {upgradeError ? (
@@ -470,7 +470,7 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
                   type="button"
                   onClick={() => selectBio(b.biography_owner_user_id)}
                   disabled={sending}
-                  className="km-reunion-bio"
+                  className="km-biography-bio"
                   data-selected={isSelected ? "true" : "false"}
                 >
                   <div className="km-row" style={{ alignItems: "center", gap: 12 }}>
@@ -481,7 +481,7 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
                       </div>
                       {isSelf ? (
                         <div className="km-form-help" style={{ marginTop: 2 }}>
-                          Preview what listeners will hear from your Reunion.
+                          Preview what your family will hear from your biography.
                         </div>
                       ) : b.date_of_birth ? (
                         <div className="km-form-help" style={{ marginTop: 2 }}>
@@ -509,7 +509,7 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
           >
             <div className="km-mono-label">
               {selectedBio.is_self
-                ? "Previewing your Reunion"
+                ? "Previewing your biography"
                 : `Talking with ${selectedBio.display_name || selectedBio.biography_owner_user_id}`}
             </div>
             {messages.length > 0 ? (
@@ -519,11 +519,11 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
             ) : null}
           </div>
 
-          <div ref={surfaceRef} className="km-chat-surface km-chat km-reunion-surface" data-help-anchor="reunion-chat">
+          <div ref={surfaceRef} className="km-chat-surface km-chat km-biography-surface" data-help-anchor="biography-chat">
             {messages.length === 0 ? (
               <div className="km-chat-empty">
                 {selectedBio.is_self
-                  ? "Ask anything a family member might ask — try questions about your childhood, work, or the things you care about — and see how Reunion replies."
+                  ? "Ask anything a family member might ask — try questions about your childhood, work, or the things you care about — and see how your biography replies."
                   : "Ask anything — about their family, their work, the things they cared about."}
               </div>
             ) : (
@@ -541,7 +541,7 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
                       {m.role === "assistant" && Array.isArray(m.photos) && m.photos.length > 0 ? (
                         <button
                           type="button"
-                          className="km-reunion-photo-chip"
+                          className="km-biography-photo-chip"
                           onClick={() => openGallery(m.photos, 0)}
                           title="View attached photos"
                         >
@@ -552,11 +552,11 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
                       {m.role === "assistant" &&
                       Array.isArray(m.memories_used) &&
                       m.memories_used.length > 0 ? (
-                        <div className="km-reunion-citations" data-help-anchor="reunion-citations">
-                          <div className="km-mono-label km-reunion-citations-label">
+                        <div className="km-biography-citations" data-help-anchor="biography-citations">
+                          <div className="km-mono-label km-biography-citations-label">
                             Sources
                           </div>
-                          <div className="km-reunion-citations-row">
+                          <div className="km-biography-citations-row">
                             {m.memories_used.map((mem, i) => {
                               const isActive =
                                 activeSource?.memory_id === mem.memory_id;
@@ -564,7 +564,7 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
                                 <button
                                   key={mem.memory_id}
                                   type="button"
-                                  className="km-reunion-citation"
+                                  className="km-biography-citation"
                                   data-active={isActive ? "true" : "false"}
                                   onClick={() => openSource(mem)}
                                   title={`${sourceLabel(mem)}${
@@ -606,7 +606,7 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
             </div>
           ) : null}
 
-          <div className="km-chat-input-row" style={{ marginTop: 12 }} data-help-anchor="reunion-input">
+          <div className="km-chat-input-row" style={{ marginTop: 12 }} data-help-anchor="biography-input">
             <textarea
               ref={inputRef}
               value={draft}
@@ -621,7 +621,7 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
                 !isAuthed
                   ? "Sign in to chat..."
                   : selectedBio?.is_self
-                    ? "Ask your Reunion something..."
+                    ? "Ask your biography something..."
                     : `Ask ${speakerTag} something...`
               }
               className="km-chat-input"
@@ -641,8 +641,8 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
             className="km-form-help"
             style={{ marginTop: 8, fontStyle: "italic" }}
           >
-            Reunion is a faithful AI reconstruction. Responses are grounded in
-            recorded memories — never invented.
+            A biography is a faithful AI reconstruction. Responses are grounded
+            in recorded memories — never invented.
           </div>
         </div>
       ) : null}
@@ -651,26 +651,26 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
           (UISheetPresentationController): slides up from bottom, backdrop
           dims chat, dismiss via backdrop tap, close button, or Escape. */}
       <div
-        className="km-reunion-sheet-backdrop"
+        className="km-biography-sheet-backdrop"
         data-open={sheetOpen ? "true" : "false"}
         onClick={closeSource}
         aria-hidden={!sheetOpen}
       />
       <div
-        className="km-reunion-sheet"
+        className="km-biography-sheet"
         data-open={sheetOpen ? "true" : "false"}
         role="dialog"
         aria-modal="true"
         aria-label="Original source passage"
         aria-hidden={!sheetOpen}
       >
-        <div className="km-reunion-sheet-handle" aria-hidden="true" />
-        <div className="km-reunion-sheet-header">
+        <div className="km-biography-sheet-handle" aria-hidden="true" />
+        <div className="km-biography-sheet-header">
           <span className="km-mono-label">Original source</span>
           <button
             ref={sheetCloseRef}
             type="button"
-            className="km-reunion-source-close"
+            className="km-biography-source-close"
             onClick={closeSource}
             aria-label="Close source"
             title="Close (Esc)"
@@ -679,28 +679,28 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
           </button>
         </div>
         {activeSource ? (
-          <div className="km-reunion-sheet-body">
-            <div className="km-reunion-source-meta">
-              <span className="km-reunion-source-kind">{sourceLabel(activeSource)}</span>
+          <div className="km-biography-sheet-body">
+            <div className="km-biography-source-meta">
+              <span className="km-biography-source-kind">{sourceLabel(activeSource)}</span>
               {formatSourceDate(activeSource.source_date) ? (
-                <span className="km-reunion-source-date">
+                <span className="km-biography-source-date">
                   {formatSourceDate(activeSource.source_date)}
                 </span>
               ) : null}
             </div>
             {activeSource.source_kind === "journal" && activeSource.title ? (
-              <div className="km-reunion-source-title">{activeSource.title}</div>
+              <div className="km-biography-source-title">{activeSource.title}</div>
             ) : null}
-            <div className="km-reunion-source-body">{activeSource.content}</div>
+            <div className="km-biography-source-body">{activeSource.content}</div>
             {Array.isArray(activeSource.photos) && activeSource.photos.length ? (
-              <div className="km-reunion-source-photos">
+              <div className="km-biography-source-photos">
                 <div className="km-mono-label" style={{ marginBottom: 6 }}>Photos</div>
-                <div className="km-reunion-thumbs">
+                <div className="km-biography-thumbs">
                   {activeSource.photos.map((p, i) => (
                     <button
                       key={p.photo_id || i}
                       type="button"
-                      className="km-reunion-thumb"
+                      className="km-biography-thumb"
                       onClick={() => openGallery(activeSource.photos, i)}
                       title={p.caption || "View photo"}
                     >
@@ -717,7 +717,7 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
       {/* Full-screen photo lightbox */}
       {gallery ? (
         <div
-          className="km-reunion-lightbox"
+          className="km-biography-lightbox"
           role="dialog"
           aria-modal="true"
           aria-label="Photo viewer"
@@ -725,7 +725,7 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
         >
           <button
             type="button"
-            className="km-reunion-lightbox-close"
+            className="km-biography-lightbox-close"
             onClick={closeGallery}
             aria-label="Close photos"
           >
@@ -734,7 +734,7 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
           {gallery.photos.length > 1 ? (
             <button
               type="button"
-              className="km-reunion-lightbox-nav km-reunion-lightbox-prev"
+              className="km-biography-lightbox-nav km-biography-lightbox-prev"
               onClick={(e) => {
                 e.stopPropagation();
                 stepGallery(-1);
@@ -745,14 +745,14 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
             </button>
           ) : null}
           <figure
-            className="km-reunion-lightbox-figure"
+            className="km-biography-lightbox-figure"
             onClick={(e) => e.stopPropagation()}
           >
             <img
               src={gallery.photos[gallery.index]?.url}
               alt={gallery.photos[gallery.index]?.caption || "Attached photo"}
             />
-            <figcaption className="km-reunion-lightbox-caption">
+            <figcaption className="km-biography-lightbox-caption">
               {gallery.photos[gallery.index]?.caption ? (
                 <span>{gallery.photos[gallery.index].caption}</span>
               ) : null}
@@ -766,7 +766,7 @@ export default function ReunionPage({ isAuthed, getAccessToken, apiBase, onUpgra
           {gallery.photos.length > 1 ? (
             <button
               type="button"
-              className="km-reunion-lightbox-nav km-reunion-lightbox-next"
+              className="km-biography-lightbox-nav km-biography-lightbox-next"
               onClick={(e) => {
                 e.stopPropagation();
                 stepGallery(1);

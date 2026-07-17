@@ -1,15 +1,15 @@
 {
   "_generated": "DERIVED from kinin-lambda src/kinin/data/kinin_help_content.json via scripts/gen_faq_from_kb.py — do not edit by hand.",
-  "version": "2026.07.16.1",
-  "generated_at": "2026-07-16T12:58:53+00:00",
+  "version": "2026.07.17.1",
+  "generated_at": "2026-07-17T20:13:31+00:00",
   "items": [
     {
       "q": "What is Kinin?",
-      "a": "Kinin is an AI biographer that helps you capture your life story through conversation. It walks you through meaningful topics — from early memories to beliefs and legacy — and preserves your words in a living, interactive biography."
+      "a": "Kinin is an AI biographer that helps you capture your life story through conversation. It walks you through meaningful topics — from early memories to beliefs and legacy — and preserves your words in a living biography your family can one day interact with."
     },
     {
       "q": "How does the interview work?",
-      "a": "Kinin asks you questions about your life and listens, gently following up to draw out details, and builds a rich record of your story over time. Kinin has a planned path of topics it can take you through, but you can always steer the conversation yourself — Kinin will follow your lead, so feel free to talk about whatever matters to you. Each session picks up where you left off, so you can go at your own pace."
+      "a": "Kinin asks you questions about your life and listens, gently following up to draw out details, and builds a rich biography over time. Kinin has a planned path of topics it can take you through, but you can always steer the conversation yourself — Kinin will follow your lead, so feel free to talk about whatever matters to you. Each session picks up where you left off, so you can go at your own pace."
     },
     {
       "q": "Do I have to follow Kinin's questions, or can I talk about what I want?",
@@ -25,7 +25,7 @@
     },
     {
       "q": "Can Kinin tell me what I've already shared?",
-      "a": "Yes. If you're not sure whether you've already told a story, just ask Kinin during your interview — it can look back over what you've shared and let you know. You can also revisit your stories any time through Reunion."
+      "a": "Yes. If you're not sure whether you've already told a story, just ask Kinin during your interview — it can look back over what you've shared and let you know. You can also revisit your memories any time by previewing your own biography in Biographies."
     },
     {
       "q": "Can I stop and come back later without losing my place?",
@@ -33,7 +33,7 @@
     },
     {
       "q": "Why did my conversation start fresh, and how do I begin a new one?",
-      "a": "You can start a new conversation any time with the 'Start a new conversation' button. Kinin also begins a fresh conversation on its own after a long break — a new session doesn't mean anything was lost, since your stories and your place are always saved."
+      "a": "You can start a new conversation any time with the 'Start a new conversation' button. Kinin also begins a fresh conversation on its own after a long break — a new session doesn't mean anything was lost, since your biography and your place are always saved."
     },
     {
       "q": "What are pins?",
@@ -44,8 +44,8 @@
       }
     },
     {
-      "q": "Can I write my stories on my own instead of chatting?",
-      "a": "Yes. The Journal lets you write entries at your own pace, with autosave and a preview. Kinin can gently review an entry for thin spots or tidy up spelling if you ask, but it never rewrites your voice. When you save an entry to your story, it becomes part of your biography just like a conversation does.",
+      "q": "Can I write entries on my own instead of chatting?",
+      "a": "Yes. The Journal lets you write entries at your own pace, with autosave and a preview. Kinin can gently review an entry for thin spots or tidy up spelling if you ask, but it never rewrites your voice. When you save an entry, it becomes part of your biography just like a conversation does.",
       "link": {
         "page": "journal",
         "label": "Journal"
@@ -61,7 +61,7 @@
     },
     {
       "q": "Where do I manage my account and preferences?",
-      "a": "Two places, both in the menu. 'My Account' holds your profile (your preferred name and date of birth), your sign-in and security details, your trusted contact, and the option to delete your account. 'Settings' is where you choose Kinin's speaking voice, your reminder rhythm, your Reunion sharing, and behind-the-scenes interview details."
+      "a": "A few places, all in the menu. 'My Account' holds your profile (your preferred name and date of birth), your sign-in and security details, your trusted contact, and the option to delete your account. 'Settings' is where you choose Kinin's speaking voice, your reminder rhythm, whether your biography is available to share, and behind-the-scenes interview details. 'Family Circle' is where you invite the people who can interact with your biography."
     },
     {
       "q": "Will Kinin remind me to keep going?",
@@ -69,7 +69,7 @@
     },
     {
       "q": "Who can see my data?",
-      "a": "Your stories belong to you. By default, only you can see them. The Kinin team may access content only where needed to run and support the service — for example operating it, keeping it secure, or meeting legal obligations — and staff access is limited to those who need it. Kinin does not and never will share, sell, or provide your personal data to third parties for their own use."
+      "a": "Your biography belongs to you. By default, only you can see it. The Kinin team may access content only where needed to run and support the service — for example operating it, keeping it secure, or meeting legal obligations — and staff access is limited to those who need it. Kinin does not and never will share, sell, or provide your personal data to third parties for their own use."
     },
     {
       "q": "Does Kinin sell my information to advertisers or data brokers?",
@@ -81,15 +81,15 @@
     },
     {
       "q": "What AI powers Kinin?",
-      "a": "Kinin's conversations are powered by leading AI models from Anthropic and OpenAI. Whatever you share stays yours — Kinin does not sell your information and does not use your stories to train AI models."
+      "a": "Kinin's conversations are powered by leading AI models from Anthropic and OpenAI. Whatever you share stays yours — Kinin does not sell your information and does not use your biography to train AI models."
     },
     {
       "q": "How is my data stored and protected?",
-      "a": "Your data is encrypted both in transit and at rest on industry-standard infrastructure, and access is tightly restricted to the authenticated services and staff that need it. Kinin follows security best practices and reviews its safeguards regularly. No system can promise absolute security, but protecting your stories is a priority."
+      "a": "Your data is encrypted both in transit and at rest on industry-standard infrastructure, and access is tightly restricted to the authenticated services and staff that need it. Kinin follows security best practices and reviews its safeguards regularly. No system can promise absolute security, but protecting your biography is a priority."
     },
     {
       "q": "What are my rights over my data, and how long is it kept?",
-      "a": "You can access and correct your information, and you can delete it by deleting your account. While your account is active, your stories and biography are kept; if you delete your account, your data is removed, subject to normal backup cycles and any legal requirements. A self-serve way to download your own biography is coming soon."
+      "a": "You can access and correct your information, and you can delete it by deleting your account. While your account is active, your biography is kept; if you delete your account, your data is removed, subject to normal backup cycles and any legal requirements. A self-serve way to download your own biography is coming soon."
     },
     {
       "q": "Can I export or download my biography?",
@@ -104,24 +104,36 @@
       }
     },
     {
-      "q": "Who can see my stories, and can I share them?",
-      "a": "Your stories are private to you by default. If you'd like, you can invite specific people — such as family — to experience your biography through Reunion, and you can pause or remove that access whenever you want. Sharing only happens when you choose it."
+      "q": "Who can see my biography, and can I share it?",
+      "a": "Your biography is private to you by default. If you'd like, you can invite specific people — such as family and close friends — to interact with your biography, and you can pause or remove that access whenever you want. You manage the people you've invited in Family Circle. Sharing only happens when you choose it."
     },
     {
-      "q": "What is Reunion?",
-      "a": "Reunion lets people you invite have a conversation with your biography — asking questions and hearing answers drawn from the stories you've shared, with each answer linked back to your own words. New stories become available to Reunion as soon as you finish sharing them. You're always in control: you can pause Reunion for everyone at any time."
-    },
-    {
-      "q": "How do I talk with someone's biography in Reunion?",
-      "a": "If someone has invited you, open Reunion from the menu to have a conversation with their biography and hear their stories in their own words, with each answer linked back to what they actually shared. If they've paused Reunion or haven't added stories yet, you'll see a gentle note letting you know.",
+      "q": "What are Biographies?",
+      "a": "Biographies is where the people you invite can have a conversation with your biography — asking questions and hearing answers drawn from the memories you've shared, with each answer linked back to your own words. New memories become available as soon as you finish sharing them. You're always in control: you can pause access for everyone at any time in Settings, and you manage who's invited in Family Circle.",
       "link": {
-        "page": "reunion",
-        "label": "Reunion"
+        "page": "biographies",
+        "label": "Biographies"
       }
     },
     {
-      "q": "Will Reunion speak back in my own voice?",
-      "a": "That's something we're planning for the future. Today, Reunion answers in text, grounded in the stories you've shared. Hearing your biography speak back in your own voice is on our roadmap."
+      "q": "How do I interact with someone's biography?",
+      "a": "If someone has invited you, open Biographies from the menu to have a conversation with their biography and hear their memories in their own words, with each answer linked back to what they actually shared. If they've paused access or haven't added memories yet, you'll see a gentle note letting you know.",
+      "link": {
+        "page": "biographies",
+        "label": "Biographies"
+      }
+    },
+    {
+      "q": "What is Family Circle?",
+      "a": "Family Circle is where you invite the family and close friends who can interact with your biography. Invite someone by the email tied to their Kinin account and they can start right away, or invite someone who isn't on Kinin yet and they'll gain access when they join. You can remove anyone at any time. More ways to connect with your circle are on the way.",
+      "link": {
+        "page": "family-circle",
+        "label": "Family Circle"
+      }
+    },
+    {
+      "q": "Will my biography speak back in my own voice?",
+      "a": "That's something we're planning for the future. Today, a biography answers in text, grounded in the memories you've shared. Hearing your biography speak back in your own voice is on our roadmap."
     },
     {
       "q": "What is a trusted contact / account executor?",

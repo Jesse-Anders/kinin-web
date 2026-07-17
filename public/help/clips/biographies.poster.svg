@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img" aria-label="Using Reunion walkthrough">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img" aria-label="Using Biographies walkthrough">
   <rect width="800" height="450" fill="#f7f3ec"/>
   <circle cx="400" cy="200" r="56" fill="none" stroke="#4a5d4e" stroke-width="4"/>
   <path d="M384 174 L432 200 L384 226 Z" fill="#4a5d4e"/>
-  <text x="400" y="312" text-anchor="middle" font-family="Georgia, serif" font-size="30" fill="#211b17">Using Reunion</text>
+  <text x="400" y="312" text-anchor="middle" font-family="Georgia, serif" font-size="30" fill="#211b17">Using Biographies</text>
   <text x="400" y="352" text-anchor="middle" font-family="Georgia, serif" font-size="19" fill="#6b6259">Short walkthrough</text>
 </svg>

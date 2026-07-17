@@ -25,7 +25,7 @@ function formatDateLong(dateOfBirth) {
 }
 
 // "My Account" — identity, sign-in/security, trusted contact, and the danger
-// zone. Category settings (voice, reminders, reunion, interview) live on the
+// zone. Category settings (voice, reminders, biographies, interview) live on the
 // separate Settings pages. Each section saves on its own so a partial save
 // never clobbers another section.
 export default function MyAccountPage({

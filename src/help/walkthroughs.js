@@ -17,11 +17,12 @@ export const WALKTHROUGH_PAGE_KEYS = [
   "interview",
   "journal",
   "pins",
-  "reunion",
+  "biographies",
+  "family-circle",
   "review-chats",
-  // Contextual sub-tour: triggered when a Reunion persona is first opened,
+  // Contextual sub-tour: triggered when a biography is first opened,
   // not on page load. Not shown as a "Show me around this page" menu option.
-  "reunion-persona",
+  "biographies-persona",
 ];
 
 // Master switch for the "Watch a quick video" help option. The clip framework
@@ -196,17 +197,17 @@ export const WALKTHROUGHS = {
     },
   },
 
-  reunion: {
-    label: "Reunion",
+  biographies: {
+    label: "Biographies",
     steps: [
       welcomeStep(
-        "Reunion lets you talk with a loved one's story in a natural conversation. Here is how to begin.",
+        "Biographies lets you interact with a loved one's biography in a natural conversation. Here is how to begin.",
       ),
       {
-        target: anchor("reunion-main"),
-        title: "Choose a story",
+        target: anchor("biography-main"),
+        title: "Choose a biography",
         content:
-          "Pick a shared biography, then ask questions just as you would in conversation. Kinin answers using their memories.",
+          "Pick a biography that's been shared with you, then ask questions just as you would in conversation. Kinin answers using their memories.",
         placement: "top",
         disableBeacon: true,
       },
@@ -219,22 +220,55 @@ export const WALKTHROUGHS = {
       },
     ],
     clip: {
-      title: "Using Reunion",
-      src: "/help/clips/reunion.mp4",
-      poster: "/help/clips/reunion.poster.svg",
-      captionsSrc: "/help/clips/reunion.vtt",
+      title: "Using Biographies",
+      src: "/help/clips/biographies.mp4",
+      poster: "/help/clips/biographies.poster.svg",
+      captionsSrc: "/help/clips/biographies.vtt",
       caption:
-        "Choose a shared biography and ask questions. Answers link back to the original memories they came from.",
+        "Choose a biography that's been shared with you and ask questions. Answers link back to the original memories they came from.",
     },
   },
 
-  // Contextual sub-tour shown the first time a persona (biography) is opened.
+  "family-circle": {
+    label: "Family Circle",
+    steps: [
+      welcomeStep(
+        "Family Circle is where you invite the family & close friends who can interact with your biography.",
+      ),
+      {
+        target: anchor("family-circle-main"),
+        title: "Your closest people",
+        content:
+          "This is your private circle. Invite family members and close friends so they can ask your biography questions and hear answers in your own words.",
+        placement: "bottom",
+        disableBeacon: true,
+      },
+      {
+        target: anchor("family-circle-invite"),
+        title: "Invite someone",
+        content:
+          "Add a person by the email tied to their Kinin account. If they're not on Kinin yet, they'll gain access as soon as they join. You can remove anyone any time.",
+        placement: "top",
+        disableBeacon: true,
+      },
+      {
+        target: anchor("help-menu"),
+        title: "Help is always here",
+        content:
+          "Open this Help button anytime to retake this tour or ask Kinin a question.",
+        placement: "bottom",
+      },
+    ],
+    clip: null,
+  },
+
+  // Contextual sub-tour shown the first time a biography is opened.
   // No centered welcome step (the user is already mid-flow), and no clip.
-  "reunion-persona": {
-    label: "Talking with a persona",
+  "biographies-persona": {
+    label: "Interacting with a biography",
     steps: [
       {
-        target: anchor("reunion-chat"),
+        target: anchor("biography-chat"),
         title: "Ask them anything",
         content:
           "This is where their answers appear, in their voice, drawn from the memories they shared. Try questions like \u201CWhat was your childhood home like?\u201D or \u201CTell me about the day you got married.\u201D",
@@ -242,7 +276,7 @@ export const WALKTHROUGHS = {
         disableBeacon: true,
       },
       {
-        target: anchor("reunion-input"),
+        target: anchor("biography-input"),
         title: "Ask in your own words",
         content:
           "Type a question here and press Send. You can ask follow-ups just like a real conversation \u2014 \u201CWhat happened next?\u201D works well. When they answer, you'll see numbered \u201CSources\u201D you can open.",
@@ -250,7 +284,7 @@ export const WALKTHROUGHS = {
         disableBeacon: true,
       },
       {
-        target: anchor("reunion-citations"),
+        target: anchor("biography-citations"),
         title: "See where answers come from",
         content:
           "Each answer can show numbered \u201CSources.\u201D Tap one to read the original memory \u2014 an interview moment or journal entry \u2014 that the answer came from.",

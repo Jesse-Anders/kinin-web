@@ -831,7 +831,7 @@ export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
                 style={{ padding: 6 }}
               >
                 <option value="beta_invited">beta_invited</option>
-                <option value="reunion_only">reunion_only</option>
+                <option value="biography_only">biography_only</option>
                 <option value="trialing">trialing</option>
                 <option value="active">active</option>
                 <option value="none">none</option>
