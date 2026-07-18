@@ -51,6 +51,7 @@ export const defaultTokens = {
     labelXs: "9.5px",      // tiniest mono label
     labelSm: "10.5px",     // standard mono label
     labelMd: "11px",       // section eyebrow
+    frameLabel: 12,        // red box-border header (px, sliderable in Studio)
     bodySm: "13px",
     bodyMd: "15px",
     bodyLg: "17px",
@@ -220,6 +221,7 @@ export function tokensToCssVars(t) {
     "--size-label-xs": s.labelXs,
     "--size-label-sm": s.labelSm,
     "--size-label-md": s.labelMd,
+    "--size-frame-label": `${s.frameLabel}px`,
     "--size-body-sm": s.bodySm,
     "--size-body-md": s.bodyMd,
     "--size-body-lg": s.bodyLg,

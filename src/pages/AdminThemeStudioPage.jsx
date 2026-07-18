@@ -306,6 +306,18 @@ export default function AdminThemeStudioPage() {
             />
           </ControlGroup>
 
+          <ControlGroup title="Labels & headers">
+            <RangeRow
+              label="Box header (px)"
+              value={Number(tokens.size.frameLabel)}
+              min={8}
+              max={24}
+              step={0.5}
+              onChange={(v) => setSize("frameLabel", v)}
+              display={`${tokens.size.frameLabel}px`}
+            />
+          </ControlGroup>
+
           <ControlGroup title="Layout">
             <TextRow
               label="Container max"

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
+  ChevronDown,
+  ChevronRight,
   Eye,
   ImagePlus,
   MapPin,
@@ -194,6 +196,7 @@ export default function JournalPage({
   const [loadingEntry, setLoadingEntry] = useState(false);
   const [listFilter, setListFilter] = useState("all"); // all | draft | finalized
   const [entrySearch, setEntrySearch] = useState("");
+  const [entryNavOpen, setEntryNavOpen] = useState(false);
 
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -276,6 +279,7 @@ export default function JournalPage({
 
   async function openEntry(entryId) {
     if (!entryId || entryId === activeId) return;
+    setEntryNavOpen(false);
     setError("");
     setStatusMsg("");
     setNotes([]);
@@ -306,6 +310,7 @@ export default function JournalPage({
   }
 
   async function handleNewEntry() {
+    setEntryNavOpen(false);
     setError("");
     setStatusMsg("");
     setCreating(true);
@@ -811,6 +816,10 @@ export default function JournalPage({
     { key: "finalized", label: "In your story", count: statusCounts.finalized },
   ];
 
+  // Entries nav is a disclosure: collapsed to a slim bar while writing, and
+  // always open when nothing is selected so a fresh visit invites a pick/create.
+  const navExpanded = entryNavOpen || !activeId;
+
   return (
     <Section
       eyebrow="Journal"
@@ -842,9 +851,9 @@ export default function JournalPage({
         </div>
       ) : null}
 
-      <div className="km-row" style={{ gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
-        {/* Writing box — LEFT */}
-        <div style={{ flex: "5 1 460px", minWidth: 320 }} data-help-anchor="journal-editor">
+      <div className="km-stack" style={{ gap: 20, maxWidth: 860, marginLeft: "auto", marginRight: "auto", width: "100%" }}>
+        {/* Writing box — MIDDLE (source order: nav is floated above via CSS order) */}
+        <div style={{ order: 2, width: "100%" }} data-help-anchor="journal-editor">
           {loadingEntry ? (
             <div className="km-chat-empty">
               <Spinner /> Opening entry...
@@ -1024,92 +1033,129 @@ export default function JournalPage({
           )}
         </div>
 
-        {/* Entries — RIGHT */}
-        <div style={{ flex: "2 1 240px", minWidth: 230, maxWidth: 320 }} data-help-anchor="journal-entries">
-          <div className="km-row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <span className="km-mono-label">Entries</span>
+        {/* Entries nav — TOP (order:1), collapsible so the list never sprawls */}
+        <div style={{ order: 1, width: "100%" }} data-help-anchor="journal-entries">
+          <div className="km-row" style={{ gap: 8, justifyContent: "space-between", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="km-btn km-btn-ghost"
+              onClick={() => setEntryNavOpen((v) => !v)}
+              aria-expanded={navExpanded}
+              disabled={!isAuthed}
+              style={{
+                flex: "1 1 auto",
+                minWidth: 0,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 8,
+                textTransform: "none",
+                letterSpacing: 0,
+              }}
+            >
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                {navExpanded ? (
+                  <ChevronDown size={16} strokeWidth={1.5} style={{ flexShrink: 0 }} />
+                ) : (
+                  <ChevronRight size={16} strokeWidth={1.5} style={{ flexShrink: 0 }} />
+                )}
+                <span className="km-mono-label" style={{ opacity: 0.7, flexShrink: 0 }}>Entries</span>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {activeId ? title || "Untitled entry" : "None selected"}
+                </span>
+              </span>
+              <span className="km-mono-label" style={{ opacity: 0.6, flexShrink: 0 }}>
+                {statusCounts.all}
+              </span>
+            </button>
             <Button size="sm" variant="primary" onClick={handleNewEntry} disabled={!isAuthed || creating}>
               {creating ? <Spinner /> : <Plus size={16} strokeWidth={1.5} />} New
             </Button>
           </div>
 
-          <div style={{ marginBottom: 8 }}>
-            <TextInput
-              value={entrySearch}
-              onChange={(ev) => setEntrySearch(ev.target.value)}
-              placeholder="Search entries..."
-              aria-label="Search entries"
-              disabled={!isAuthed}
-            />
-          </div>
+          {navExpanded ? (
+            <div className="km-stack" style={{ gap: 12, marginTop: 12 }}>
+              <TextInput
+                value={entrySearch}
+                onChange={(ev) => setEntrySearch(ev.target.value)}
+                placeholder="Search entries..."
+                aria-label="Search entries"
+                disabled={!isAuthed}
+              />
 
-          <div className="km-row" style={{ gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
-            {listTabs.map((tab) => (
-              <Button
-                key={tab.key}
-                size="sm"
-                variant={listFilter === tab.key ? "primary" : "ghost"}
-                onClick={() => setListFilter(tab.key)}
-                aria-pressed={listFilter === tab.key}
-              >
-                {tab.label} ({tab.count})
-              </Button>
-            ))}
-          </div>
-
-          {loadingList ? (
-            <div className="km-chat-empty">
-              <Spinner /> Loading...
-            </div>
-          ) : !entries.length ? (
-            <div className="km-chat-empty">No entries yet. Start a new one.</div>
-          ) : !filteredEntries.length ? (
-            <div className="km-chat-empty">
-              {entrySearch.trim() ? "No entries match your search." : "Nothing in this view yet."}
-            </div>
-          ) : (
-            <div
-              className="km-journal-entry-list"
-              style={{ maxHeight: "60vh", overflowY: "auto", paddingRight: 4 }}
-            >
-              {groupedEntries.map((group) => (
-                <div key={group.label} className="km-stack" style={{ gap: 8, marginBottom: 14 }}>
-                  <div
-                    className="km-mono-label"
-                    style={{
-                      position: "sticky",
-                      top: 0,
-                      background: "var(--cream)",
-                      padding: "4px 0",
-                      opacity: 0.75,
-                      zIndex: 1,
-                    }}
+              <div className="km-row" style={{ gap: 6, flexWrap: "wrap" }}>
+                {listTabs.map((tab) => (
+                  <Button
+                    key={tab.key}
+                    size="sm"
+                    variant={listFilter === tab.key ? "primary" : "ghost"}
+                    onClick={() => setListFilter(tab.key)}
+                    aria-pressed={listFilter === tab.key}
                   >
-                    {group.label}
-                  </div>
-                  {group.items.map((e) => (
-                    <button
-                      key={e.entry_id}
-                      type="button"
-                      onClick={() => openEntry(e.entry_id)}
-                      className={`km-journal-entry${e.entry_id === activeId ? " is-active" : ""}`}
-                    >
-                      <div className="km-journal-entry-title">{e.title || "Untitled entry"}</div>
-                      <div className="km-mono-label km-journal-entry-meta">
-                        {e.status === "finalized" ? "In your story" : "Draft"} · {formatDate(e.updated_at)}
+                    {tab.label} ({tab.count})
+                  </Button>
+                ))}
+              </div>
+
+              {loadingList ? (
+                <div className="km-chat-empty">
+                  <Spinner /> Loading...
+                </div>
+              ) : !entries.length ? (
+                <div className="km-chat-empty">No entries yet. Start a new one.</div>
+              ) : !filteredEntries.length ? (
+                <div className="km-chat-empty">
+                  {entrySearch.trim() ? "No entries match your search." : "Nothing in this view yet."}
+                </div>
+              ) : (
+                <div
+                  className="km-journal-entry-list"
+                  style={{ maxHeight: "50vh", overflowY: "auto", paddingRight: 4 }}
+                >
+                  {groupedEntries.map((group) => (
+                    <div key={group.label} className="km-stack" style={{ gap: 8, marginBottom: 14 }}>
+                      <div
+                        className="km-mono-label"
+                        style={{
+                          position: "sticky",
+                          top: 0,
+                          background: "var(--cream)",
+                          padding: "4px 0",
+                          opacity: 0.75,
+                          zIndex: 1,
+                        }}
+                      >
+                        {group.label}
                       </div>
-                    </button>
+                      {group.items.map((e) => (
+                        <button
+                          key={e.entry_id}
+                          type="button"
+                          onClick={() => openEntry(e.entry_id)}
+                          className={`km-journal-entry${e.entry_id === activeId ? " is-active" : ""}`}
+                        >
+                          <div className="km-journal-entry-title">{e.title || "Untitled entry"}</div>
+                          <div className="km-mono-label km-journal-entry-meta">
+                            {e.status === "finalized" ? "In your story" : "Draft"} · {formatDate(e.updated_at)}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
                   ))}
                 </div>
-              ))}
+              )}
             </div>
-          )}
+          ) : null}
         </div>
       </div>
 
-      {/* Ask Kinin — BOTTOM, full width */}
+      {/* Ask Kinin — BOTTOM */}
       {activeId ? (
-        <div className="km-stack" style={{ gap: 12, marginTop: 20 }} data-help-anchor="journal-ask">
+        <div
+          className="km-stack"
+          style={{ gap: 12, marginTop: 20, maxWidth: 860, marginLeft: "auto", marginRight: "auto", width: "100%" }}
+          data-help-anchor="journal-ask"
+        >
           <Frame label="Ask Kinin">
             <div className="km-stack" style={{ gap: 12 }}>
               <div className="km-row" style={{ gap: 8, flexWrap: "wrap" }}>
