@@ -1460,8 +1460,8 @@ a:hover {
 
 /* ─── Sidebar ─── */
 .km-sidebar {
-  width: 150px;
-  min-width: 150px;
+  width: 170px;
+  min-width: 170px;
   padding: 24px 8px 16px;
   display: flex;
   flex-direction: column;
@@ -1569,6 +1569,7 @@ a:hover {
   text-align: left;
   transition: color var(--t-fast), background var(--t-fast);
   line-height: 1.25;
+  white-space: nowrap;
 }
 .km-sidebar-item:hover { color: var(--crimson); background: var(--cream-deep); }
 .km-sidebar-item .km-sidebar-icon { color: currentColor; flex-shrink: 0; }
@@ -1643,7 +1644,7 @@ a:hover {
 }
 .km-main {
   flex: 1;
-  margin-left: 150px;
+  margin-left: 170px;
   padding: 24px 0 64px;
   min-width: 0;
 }

@@ -17,11 +17,12 @@ export const WALKTHROUGH_PAGE_KEYS = [
   "interview",
   "journal",
   "pins",
-  "biographies",
-  "family-circle",
   "review-chats",
   // Contextual sub-tour: triggered when a biography is first opened,
   // not on page load. Not shown as a "Show me around this page" menu option.
+  // The Biographies and Family Circle pages intentionally have no page-level
+  // tour — their on-page copy already explains everything. Re-add here (and in
+  // WALKTHROUGHS below) if those pages grow more complex.
   "biographies-persona",
 ];
 
@@ -195,71 +196,6 @@ export const WALKTHROUGHS = {
       caption:
         "Add a short pin for a memory you want to explore, then start a chat or journal entry from it later.",
     },
-  },
-
-  biographies: {
-    label: "Biographies",
-    steps: [
-      welcomeStep(
-        "Biographies lets you interact with a loved one's biography in a natural conversation. Here is how to begin.",
-      ),
-      {
-        target: anchor("biography-main"),
-        title: "Choose a biography",
-        content:
-          "Pick a biography that's been shared with you, then ask questions just as you would in conversation. Kinin answers using their memories.",
-        placement: "top",
-        disableBeacon: true,
-      },
-      {
-        target: anchor("help-menu"),
-        title: "Help is always here",
-        content:
-          "Open this Help button anytime to retake this tour or ask Kinin a question.",
-        placement: "bottom",
-      },
-    ],
-    clip: {
-      title: "Using Biographies",
-      src: "/help/clips/biographies.mp4",
-      poster: "/help/clips/biographies.poster.svg",
-      captionsSrc: "/help/clips/biographies.vtt",
-      caption:
-        "Choose a biography that's been shared with you and ask questions. Answers link back to the original memories they came from.",
-    },
-  },
-
-  "family-circle": {
-    label: "Family Circle",
-    steps: [
-      welcomeStep(
-        "Family Circle is where you invite the family & close friends who can interact with your biography.",
-      ),
-      {
-        target: anchor("family-circle-main"),
-        title: "Your closest people",
-        content:
-          "This is your private circle. Invite family members and close friends so they can ask your biography questions and hear answers in your own words.",
-        placement: "bottom",
-        disableBeacon: true,
-      },
-      {
-        target: anchor("family-circle-invite"),
-        title: "Invite someone",
-        content:
-          "Add a person by the email tied to their Kinin account. If they're not on Kinin yet, they'll gain access as soon as they join. You can remove anyone any time.",
-        placement: "top",
-        disableBeacon: true,
-      },
-      {
-        target: anchor("help-menu"),
-        title: "Help is always here",
-        content:
-          "Open this Help button anytime to retake this tour or ask Kinin a question.",
-        placement: "bottom",
-      },
-    ],
-    clip: null,
   },
 
   // Contextual sub-tour shown the first time a biography is opened.
