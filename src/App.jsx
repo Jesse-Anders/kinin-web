@@ -121,9 +121,11 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const STREAM_WS_URL = import.meta.env.VITE_STREAM_WS_URL || "";
 // Client-side rollout switch for streamed biography replies. Off by default so
 // shipping this build is a no-op (biography chat keeps using HTTP) until the
-// backend flag + WebSocket route are deployed; flip to "true" to turn on.
-const BIOGRAPHY_STREAMING_ENABLED =
-  String(import.meta.env.VITE_BIOGRAPHY_STREAMING_ENABLED || "").toLowerCase() === "true";
+// backend flag + WebSocket route are deployed. Accepts 1/true/yes/on to match
+// the backend's KININ_BIOGRAPHY_STREAMING_ENABLED semantics.
+const BIOGRAPHY_STREAMING_ENABLED = ["1", "true", "yes", "on"].includes(
+  String(import.meta.env.VITE_BIOGRAPHY_STREAMING_ENABLED || "").trim().toLowerCase(),
+);
 const RELEASE_CHANNEL = (import.meta.env.VITE_RELEASE_CHANNEL || "dev").toLowerCase();
 const IS_BETA_LITE = RELEASE_CHANNEL === "beta-lite";
 const VERSION_LABEL = IS_BETA_LITE ? "Beta-lite Version 1.0" : "Dev Version 1.0";
