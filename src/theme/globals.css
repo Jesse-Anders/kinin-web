@@ -2772,6 +2772,11 @@ a:hover {
   min-height: 240px;
   max-height: 520px;
   overflow-y: auto;
+  /* Keep message text clear of the vertical scrollbar so the right edge of
+     replies isn't clipped. scrollbar-gutter reserves the track where supported;
+     the padding is the reliable fallback for iOS/Safari overlay scrollbars. */
+  padding-right: 14px;
+  scrollbar-gutter: stable;
 }
 
 /* Numbered citation badges under assistant replies. */
