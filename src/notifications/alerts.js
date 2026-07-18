@@ -22,7 +22,13 @@ function daysBetween(iso, nowMs) {
 
 // The alert catalog. `isEligible(ctx)` decides whether the alert's underlying
 // condition is currently true; snooze/dismiss state is applied separately in
-// App.jsx. ctx = { nowMs, signupAt, hasExecutor }.
+// App.jsx. ctx = { nowMs, signupAt, hasExecutor, pendingStoryRequests }.
+//
+// An alert may also define `resurfaceValue(ctx)` returning a number (e.g. a
+// count of pending items). When present, a snoozed/dismissed alert reappears if
+// that value climbs above the baseline recorded when it was silenced — so
+// acknowledging today's items doesn't mute tomorrow's. `bodyFor(ctx)` lets an
+// alert render dynamic copy.
 export const ALERTS = [
   {
     id: "trusted-contact",
@@ -38,6 +44,27 @@ export const ALERTS = [
       return age !== null && age >= 14;
     },
   },
+  {
+    id: "story-request",
+    tone: "info",
+    title: "A family member would love a story",
+    body:
+      "Someone in your Family Circle asked you to share a memory. Open your Pins to see what they'd love to hear.",
+    cta: { label: "See what they'd love to hear", page: "pins" },
+    isEligible(ctx) {
+      return (ctx.pendingStoryRequests || 0) > 0;
+    },
+    resurfaceValue(ctx) {
+      return ctx.pendingStoryRequests || 0;
+    },
+    bodyFor(ctx) {
+      const n = ctx.pendingStoryRequests || 0;
+      if (n === 1) {
+        return "Someone in your Family Circle asked you to share a memory. Open your Pins to see what they'd love to hear.";
+      }
+      return `${n} people in your Family Circle asked you to share a memory. Open your Pins to see what they'd love to hear.`;
+    },
+  },
 ];
 
 // Resolve the alerts a user should currently see, applying persisted
@@ -47,16 +74,32 @@ export const ALERTS = [
 export function resolveActiveAlerts(ctx, alertsState) {
   const state = alertsState && typeof alertsState === "object" ? alertsState : {};
   const nowMs = ctx?.nowMs ?? Date.now();
-  return ALERTS.filter((alert) => {
-    if (!alert.isEligible(ctx)) return false;
+  const resolved = [];
+  for (const alert of ALERTS) {
+    if (!alert.isEligible(ctx)) continue;
+    const resurfaceValue =
+      typeof alert.resurfaceValue === "function" ? alert.resurfaceValue(ctx) : null;
     const st = state[alert.id];
-    if (!st || typeof st !== "object") return true;
-    if (st.status === "dismissed") return false;
-    if (st.status === "snoozed") {
-      const until = Date.parse(st.snoozed_until || "");
-      // Still snoozed only while the snooze window hasn't elapsed.
-      if (!Number.isNaN(until) && nowMs < until) return false;
+    if (st && typeof st === "object") {
+      // A higher current value than the silenced baseline means new activity —
+      // let the alert resurface even if it was dismissed/snoozed.
+      const baseline = typeof st.count === "number" ? st.count : null;
+      const hasNewActivity =
+        resurfaceValue !== null && baseline !== null && resurfaceValue > baseline;
+      if (st.status === "dismissed" && !hasNewActivity) continue;
+      if (st.status === "snoozed") {
+        const until = Date.parse(st.snoozed_until || "");
+        const stillSnoozed = !Number.isNaN(until) && nowMs < until;
+        if (stillSnoozed && !hasNewActivity) continue;
+      }
     }
-    return true;
-  });
+    // Return a shallow copy so callers can read dynamic body/resurfaceValue
+    // without mutating the catalog entry.
+    resolved.push({
+      ...alert,
+      body: typeof alert.bodyFor === "function" ? alert.bodyFor(ctx) : alert.body,
+      resurfaceValue,
+    });
+  }
+  return resolved;
 }

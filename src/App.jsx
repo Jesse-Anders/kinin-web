@@ -461,6 +461,13 @@ export default function App() {
   // snooze/dismiss map keyed by alert id; `signupAt` powers time-based triggers.
   const [alertsState, setAlertsState] = useState({});
   const [signupAt, setSignupAt] = useState(null);
+  // Account type from the entitlement plan. "biography_only" is a read-only
+  // "Reader" account (invited to interact with someone's biography, no
+  // interview of their own); everything else is treated as a full "Storyteller".
+  const [planState, setPlanState] = useState("");
+  // Count of live story-request pins waiting on this user — powers the
+  // "a family member would love a story" alert. Derived server-side from pins.
+  const [pendingStoryRequests, setPendingStoryRequests] = useState(0);
   const [isSendingTurn, setIsSendingTurn] = useState(false);
   const [isStartingSession, setIsStartingSession] = useState(false);
   const [startingPinId, setStartingPinId] = useState("");
@@ -1098,6 +1105,7 @@ export default function App() {
       label: "Interview",
       icon: MessageCircle,
       requiresAuth: true,
+      hideForReader: true,
       onClick: () => navigateToPage("interview"),
     },
     {
@@ -1105,6 +1113,7 @@ export default function App() {
       label: "Journal",
       icon: NotebookPen,
       requiresAuth: true,
+      hideForReader: true,
       onClick: () => navigateToPage("journal"),
     },
     {
@@ -1112,6 +1121,7 @@ export default function App() {
       label: "Pins",
       icon: MapPin,
       requiresAuth: true,
+      hideForReader: true,
       onClick: () => navigateToPage("pins"),
     },
     {
@@ -1119,6 +1129,7 @@ export default function App() {
       label: "Review",
       icon: ScrollText,
       requiresAuth: true,
+      hideForReader: true,
       onClick: () => navigateToPage("review-chats"),
     },
     {
@@ -1291,11 +1302,15 @@ export default function App() {
   // "+" overflow menu (alongside Contact and Privacy) once a user is logged in.
   // Feedback is auth-only and always lives in that "+" overflow menu.
   const NESTED_WHEN_AUTHED_IDS = new Set(["about", "faq", "feedback"]);
+  // A "Reader" (biography_only) account has no interview of their own, so the
+  // interviewer-only sections (Interview, Journal, Pins, Review) are hidden.
+  const isReader = planState === "biography_only";
   const visibleTopItems = menuItems.filter(
     (item) =>
       item.section !== "bottom" &&
       (isAuthed || !item.requiresAuth) &&
       !(item.hideForBetaLite && IS_BETA_LITE) &&
+      !(item.hideForReader && isReader) &&
       !(isAuthed && NESTED_WHEN_AUTHED_IDS.has(item.id))
   );
   const nestedTopItems = isAuthed
@@ -1415,6 +1430,19 @@ export default function App() {
       navigateToPage("interview", { replace: true });
     }
   }, [activePage, isAuthed, onboardingChecked, onboardingRequired]);
+
+  // Readers (biography_only) have no interviewer surface, so steer them away
+  // from those pages if they arrive via a direct URL/back-button to Biographies.
+  const READER_FORBIDDEN_PAGES = useMemo(
+    () => new Set(["interview", "journal", "pins", "review-chats"]),
+    [],
+  );
+  useEffect(() => {
+    if (!isAuthed || !onboardingChecked) return;
+    if (planState === "biography_only" && READER_FORBIDDEN_PAGES.has(activePage)) {
+      navigateToPage("biographies", { replace: true });
+    }
+  }, [activePage, isAuthed, onboardingChecked, planState, READER_FORBIDDEN_PAGES]);
 
   useEffect(() => {
     if (activePage !== "admin-onboarding-preview") return;
@@ -1636,6 +1664,13 @@ export default function App() {
     }
     if (parsed && typeof parsed === "object" && "signup_at" in parsed) {
       setSignupAt(typeof parsed.signup_at === "string" ? parsed.signup_at : null);
+    }
+    if (parsed && typeof parsed === "object" && "plan_state" in parsed) {
+      setPlanState(typeof parsed.plan_state === "string" ? parsed.plan_state : "");
+    }
+    if (parsed && typeof parsed === "object" && "pending_story_requests" in parsed) {
+      const n = Number(parsed.pending_story_requests);
+      setPendingStoryRequests(Number.isFinite(n) && n > 0 ? n : 0);
     }
   }
 
@@ -3206,7 +3241,7 @@ export default function App() {
   // Snooze ("remind me later") or dismiss ("delete alert") an in-app alert.
   // Optimistic + merge-patched to the server (per-alert-id) so it sticks across
   // sessions and devices.
-  async function saveAlertAction(alertId, action) {
+  async function saveAlertAction(alertId, action, resurfaceValue) {
     if (!isAuthed || !alertId) return false;
     const patch =
       action === "snooze"
@@ -3217,6 +3252,11 @@ export default function App() {
             ).toISOString(),
           }
         : { status: "dismissed" };
+    // Record the count at silence-time so a count-driven alert (story requests)
+    // can resurface when MORE arrive, while staying quiet for the acknowledged ones.
+    if (typeof resurfaceValue === "number" && Number.isFinite(resurfaceValue)) {
+      patch.count = resurfaceValue;
+    }
     const previous = alertsState;
     setAlertsState((prev) => ({ ...prev, [alertId]: { ...patch } }));
     setProfileError("");
@@ -3241,7 +3281,12 @@ export default function App() {
   const activeAlerts = useMemo(() => {
     if (!isAuthed || accessBlocked || onboardingRequired) return [];
     return resolveActiveAlerts(
-      { nowMs: Date.now(), signupAt, hasExecutor: hasAccountExecutor },
+      {
+        nowMs: Date.now(),
+        signupAt,
+        hasExecutor: hasAccountExecutor,
+        pendingStoryRequests,
+      },
       alertsState,
     );
   }, [
@@ -3250,6 +3295,7 @@ export default function App() {
     onboardingRequired,
     signupAt,
     hasAccountExecutor,
+    pendingStoryRequests,
     alertsState,
   ]);
 
@@ -3659,10 +3705,10 @@ export default function App() {
               if (alert?.cta?.page) navigateToPage(alert.cta.page);
             }}
             onSnooze={(alert) => {
-              void saveAlertAction(alert.id, "snooze");
+              void saveAlertAction(alert.id, "snooze", alert.resurfaceValue);
             }}
             onDismiss={(alert) => {
-              void saveAlertAction(alert.id, "dismiss");
+              void saveAlertAction(alert.id, "dismiss", alert.resurfaceValue);
             }}
           />
           <HelpMenu
@@ -4084,6 +4130,7 @@ export default function App() {
           getAccessToken={getAccessToken}
           apiBase={API_BASE}
           biographyEnabled={biographySettings?.enabled !== false}
+          isReader={isReader}
           onManageSharing={() => navigateToPage("settings-biographies")}
         />
       ) : activePage === "unsubscribe" ? (

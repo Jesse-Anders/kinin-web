@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { UsersRound } from "lucide-react";
+import { MessageCircleHeart, UsersRound, X } from "lucide-react";
 import {
   Banner,
   Button,
@@ -8,10 +8,13 @@ import {
   Section,
   Skeleton,
   Spinner,
+  TextArea,
   TextInput,
 } from "../theme";
 
-function parseSharesPayload(text) {
+const STORY_REQUEST_MAX = 1000;
+
+function parseApiPayload(text) {
   try {
     const outer = JSON.parse(text);
     return typeof outer?.body === "string" ? JSON.parse(outer.body) : outer;
@@ -20,72 +23,198 @@ function parseSharesPayload(text) {
   }
 }
 
+// A warm, human-feeling placeholder avatar: the person's initials on a soft
+// colored disc, seeded from their name so each person keeps a stable color
+// until real profile photos land.
+const AVATAR_PALETTE = [
+  { bg: "#E8D9C4", fg: "#6B4E2E" },
+  { bg: "#D6E2D2", fg: "#3F5A3A" },
+  { bg: "#D9E0EC", fg: "#3C4C6B" },
+  { bg: "#EEDAD6", fg: "#7A473C" },
+  { bg: "#E4DCEC", fg: "#57436E" },
+  { bg: "#E9E3CC", fg: "#6E6231" },
+];
+
+function initialsFor(name) {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function paletteFor(name) {
+  const key = String(name || "");
+  let hash = 0;
+  for (let i = 0; i < key.length; i += 1) {
+    hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  }
+  return AVATAR_PALETTE[hash % AVATAR_PALETTE.length];
+}
+
+function MemberAvatar({ name }) {
+  const { bg, fg } = paletteFor(name);
+  return (
+    <span
+      className="km-fc-avatar"
+      style={{ background: bg, color: fg }}
+      aria-hidden="true"
+    >
+      {initialsFor(name)}
+    </span>
+  );
+}
+
+function StoryRequestModal({ member, busy, error, onSend, onClose }) {
+  const [message, setMessage] = useState("");
+  const remaining = STORY_REQUEST_MAX - message.length;
+  const name = member?.display_name || "your family member";
+
+  return (
+    <div
+      className="km-fc-modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Ask ${name} to share a story`}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget && !busy) onClose();
+      }}
+    >
+      <div className="km-fc-modal">
+        <div className="km-fc-modal-head">
+          <div className="km-fc-modal-title">
+            Ask {name} to share a story
+          </div>
+          <button
+            type="button"
+            className="km-alerts-x"
+            onClick={onClose}
+            disabled={busy}
+            aria-label="Close"
+          >
+            <X size={18} strokeWidth={2} />
+          </button>
+        </div>
+        <div className="km-prose" style={{ marginBottom: 12 }}>
+          <p style={{ margin: 0 }}>
+            Tell {name} which memory you&apos;d love to hear more about. They&apos;ll
+            find your request waiting in their Pins, ready whenever they are.
+          </p>
+        </div>
+        <TextArea
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          rows={4}
+          maxLength={STORY_REQUEST_MAX}
+          disabled={busy}
+          placeholder="I&apos;d love to hear more about that summer at the lake house — the one with the little rowboat."
+        />
+        <div className="km-form-help" style={{ marginTop: 6 }}>
+          {remaining} characters left
+        </div>
+        {error ? (
+          <div style={{ marginTop: 12 }}>
+            <Banner tone="danger">{error}</Banner>
+          </div>
+        ) : null}
+        <div className="km-row" style={{ marginTop: 16, gap: 10, justifyContent: "flex-end" }}>
+          <Button onClick={onClose} disabled={busy}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => onSend(message.trim())}
+            disabled={busy || !message.trim()}
+          >
+            {busy ? (
+              <>
+                <Spinner /> Sending...
+              </>
+            ) : (
+              <>
+                <MessageCircleHeart size={16} strokeWidth={1.6} /> Send request
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /**
- * Family Circle — the home for the family and close friends who can interact
- * with your biography. In this first version it relocates the invite/manage-
- * access controls that used to live in Settings. The on/off switch for whether
- * your biography is shareable at all still lives in Settings; a link points
- * there. More ways to connect with your circle are coming later.
+ * Family Circle — the home for the family and close friends you're connected to
+ * through Kinin biographies. It lists everyone in your circle (people you've
+ * invited to your biography and people who've shared theirs with you), lets you
+ * invite new people, and lets you ask a storyteller in your circle to share a
+ * specific memory. The on/off switch for whether your own biography is
+ * shareable still lives in Settings; a link points there.
  */
 export default function FamilyCirclePage({
   isAuthed,
   getAccessToken,
   apiBase,
   biographyEnabled = true,
+  isReader = false,
   onManageSharing,
 }) {
-  const canManageShares =
-    !!apiBase && typeof getAccessToken === "function" && isAuthed;
+  const canLoad = !!apiBase && typeof getAccessToken === "function" && isAuthed;
+  // Readers (biography_only) have no biography of their own to share, so they
+  // can't invite people — they only appear in others' circles and can request
+  // stories from the storytellers who've shared with them.
+  const canInvite = canLoad && !isReader;
 
-  const [shares, setShares] = useState([]);
+  const [members, setMembers] = useState([]);
   const [pendingInvites, setPendingInvites] = useState([]);
-  const [sharesLoading, setSharesLoading] = useState(false);
-  const [sharesError, setSharesError] = useState("");
-  const [shareBusy, setShareBusy] = useState(false);
-  const [shareNotice, setShareNotice] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
   const [shareEmail, setShareEmail] = useState("");
   const [shareRelationship, setShareRelationship] = useState("");
 
-  const loadShares = useCallback(async () => {
-    if (!canManageShares) return;
-    setSharesLoading(true);
-    setSharesError("");
+  const [requestTarget, setRequestTarget] = useState(null);
+  const [requestBusy, setRequestBusy] = useState(false);
+  const [requestError, setRequestError] = useState("");
+
+  const loadCircle = useCallback(async () => {
+    if (!canLoad) return;
+    setLoading(true);
+    setError("");
     try {
       const token = await getAccessToken();
-      const res = await fetch(`${apiBase}/biographies/shares`, {
+      const res = await fetch(`${apiBase}/biographies/circle`, {
         method: "GET",
         headers: { Authorization: `Bearer ${token}` },
       });
-      const text = await res.text();
-      const parsed = parseSharesPayload(text);
+      const parsed = parseApiPayload(await res.text());
       if (!res.ok) {
         throw new Error(parsed?.detail || parsed?.error || `Request failed (${res.status})`);
       }
-      setShares(Array.isArray(parsed?.shares) ? parsed.shares : []);
+      setMembers(Array.isArray(parsed?.members) ? parsed.members : []);
       setPendingInvites(Array.isArray(parsed?.pending_invites) ? parsed.pending_invites : []);
     } catch (e) {
-      setSharesError(e?.message || String(e));
+      setError(e?.message || String(e));
     } finally {
-      setSharesLoading(false);
+      setLoading(false);
     }
-  }, [apiBase, getAccessToken, canManageShares]);
+  }, [apiBase, getAccessToken, canLoad]);
 
   useEffect(() => {
-    loadShares();
-  }, [loadShares]);
+    loadCircle();
+  }, [loadCircle]);
 
   async function addShare(e) {
     if (e?.preventDefault) e.preventDefault();
-    if (!canManageShares || shareBusy) return;
+    if (!canInvite || busy) return;
     const email = shareEmail.trim();
     const relationship = shareRelationship.trim();
     if (!email) {
-      setSharesError("Enter an email address to invite.");
+      setError("Enter an email address to invite.");
       return;
     }
-    setShareBusy(true);
-    setSharesError("");
-    setShareNotice("");
+    setBusy(true);
+    setError("");
+    setNotice("");
     try {
       const token = await getAccessToken();
       const res = await fetch(`${apiBase}/biographies/shares`, {
@@ -96,39 +225,39 @@ export default function FamilyCirclePage({
         },
         body: JSON.stringify({ email, relationship }),
       });
-      const text = await res.text();
-      const parsed = parseSharesPayload(text);
+      const parsed = parseApiPayload(await res.text());
       if (!res.ok) {
         if (parsed?.error === "invite_limit_reached") {
           throw new Error(
-            parsed?.detail || "You've reached the limit of pending invitations. Cancel one or wait for someone to join.",
+            parsed?.detail ||
+              "You've reached the limit of pending invitations. Cancel one or wait for someone to join.",
           );
         }
         throw new Error(parsed?.detail || parsed?.error || `Request failed (${res.status})`);
       }
       if (parsed?.pending) {
-        setShareNotice(
-          `Invitation sent to ${email}. They'll be able to interact with your biography as soon as they join Kinin.`,
+        setNotice(
+          `Invitation sent to ${email}. They'll join your circle as soon as they're on Kinin.`,
         );
       } else {
         const name = parsed?.share?.display_name || email;
-        setShareNotice(`${name} can now interact with your biography.`);
+        setNotice(`${name} is now in your family circle.`);
       }
       setShareEmail("");
       setShareRelationship("");
-      await loadShares();
+      await loadCircle();
     } catch (err) {
-      setSharesError(err?.message || String(err));
+      setError(err?.message || String(err));
     } finally {
-      setShareBusy(false);
+      setBusy(false);
     }
   }
 
-  async function removeShare(listenerUserId, name) {
-    if (!canManageShares || shareBusy || !listenerUserId) return;
-    setShareBusy(true);
-    setSharesError("");
-    setShareNotice("");
+  async function removeMember(member) {
+    if (!canInvite || busy || !member?.member_id) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
     try {
       const token = await getAccessToken();
       const res = await fetch(`${apiBase}/biographies/shares`, {
@@ -137,27 +266,26 @@ export default function FamilyCirclePage({
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ listener_user_id: listenerUserId }),
+        body: JSON.stringify({ listener_user_id: member.member_id }),
       });
-      const text = await res.text();
-      const parsed = parseSharesPayload(text);
+      const parsed = parseApiPayload(await res.text());
       if (!res.ok) {
         throw new Error(parsed?.detail || parsed?.error || `Request failed (${res.status})`);
       }
-      setShareNotice(`${name || "That person"}'s access has been removed.`);
-      await loadShares();
+      setNotice(`${member.display_name || "That person"} can no longer reach your biography.`);
+      await loadCircle();
     } catch (err) {
-      setSharesError(err?.message || String(err));
+      setError(err?.message || String(err));
     } finally {
-      setShareBusy(false);
+      setBusy(false);
     }
   }
 
   async function cancelInvite(email) {
-    if (!canManageShares || shareBusy || !email) return;
-    setShareBusy(true);
-    setSharesError("");
-    setShareNotice("");
+    if (!canInvite || busy || !email) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
     try {
       const token = await getAccessToken();
       const res = await fetch(`${apiBase}/biographies/shares`, {
@@ -168,44 +296,76 @@ export default function FamilyCirclePage({
         },
         body: JSON.stringify({ invitee_email: email }),
       });
-      const text = await res.text();
-      const parsed = parseSharesPayload(text);
+      const parsed = parseApiPayload(await res.text());
       if (!res.ok) {
         throw new Error(parsed?.detail || parsed?.error || `Request failed (${res.status})`);
       }
-      setShareNotice(`Invitation to ${email} has been cancelled.`);
-      await loadShares();
+      setNotice(`Invitation to ${email} has been cancelled.`);
+      await loadCircle();
     } catch (err) {
-      setSharesError(err?.message || String(err));
+      setError(err?.message || String(err));
     } finally {
-      setShareBusy(false);
+      setBusy(false);
     }
   }
+
+  async function sendStoryRequest(message) {
+    if (!requestTarget?.member_id || !message) return;
+    setRequestBusy(true);
+    setRequestError("");
+    try {
+      const token = await getAccessToken();
+      const res = await fetch(`${apiBase}/biographies/story-request`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ target_user_id: requestTarget.member_id, message }),
+      });
+      const parsed = parseApiPayload(await res.text());
+      if (!res.ok) {
+        throw new Error(parsed?.detail || parsed?.error || `Request failed (${res.status})`);
+      }
+      const name = requestTarget.display_name || "Your family member";
+      setRequestTarget(null);
+      setNotice(`Your story request is on its way to ${name}.`);
+    } catch (err) {
+      setRequestError(err?.message || String(err));
+    } finally {
+      setRequestBusy(false);
+    }
+  }
+
+  const introCopy = isReader
+    ? "Family Circle is where you connect with the people whose biographies you can explore. When someone is recording their own biography with Kinin, you can ask them to share a particular memory."
+    : "Family Circle is where you gather the family and close friends who can interact with your biography — and where you can ask the storytellers in your circle to share a memory you'd love to hear.";
+
+  const emptyCopy = isReader
+    ? "No one has shared their biography with you yet."
+    : "You haven't added anyone to your family circle yet.";
 
   return (
     <Section
       eyebrow="Family Circle"
       title={
         <>
-          The people in your <br /><em>family circle.</em>
+          The people in your <br />
+          <em>family circle.</em>
         </>
       }
     >
       <div className="km-prose" style={{ maxWidth: 680, marginBottom: 28 }} data-help-anchor="family-circle-main">
-        <p>
-          Family Circle is where you invite the family and close friends who can
-          interact with your biography — asking questions and hearing answers in
-          your own words. You can add or remove people any time.
-        </p>
+        <p>{introCopy}</p>
       </div>
 
       {!isAuthed ? (
         <Banner tone="info">
-          <span>Sign in to manage your Family Circle.</span>
+          <span>Sign in to see your Family Circle.</span>
         </Banner>
       ) : null}
 
-      {isAuthed && !biographyEnabled ? (
+      {isAuthed && !isReader && !biographyEnabled ? (
         <div style={{ marginBottom: 20 }}>
           <Banner tone="info">
             <div>
@@ -225,119 +385,159 @@ export default function FamilyCirclePage({
         </div>
       ) : null}
 
-      {canManageShares ? (
-        <div data-help-anchor="family-circle-invite">
-        <Frame label="Invite family & close friends">
-          <div className="km-prose" style={{ maxWidth: 560, marginBottom: 16 }}>
-            <p>
-              Invite someone by the email tied to their Kinin account and they can
-              start right away. Invite someone who isn&apos;t on Kinin yet and
-              they&apos;ll gain access when they join.
-            </p>
-          </div>
+      {notice ? (
+        <div style={{ marginBottom: 14 }}>
+          <Banner tone="info">{notice}</Banner>
+        </div>
+      ) : null}
+      {error ? (
+        <div style={{ marginBottom: 14 }}>
+          <Banner tone="danger">{error}</Banner>
+        </div>
+      ) : null}
 
-          {shareNotice ? (
-            <div style={{ marginBottom: 14 }}>
-              <Banner tone="info">{shareNotice}</Banner>
-            </div>
-          ) : null}
-          {sharesError ? (
-            <div style={{ marginBottom: 14 }}>
-              <Banner tone="danger">{sharesError}</Banner>
-            </div>
-          ) : null}
-
-          <form className="km-form-grid" onSubmit={addShare}>
-            <FormRow label="Their email">
-              <TextInput
-                value={shareEmail}
-                onChange={(e) => setShareEmail(e.target.value)}
-                disabled={shareBusy}
-                inputMode="email"
-                placeholder="name@example.com"
-              />
-            </FormRow>
-            <FormRow label="Relationship (optional)" help="e.g. daughter, brother, close friend">
-              <TextInput
-                value={shareRelationship}
-                onChange={(e) => setShareRelationship(e.target.value)}
-                disabled={shareBusy}
-                maxLength={60}
-                placeholder="daughter"
-              />
-            </FormRow>
-          </form>
-          <div className="km-row" style={{ marginTop: 14 }}>
-            <Button variant="primary" onClick={addShare} disabled={shareBusy || !shareEmail.trim()}>
-              {shareBusy ? (
-                <>
-                  <Spinner /> Working...
-                </>
-              ) : (
-                "Invite this person"
-              )}
-            </Button>
-          </div>
-
-          <div style={{ marginTop: 22 }}>
-            <div className="km-mono-label" style={{ marginBottom: 10 }}>
-              In your family circle
-            </div>
-            {sharesLoading ? (
+      {isAuthed ? (
+        <div style={{ marginBottom: 24 }}>
+          <Frame label="Your family circle">
+            {loading ? (
               <div style={{ display: "grid", gap: 8, maxWidth: 480 }}>
                 <Skeleton />
                 <Skeleton short />
               </div>
-            ) : shares.length === 0 ? (
+            ) : members.length === 0 ? (
               <div className="km-form-help" style={{ fontStyle: "normal" }}>
-                You haven&apos;t invited anyone to your biography yet.
+                {emptyCopy}
               </div>
             ) : (
-              <ul className="km-share-list">
-                {shares.map((s) => (
-                  <li key={s.listener_user_id} className="km-share-row">
-                    <div>
-                      <strong>{s.display_name || s.listener_user_id}</strong>
-                      {s.relationship ? (
-                        <span className="km-muted"> · {s.relationship}</span>
-                      ) : null}
-                    </div>
-                    <Button
-                      onClick={() => removeShare(s.listener_user_id, s.display_name)}
-                      disabled={shareBusy}
-                    >
-                      Remove
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+              <div className="km-fc-grid">
+                {members.map((m) => {
+                  const isReaderMember = m.account_type === "reader";
+                  return (
+                    <div key={m.member_id} className="km-fc-card">
+                      <div className="km-fc-card-top">
+                        <MemberAvatar name={m.display_name} />
+                        <div className="km-fc-card-id">
+                          <div className="km-fc-card-name">
+                            {m.display_name || "Family member"}
+                          </div>
+                          {m.relationship ? (
+                            <div className="km-fc-card-rel">{m.relationship}</div>
+                          ) : null}
+                        </div>
+                      </div>
 
-          {pendingInvites.length > 0 ? (
-            <div style={{ marginTop: 20 }}>
-              <div className="km-mono-label" style={{ marginBottom: 10 }}>
-                Invited · not joined yet
-              </div>
-              <ul className="km-share-list">
-                {pendingInvites.map((p) => (
-                  <li key={p.invitee_email} className="km-share-row">
-                    <div>
-                      <strong>{p.invitee_email}</strong>
-                      {p.relationship ? (
-                        <span className="km-muted"> · {p.relationship}</span>
-                      ) : null}
-                      <span className="km-muted"> · awaiting sign-up</span>
+                      <div className="km-fc-tags">
+                        {m.shares_with_me ? (
+                          <span className="km-fc-chip">Shares their biography with you</span>
+                        ) : null}
+                        {m.i_share_with_them ? (
+                          <span className="km-fc-chip">Can hear your biography</span>
+                        ) : null}
+                        {isReaderMember ? (
+                          <span className="km-fc-chip km-fc-chip-muted">
+                            Reader · no biography yet
+                          </span>
+                        ) : null}
+                      </div>
+
+                      <div className="km-fc-card-actions">
+                        {m.can_request_story ? (
+                          <Button
+                            size="sm"
+                            variant="primary"
+                            onClick={() => {
+                              setRequestError("");
+                              setRequestTarget(m);
+                            }}
+                            disabled={busy}
+                          >
+                            <MessageCircleHeart size={15} strokeWidth={1.6} /> Ask to share a story
+                          </Button>
+                        ) : null}
+                        {m.i_share_with_them ? (
+                          <Button size="sm" onClick={() => removeMember(m)} disabled={busy}>
+                            Remove
+                          </Button>
+                        ) : null}
+                      </div>
                     </div>
-                    <Button onClick={() => cancelInvite(p.invitee_email)} disabled={shareBusy}>
-                      Cancel
-                    </Button>
-                  </li>
-                ))}
-              </ul>
+                  );
+                })}
+              </div>
+            )}
+
+            {pendingInvites.length > 0 ? (
+              <div style={{ marginTop: 22 }}>
+                <div className="km-mono-label" style={{ marginBottom: 10 }}>
+                  Invited · not joined yet
+                </div>
+                <ul className="km-share-list">
+                  {pendingInvites.map((p) => (
+                    <li key={p.invitee_email} className="km-share-row">
+                      <div>
+                        <strong>{p.invitee_email}</strong>
+                        {p.relationship ? (
+                          <span className="km-muted"> · {p.relationship}</span>
+                        ) : null}
+                        <span className="km-muted"> · awaiting sign-up</span>
+                      </div>
+                      {canInvite ? (
+                        <Button onClick={() => cancelInvite(p.invitee_email)} disabled={busy}>
+                          Cancel
+                        </Button>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </Frame>
+        </div>
+      ) : null}
+
+      {canInvite ? (
+        <div data-help-anchor="family-circle-invite">
+          <Frame label="Invite family & close friends">
+            <div className="km-prose" style={{ maxWidth: 560, marginBottom: 16 }}>
+              <p>
+                Invite someone by the email tied to their Kinin account and they can
+                start right away. Invite someone who isn&apos;t on Kinin yet and
+                they&apos;ll gain access when they join.
+              </p>
             </div>
-          ) : null}
-        </Frame>
+
+            <form className="km-form-grid" onSubmit={addShare}>
+              <FormRow label="Their email">
+                <TextInput
+                  value={shareEmail}
+                  onChange={(e) => setShareEmail(e.target.value)}
+                  disabled={busy}
+                  inputMode="email"
+                  placeholder="name@example.com"
+                />
+              </FormRow>
+              <FormRow label="Relationship (optional)" help="e.g. daughter, brother, close friend">
+                <TextInput
+                  value={shareRelationship}
+                  onChange={(e) => setShareRelationship(e.target.value)}
+                  disabled={busy}
+                  maxLength={60}
+                  placeholder="daughter"
+                />
+              </FormRow>
+            </form>
+            <div className="km-row" style={{ marginTop: 14 }}>
+              <Button variant="primary" onClick={addShare} disabled={busy || !shareEmail.trim()}>
+                {busy ? (
+                  <>
+                    <Spinner /> Working...
+                  </>
+                ) : (
+                  "Invite this person"
+                )}
+              </Button>
+            </div>
+          </Frame>
         </div>
       ) : null}
 
@@ -347,13 +547,25 @@ export default function FamilyCirclePage({
             <div className="km-prose" style={{ maxWidth: 560 }}>
               <p style={{ margin: 0 }}>
                 <UsersRound size={16} aria-hidden="true" style={{ verticalAlign: "-2px", marginRight: 6 }} />
-                Family Circle will grow into space for your
-                closest people — with more ways to share moments and stay
-                connected. This is just the beginning.
+                Family Circle will grow into a space for your closest people — with
+                more ways to share moments and stay connected. This is just the
+                beginning.
               </p>
             </div>
           </Frame>
         </div>
+      ) : null}
+
+      {requestTarget ? (
+        <StoryRequestModal
+          member={requestTarget}
+          busy={requestBusy}
+          error={requestError}
+          onSend={sendStoryRequest}
+          onClose={() => {
+            if (!requestBusy) setRequestTarget(null);
+          }}
+        />
       ) : null}
     </Section>
   );

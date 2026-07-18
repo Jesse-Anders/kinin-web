@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Check, MapPin, MessageCircle, NotebookPen, RotateCcw, Trash2 } from "lucide-react";
+import { Check, HeartHandshake, MapPin, MessageCircle, NotebookPen, RotateCcw, Trash2 } from "lucide-react";
 import { Banner, Button, Frame, Section, Spinner, TextArea } from "../theme";
 import { createPin, deletePin, listPins, updatePin } from "../services/pinsClient";
 
@@ -229,11 +229,26 @@ export default function PinsPage({
               const isLaunchingJournal = startingJournalPinId === pin.pin_id;
               const isUpdating = updatingPinId === pin.pin_id;
               const rowBusy = isLaunching || isLaunchingJournal || isUpdating || launching;
+              const isRequest = pin.source === "story_request";
+              const requesterName = (pin.requester_name || "").trim() || "A family member";
               return (
-                <Frame key={pin.pin_id}>
+                <Frame
+                  key={pin.pin_id}
+                  label={isRequest ? "Story request" : undefined}
+                  className={isRequest ? "km-pin-request" : ""}
+                >
                   <div className="km-row" style={{ gap: 12, alignItems: "flex-start" }}>
-                    <MapPin size={20} strokeWidth={1.5} style={{ flexShrink: 0, marginTop: 2 }} />
+                    {isRequest ? (
+                      <HeartHandshake size={20} strokeWidth={1.5} style={{ flexShrink: 0, marginTop: 2 }} />
+                    ) : (
+                      <MapPin size={20} strokeWidth={1.5} style={{ flexShrink: 0, marginTop: 2 }} />
+                    )}
                     <div style={{ flex: 1, minWidth: 0 }}>
+                      {isRequest ? (
+                        <div className="km-mono-label" style={{ marginBottom: 6 }}>
+                          {requesterName} would love to hear about this
+                        </div>
+                      ) : null}
                       <div style={{ whiteSpace: "pre-wrap" }}>{pin.text}</div>
                       <div className="km-mono-label" style={{ marginTop: 8 }}>
                         Pinned {formatDate(pin.created_at)}
