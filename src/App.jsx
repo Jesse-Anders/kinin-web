@@ -475,6 +475,9 @@ export default function App() {
   // Count of live story-request pins waiting on this user — powers the
   // "a family member would love a story" alert. Derived server-side from pins.
   const [pendingStoryRequests, setPendingStoryRequests] = useState(0);
+  // Count of memories the user asked for that a storyteller has now shared but
+  // the user hasn't acknowledged — powers the "your memory was shared" alert.
+  const [fulfilledStoryRequests, setFulfilledStoryRequests] = useState(0);
   const [isSendingTurn, setIsSendingTurn] = useState(false);
   const [isStartingSession, setIsStartingSession] = useState(false);
   const [startingPinId, setStartingPinId] = useState("");
@@ -1678,6 +1681,10 @@ export default function App() {
     if (parsed && typeof parsed === "object" && "pending_story_requests" in parsed) {
       const n = Number(parsed.pending_story_requests);
       setPendingStoryRequests(Number.isFinite(n) && n > 0 ? n : 0);
+    }
+    if (parsed && typeof parsed === "object" && "fulfilled_story_requests" in parsed) {
+      const n = Number(parsed.fulfilled_story_requests);
+      setFulfilledStoryRequests(Number.isFinite(n) && n > 0 ? n : 0);
     }
   }
 
@@ -3310,6 +3317,7 @@ export default function App() {
         signupAt,
         hasExecutor: hasAccountExecutor,
         pendingStoryRequests,
+        fulfilledStoryRequests,
       },
       alertsState,
     );
@@ -3320,6 +3328,7 @@ export default function App() {
     signupAt,
     hasAccountExecutor,
     pendingStoryRequests,
+    fulfilledStoryRequests,
     alertsState,
   ]);
 
@@ -4157,6 +4166,7 @@ export default function App() {
           biographyEnabled={biographySettings?.enabled !== false}
           isReader={isReader}
           onManageSharing={() => navigateToPage("settings-biographies")}
+          onStoryRequestsSeen={() => setFulfilledStoryRequests(0)}
         />
       ) : activePage === "unsubscribe" ? (
         <UnsubscribePage apiBase={API_BASE} />

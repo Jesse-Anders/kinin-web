@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { MessageCircleHeart, UsersRound, X } from "lucide-react";
+import { HeartHandshake, MessageCircleHeart, UsersRound, X } from "lucide-react";
 import {
   Banner,
   Button,
@@ -165,6 +165,7 @@ export default function FamilyCirclePage({
   biographyEnabled = true,
   isReader = false,
   onManageSharing,
+  onStoryRequestsSeen,
 }) {
   const canLoad = !!apiBase && typeof getAccessToken === "function" && isAuthed;
   // Readers (biography_only) have no biography of their own to share, so they
@@ -211,6 +212,20 @@ export default function FamilyCirclePage({
     }
   }, [apiBase, getAccessToken, canLoad]);
 
+  const markStoryRequestsSeen = useCallback(async () => {
+    if (!canLoad) return;
+    try {
+      const token = await getAccessToken();
+      await fetch(`${apiBase}/biographies/story-requests/seen`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (typeof onStoryRequestsSeen === "function") onStoryRequestsSeen();
+    } catch {
+      // Non-critical: the alert will clear on the next profile refresh anyway.
+    }
+  }, [apiBase, getAccessToken, canLoad, onStoryRequestsSeen]);
+
   const loadStoryRequests = useCallback(async () => {
     if (!canLoad) return;
     setSentLoading(true);
@@ -224,14 +239,20 @@ export default function FamilyCirclePage({
       if (!res.ok) {
         throw new Error(parsed?.detail || parsed?.error || `Request failed (${res.status})`);
       }
-      setSentRequests(Array.isArray(parsed?.requests) ? parsed.requests : []);
+      const list = Array.isArray(parsed?.requests) ? parsed.requests : [];
+      setSentRequests(list);
+      // Opening Family Circle acknowledges any "your memory was shared" nudges,
+      // just like opening Pins clears the incoming-request alert. Best-effort.
+      if (list.some((r) => r?.status === "fulfilled")) {
+        markStoryRequestsSeen();
+      }
     } catch {
       // History is a nice-to-have; a load failure shouldn't disrupt the page.
       setSentRequests([]);
     } finally {
       setSentLoading(false);
     }
-  }, [apiBase, getAccessToken, canLoad]);
+  }, [apiBase, getAccessToken, canLoad, markStoryRequestsSeen]);
 
   useEffect(() => {
     loadCircle();
@@ -555,6 +576,7 @@ export default function FamilyCirclePage({
               <ul className="km-share-list">
                 {sentRequests.map((r) => {
                   const to = (r.target_name || "").trim() || "A family member";
+                  const fulfilled = r.status === "fulfilled";
                   return (
                     <li key={r.request_id} className="km-share-row" style={{ alignItems: "flex-start" }}>
                       <div style={{ minWidth: 0 }}>
@@ -569,6 +591,28 @@ export default function FamilyCirclePage({
                             &ldquo;{r.message}&rdquo;
                           </div>
                         ) : null}
+                        {fulfilled ? (
+                          <div
+                            style={{
+                              marginTop: 6,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 6,
+                              color: "#3F5A3A",
+                            }}
+                          >
+                            <HeartHandshake size={15} strokeWidth={1.8} aria-hidden="true" />
+                            <span>
+                              {to} shared this memory
+                              {r.recorded_in_biography ? " — it's now in their Kinin biography" : ""}
+                              {r.fulfilled_at ? ` · ${formatDate(r.fulfilled_at)}` : ""}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="km-muted" style={{ marginTop: 6 }}>
+                            Waiting for {to} to share
+                          </div>
+                        )}
                       </div>
                     </li>
                   );

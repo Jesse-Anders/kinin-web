@@ -22,7 +22,8 @@ function daysBetween(iso, nowMs) {
 
 // The alert catalog. `isEligible(ctx)` decides whether the alert's underlying
 // condition is currently true; snooze/dismiss state is applied separately in
-// App.jsx. ctx = { nowMs, signupAt, hasExecutor, pendingStoryRequests }.
+// App.jsx. ctx = { nowMs, signupAt, hasExecutor, pendingStoryRequests,
+// fulfilledStoryRequests }.
 //
 // An alert may also define `resurfaceValue(ctx)` returning a number (e.g. a
 // count of pending items). When present, a snoozed/dismissed alert reappears if
@@ -63,6 +64,27 @@ export const ALERTS = [
         return "Someone in your Family Circle asked you to share a memory. Open your Pins to see what they'd love to hear.";
       }
       return `${n} people in your Family Circle asked you to share a memory. Open your Pins to see what they'd love to hear.`;
+    },
+  },
+  {
+    id: "story-fulfilled",
+    tone: "info",
+    title: "A memory you asked for was shared",
+    body:
+      "Someone in your Family Circle shared a memory you asked about. Open Family Circle to see.",
+    cta: { label: "See what they shared", page: "family-circle" },
+    isEligible(ctx) {
+      return (ctx.fulfilledStoryRequests || 0) > 0;
+    },
+    resurfaceValue(ctx) {
+      return ctx.fulfilledStoryRequests || 0;
+    },
+    bodyFor(ctx) {
+      const n = ctx.fulfilledStoryRequests || 0;
+      if (n === 1) {
+        return "Someone in your Family Circle shared a memory you asked about. Open Family Circle to see.";
+      }
+      return `${n} memories you asked about have been shared. Open Family Circle to see.`;
     },
   },
 ];
