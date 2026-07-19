@@ -12,6 +12,7 @@ export function streamBiography({
   accessToken,
   biographyOwnerUserId,
   message,
+  history,
   clientRequestId,
   onDelta,
   timeoutMs = 30000,
@@ -60,6 +61,7 @@ export function streamBiography({
         biography_owner_user_id: biographyOwnerUserId,
         message,
       };
+      if (Array.isArray(history) && history.length) payload.history = history;
       if (clientRequestId) payload.client_request_id = clientRequestId;
       ws.send(JSON.stringify(payload));
     };

@@ -137,6 +137,25 @@ function saveTranscript(ownerId, messages) {
   }
 }
 
+// Build the recent-conversation payload sent with each chat request. The
+// server is stateless, so it relies on this for continuity. We send only
+// settled user/assistant messages (no in-flight placeholders) as
+// {role, content}; the backend caps how many it actually uses.
+const BIO_HISTORY_SEND_MAX = 16;
+
+function buildRequestHistory(messages) {
+  return (messages || [])
+    .filter(
+      (m) =>
+        m &&
+        !m.pending &&
+        (m.role === "user" || m.role === "assistant") &&
+        (m.content || "").trim(),
+    )
+    .slice(-BIO_HISTORY_SEND_MAX)
+    .map((m) => ({ role: m.role, content: m.content }));
+}
+
 function clearTranscript(ownerId) {
   if (!ownerId) return;
   try {
@@ -409,12 +428,13 @@ export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, str
     );
   }
 
-  async function streamViaWs(placeholder, trimmed, token) {
+  async function streamViaWs(placeholder, trimmed, token, history) {
     const parsed = await streamBiography({
       wsUrl: streamWsUrl,
       accessToken: token,
       biographyOwnerUserId: selectedOwnerId,
       message: trimmed,
+      history,
       clientRequestId: placeholder.id,
       onDelta: (delta) => {
         setMessages((prev) =>
@@ -433,6 +453,9 @@ export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, str
     const trimmed = (draft || "").trim();
     if (!trimmed || !selectedOwnerId || sending) return;
     clearChatError();
+    // Snapshot the prior transcript BEFORE appending this turn's placeholder,
+    // so the server gets the conversation-so-far for continuity.
+    const history = buildRequestHistory(messages);
     const userMsg = {
       id: `u_${Date.now()}_${Math.random().toString(16).slice(2, 6)}`,
       role: "user",
@@ -475,7 +498,7 @@ export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, str
       // Preferred path: stream tokens over the WebSocket when configured.
       if (streamWsUrl) {
         try {
-          await streamViaWs(placeholder, trimmed, token);
+          await streamViaWs(placeholder, trimmed, token, history);
           return;
         } catch (streamErr) {
           if (showSoft(streamErr?.code)) return;
@@ -504,6 +527,7 @@ export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, str
         body: JSON.stringify({
           biography_owner_user_id: selectedOwnerId,
           message: trimmed,
+          ...(history.length ? { history } : {}),
         }),
       });
       const text = await res.text();
