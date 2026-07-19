@@ -188,6 +188,10 @@ export default function FamilyCirclePage({
 
   const [sentRequests, setSentRequests] = useState([]);
   const [sentLoading, setSentLoading] = useState(false);
+  // Collapsed by default: show only the most recent couple of requests so a long
+  // history doesn't dominate the page. Expandable on demand.
+  const [sentExpanded, setSentExpanded] = useState(false);
+  const SENT_COLLAPSED_COUNT = 2;
 
   const loadCircle = useCallback(async () => {
     if (!canLoad) return;
@@ -529,32 +533,6 @@ export default function FamilyCirclePage({
                 })}
               </div>
             )}
-
-            {pendingInvites.length > 0 ? (
-              <div style={{ marginTop: 22 }}>
-                <div className="km-mono-label" style={{ marginBottom: 10 }}>
-                  Invited · not joined yet
-                </div>
-                <ul className="km-share-list">
-                  {pendingInvites.map((p) => (
-                    <li key={p.invitee_email} className="km-share-row">
-                      <div>
-                        <strong>{p.invitee_email}</strong>
-                        {p.relationship ? (
-                          <span className="km-muted"> · {p.relationship}</span>
-                        ) : null}
-                        <span className="km-muted"> · awaiting sign-up</span>
-                      </div>
-                      {canInvite ? (
-                        <Button onClick={() => cancelInvite(p.invitee_email)} disabled={busy}>
-                          Cancel
-                        </Button>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
           </Frame>
         </div>
       ) : null}
@@ -573,8 +551,19 @@ export default function FamilyCirclePage({
                 you&apos;ll see a record of your requests here.
               </div>
             ) : (
+              <>
               <ul className="km-share-list">
-                {sentRequests.map((r) => {
+                {(() => {
+                  const ordered = [...sentRequests].sort(
+                    (a, b) =>
+                      new Date(b.created_at || 0).getTime() -
+                      new Date(a.created_at || 0).getTime(),
+                  );
+                  const visible = sentExpanded
+                    ? ordered
+                    : ordered.slice(0, SENT_COLLAPSED_COUNT);
+                  return visible;
+                })().map((r) => {
                   const to = (r.target_name || "").trim() || "A family member";
                   const fulfilled = r.status === "fulfilled";
                   return (
@@ -618,6 +607,16 @@ export default function FamilyCirclePage({
                   );
                 })}
               </ul>
+              {sentRequests.length > SENT_COLLAPSED_COUNT ? (
+                <div className="km-row" style={{ marginTop: 12 }}>
+                  <Button size="sm" onClick={() => setSentExpanded((v) => !v)}>
+                    {sentExpanded
+                      ? "Show fewer"
+                      : `Show all ${sentRequests.length} requests`}
+                  </Button>
+                </div>
+              ) : null}
+              </>
             )}
           </Frame>
         </div>
@@ -665,6 +664,32 @@ export default function FamilyCirclePage({
                 )}
               </Button>
             </div>
+
+            {pendingInvites.length > 0 ? (
+              <div style={{ marginTop: 24 }}>
+                <div className="km-mono-label" style={{ marginBottom: 10 }}>
+                  Invited · not joined yet
+                </div>
+                <ul className="km-share-list">
+                  {pendingInvites.map((p) => (
+                    <li key={p.invitee_email} className="km-share-row">
+                      <div>
+                        <strong>{p.invitee_email}</strong>
+                        {p.relationship ? (
+                          <span className="km-muted"> · {p.relationship}</span>
+                        ) : null}
+                        <span className="km-muted"> · awaiting sign-up</span>
+                      </div>
+                      {canInvite ? (
+                        <Button onClick={() => cancelInvite(p.invitee_email)} disabled={busy}>
+                          Cancel
+                        </Button>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </Frame>
         </div>
       ) : null}
