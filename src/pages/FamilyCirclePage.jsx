@@ -35,6 +35,14 @@ const AVATAR_PALETTE = [
   { bg: "#E9E3CC", fg: "#6E6231" },
 ];
 
+function formatDate(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const dt = new Date(raw);
+  if (Number.isNaN(dt.getTime())) return raw;
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(dt);
+}
+
 function initialsFor(name) {
   const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return "?";
@@ -74,7 +82,7 @@ function StoryRequestModal({ member, busy, error, onSend, onClose }) {
       className="km-fc-modal-overlay"
       role="dialog"
       aria-modal="true"
-      aria-label={`Ask ${name} to share a story`}
+      aria-label={`Ask ${name} to share a memory`}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget && !busy) onClose();
       }}
@@ -82,7 +90,7 @@ function StoryRequestModal({ member, busy, error, onSend, onClose }) {
       <div className="km-fc-modal">
         <div className="km-fc-modal-head">
           <div className="km-fc-modal-title">
-            Ask {name} to share a story
+            Ask {name} to share a memory
           </div>
           <button
             type="button"
@@ -96,8 +104,9 @@ function StoryRequestModal({ member, busy, error, onSend, onClose }) {
         </div>
         <div className="km-prose" style={{ marginBottom: 12 }}>
           <p style={{ margin: 0 }}>
-            Tell {name} which memory you&apos;d love to hear more about. They&apos;ll
-            find your request waiting in their Pins, ready whenever they are.
+            Invite {name} to share a memory to their biography. Example:
+            &ldquo;{name}, do you remember when we got lost in NYC? I&apos;d love
+            for you to share that story.&rdquo;
           </p>
         </div>
         <TextArea
@@ -106,7 +115,7 @@ function StoryRequestModal({ member, busy, error, onSend, onClose }) {
           rows={4}
           maxLength={STORY_REQUEST_MAX}
           disabled={busy}
-          placeholder="I&apos;d love to hear more about that summer at the lake house — the one with the little rowboat."
+          placeholder={`${name}, do you remember when we got lost in NYC? I'd love for you to share that story.`}
         />
         <div className="km-form-help" style={{ marginTop: 6 }}>
           {remaining} characters left
@@ -176,6 +185,9 @@ export default function FamilyCirclePage({
   const [requestBusy, setRequestBusy] = useState(false);
   const [requestError, setRequestError] = useState("");
 
+  const [sentRequests, setSentRequests] = useState([]);
+  const [sentLoading, setSentLoading] = useState(false);
+
   const loadCircle = useCallback(async () => {
     if (!canLoad) return;
     setLoading(true);
@@ -199,9 +211,32 @@ export default function FamilyCirclePage({
     }
   }, [apiBase, getAccessToken, canLoad]);
 
+  const loadStoryRequests = useCallback(async () => {
+    if (!canLoad) return;
+    setSentLoading(true);
+    try {
+      const token = await getAccessToken();
+      const res = await fetch(`${apiBase}/biographies/story-requests`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const parsed = parseApiPayload(await res.text());
+      if (!res.ok) {
+        throw new Error(parsed?.detail || parsed?.error || `Request failed (${res.status})`);
+      }
+      setSentRequests(Array.isArray(parsed?.requests) ? parsed.requests : []);
+    } catch {
+      // History is a nice-to-have; a load failure shouldn't disrupt the page.
+      setSentRequests([]);
+    } finally {
+      setSentLoading(false);
+    }
+  }, [apiBase, getAccessToken, canLoad]);
+
   useEffect(() => {
     loadCircle();
-  }, [loadCircle]);
+    loadStoryRequests();
+  }, [loadCircle, loadStoryRequests]);
 
   async function addShare(e) {
     if (e?.preventDefault) e.preventDefault();
@@ -327,9 +362,10 @@ export default function FamilyCirclePage({
       if (!res.ok) {
         throw new Error(parsed?.detail || parsed?.error || `Request failed (${res.status})`);
       }
-      const name = requestTarget.display_name || "Your family member";
+      const name = requestTarget.display_name || "your family member";
       setRequestTarget(null);
-      setNotice(`Your story request is on its way to ${name}.`);
+      setNotice(`Your memory request is on its way to ${name}.`);
+      loadStoryRequests();
     } catch (err) {
       setRequestError(err?.message || String(err));
     } finally {
@@ -456,7 +492,9 @@ export default function FamilyCirclePage({
                             }}
                             disabled={busy}
                           >
-                            <MessageCircleHeart size={15} strokeWidth={1.6} /> Ask to share a story
+                            <MessageCircleHeart size={15} strokeWidth={1.6} /> Ask{" "}
+                            {m.display_name ? m.display_name.split(" ")[0] : "them"} to
+                            share a memory
                           </Button>
                         ) : null}
                         {m.i_share_with_them ? (
@@ -496,6 +534,47 @@ export default function FamilyCirclePage({
                 </ul>
               </div>
             ) : null}
+          </Frame>
+        </div>
+      ) : null}
+
+      {isAuthed ? (
+        <div style={{ marginBottom: 24 }}>
+          <Frame label="Memory requests you've sent">
+            {sentLoading ? (
+              <div style={{ display: "grid", gap: 8, maxWidth: 480 }}>
+                <Skeleton />
+                <Skeleton short />
+              </div>
+            ) : sentRequests.length === 0 ? (
+              <div className="km-form-help" style={{ fontStyle: "normal" }}>
+                You haven&apos;t asked anyone to share a memory yet. When you do,
+                you&apos;ll see a record of your requests here.
+              </div>
+            ) : (
+              <ul className="km-share-list">
+                {sentRequests.map((r) => {
+                  const to = (r.target_name || "").trim() || "A family member";
+                  return (
+                    <li key={r.request_id} className="km-share-row" style={{ alignItems: "flex-start" }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div>
+                          <strong>{to}</strong>
+                          {r.created_at ? (
+                            <span className="km-muted"> · {formatDate(r.created_at)}</span>
+                          ) : null}
+                        </div>
+                        {r.message ? (
+                          <div className="km-muted" style={{ marginTop: 4, whiteSpace: "pre-wrap" }}>
+                            &ldquo;{r.message}&rdquo;
+                          </div>
+                        ) : null}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </Frame>
         </div>
       ) : null}

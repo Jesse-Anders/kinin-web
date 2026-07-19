@@ -246,7 +246,8 @@ export default function PinsPage({
                     <div style={{ flex: 1, minWidth: 0 }}>
                       {isRequest ? (
                         <div className="km-mono-label" style={{ marginBottom: 6 }}>
-                          {requesterName} would love to hear about this
+                          Memory requested by {requesterName}
+                          {pin.created_at ? ` on ${formatDate(pin.created_at)}` : ""}
                         </div>
                       ) : null}
                       <div style={{ whiteSpace: "pre-wrap" }}>{pin.text}</div>
