@@ -2168,6 +2168,23 @@ export default function App() {
         confirmationCode: code,
       });
       await refreshCognitoEmail();
+      // Reconcile the backend entitlement's denormalized email copy with the
+      // new (now-verified) Cognito email. Best-effort: the account is already
+      // updated in Cognito regardless, and the server reads the email from
+      // Cognito itself (not from us), so nothing here can be spoofed.
+      try {
+        const token = await getAccessToken();
+        await fetch(`${API_BASE}/account/sync-email`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: "{}",
+        });
+      } catch {
+        // Non-fatal — a later re-login or admin action can reconcile.
+      }
       setEmailForm({ newEmail: "", code: "" });
       setEmailStage("idle");
       setEmailNotice("Email address updated.");

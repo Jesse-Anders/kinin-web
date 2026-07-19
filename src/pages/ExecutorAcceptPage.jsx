@@ -22,7 +22,9 @@ export default function ExecutorAcceptPage({ apiBase }) {
   const [errorText, setErrorText] = useState("");
   const params = useMemo(() => parseParams(), []);
   const apiBaseNorm = String(apiBase || "").trim();
-  const hasInputs = !!(params.owner_user_id && params.email && params.exp && params.token);
+  // New links carry only a self-contained `token`. Legacy links also include
+  // owner_user_id/email/exp (still forwarded below for backward compatibility).
+  const hasInputs = !!params.token;
 
   useEffect(() => {
     async function runAccept() {

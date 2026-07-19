@@ -68,6 +68,9 @@ export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
   const [accessPlan, setAccessPlan] = useState("beta_invited");
   const [accessRecord, setAccessRecord] = useState(null);
   const [accessResolvedUserId, setAccessResolvedUserId] = useState("");
+  // Live Cognito email + whether it differs from the entitlement's stored copy.
+  const [accessCognitoEmail, setAccessCognitoEmail] = useState("");
+  const [accessEmailMismatch, setAccessEmailMismatch] = useState(false);
   const [accessLoaded, setAccessLoaded] = useState(false);
   const [accessBusy, setAccessBusy] = useState(false);
   const accessFrameRef = useRef(null);
@@ -238,6 +241,8 @@ export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
       const out = await adminPost("/admin/entitlements/get", { email });
       setAccessRecord(out?.entitlement || null);
       setAccessResolvedUserId(out?.user_id || "");
+      setAccessCognitoEmail(out?.cognito_email || "");
+      setAccessEmailMismatch(!!out?.email_mismatch);
       setAccessLoaded(true);
       if (out?.entitlement?.plan_state) setAccessPlan(out.entitlement.plan_state);
       setStatusMessage(
@@ -248,6 +253,8 @@ export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
     } catch (e) {
       setAccessRecord(null);
       setAccessResolvedUserId("");
+      setAccessCognitoEmail("");
+      setAccessEmailMismatch(false);
       setAccessLoaded(false);
       setErrorMessage(e?.message || String(e));
     } finally {
@@ -840,6 +847,27 @@ export default function AdminCrmPage({ isAuthed, getAccessToken, apiBase }) {
             {accessResolvedUserId ? (
               <span style={{ fontSize: 12, opacity: 0.6 }}>
                 user_id: <code>{accessResolvedUserId}</code>
+              </span>
+            ) : null}
+            {accessCognitoEmail ? (
+              <span style={{ fontSize: 12, opacity: 0.6 }}>
+                Cognito email: <code>{accessCognitoEmail}</code>
+              </span>
+            ) : null}
+            {accessEmailMismatch ? (
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: "#8a4b00",
+                  background: "#ffe8c2",
+                  border: "1px solid #e0b877",
+                  borderRadius: 4,
+                  padding: "2px 6px",
+                }}
+                title="The entitlement record's stored email differs from the live Cognito email (user likely changed their email). Cognito is authoritative."
+              >
+                ⚠ email mismatch — entitlement copy is stale
               </span>
             ) : null}
           </div>

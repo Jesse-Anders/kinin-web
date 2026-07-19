@@ -675,7 +675,7 @@ export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, str
             {bios.map((b) => {
               const isSelected = b.biography_owner_user_id === selectedOwnerId;
               const isSelf = !!b.is_self;
-              const displayName = b.display_name || b.biography_owner_user_id;
+              const displayName = b.display_name || "Kinin member";
               const primaryLabel = isSelf
                 ? `You${b.display_name ? ` — ${b.display_name}` : ""}`
                 : displayName;
@@ -735,7 +735,7 @@ export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, str
             <div className="km-mono-label">
               {selectedBio.is_self
                 ? "Previewing your biography"
-                : `Talking with ${selectedBio.display_name || selectedBio.biography_owner_user_id}`}
+                : `Talking with ${selectedBio.display_name || "this Kinin member"}`}
             </div>
             {messages.length > 0 ? (
               <Button size="sm" onClick={startNewConversation} disabled={sending}>
