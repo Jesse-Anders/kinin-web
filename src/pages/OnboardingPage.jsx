@@ -149,7 +149,7 @@ export default function OnboardingPage({
           <>
             <div className="km-prose" style={{ maxWidth: 640, marginBottom: 24 }}>
               <p>
-                Life gets busy. Kinin can gently remind you to return when it
+                Life gets busy. Kinin can remind you to return when it
                 has been a while since your last conversation.
               </p>
             </div>

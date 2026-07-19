@@ -2738,6 +2738,12 @@ a:hover {
   color: var(--ink-faint);
   margin-top: 2px;
 }
+.km-fc-card-email {
+  font-size: 13px;
+  color: var(--ink-faint);
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
 .km-fc-tags {
   display: flex;
   flex-wrap: wrap;
@@ -2969,6 +2975,7 @@ a:hover {
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
   transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
   z-index: 100;
+  overflow: hidden;
 }
 .km-biography-sheet[data-open="true"] {
   transform: translate(-50%, 0);
@@ -3005,6 +3012,26 @@ a:hover {
   flex: 1 1 auto;
   min-height: 0;
   -webkit-overflow-scrolling: touch;
+}
+/* Pinned citation switcher at the bottom of the sheet so the reader can jump
+   between the reply's sources without closing it. */
+.km-biography-sheet-footer {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--thread);
+  background: var(--cream);
+}
+.km-biography-sheet-footer-label {
+  flex: 0 0 auto;
+  color: var(--ink-faint);
+}
+.km-biography-sheet-footer .km-biography-citations-row {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
 }
 .km-biography-source-close {
   display: inline-flex;

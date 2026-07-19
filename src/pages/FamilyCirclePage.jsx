@@ -420,6 +420,11 @@ export default function FamilyCirclePage({
                           <div className="km-fc-card-name">
                             {m.display_name || "Family member"}
                           </div>
+                          {m.email ? (
+                            <div className="km-fc-card-email" title={m.email}>
+                              {m.email}
+                            </div>
+                          ) : null}
                           {m.relationship ? (
                             <div className="km-fc-card-rel">{m.relationship}</div>
                           ) : null}

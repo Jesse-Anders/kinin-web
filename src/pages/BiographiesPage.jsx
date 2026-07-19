@@ -559,7 +559,7 @@ export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, str
     }
   }
 
-  function openSource(memory) {
+  function openSource(memory, siblings) {
     if (!memory) return;
     setActiveSource({
       memory_id: memory.memory_id,
@@ -568,6 +568,10 @@ export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, str
       source_date: memory.source_date,
       title: memory.title,
       photos: Array.isArray(memory.photos) ? memory.photos : [],
+      // The full citation set for the reply this source came from, so the
+      // sheet can render [1] [2] [3] and let the user jump between passages
+      // without closing it. Falls back to just this memory.
+      siblings: Array.isArray(siblings) && siblings.length ? siblings : [memory],
     });
   }
 
@@ -787,7 +791,7 @@ export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, str
                                   type="button"
                                   className="km-biography-citation"
                                   data-active={isActive ? "true" : "false"}
-                                  onClick={() => openSource(mem)}
+                                  onClick={() => openSource(mem, m.memories_used)}
                                   title={`${sourceLabel(mem)}${
                                     formatSourceDate(mem.source_date)
                                       ? ` · ${formatSourceDate(mem.source_date)}`
@@ -931,6 +935,34 @@ export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, str
                 </div>
               </div>
             ) : null}
+          </div>
+        ) : null}
+        {activeSource && Array.isArray(activeSource.siblings) &&
+        activeSource.siblings.length > 1 ? (
+          <div className="km-biography-sheet-footer">
+            <span className="km-mono-label km-biography-sheet-footer-label">
+              Sources
+            </span>
+            <div className="km-biography-citations-row">
+              {activeSource.siblings.map((mem, i) => (
+                <button
+                  key={mem.memory_id || i}
+                  type="button"
+                  className="km-biography-citation"
+                  data-active={
+                    activeSource.memory_id === mem.memory_id ? "true" : "false"
+                  }
+                  onClick={() => openSource(mem, activeSource.siblings)}
+                  title={`${sourceLabel(mem)}${
+                    formatSourceDate(mem.source_date)
+                      ? ` · ${formatSourceDate(mem.source_date)}`
+                      : ""
+                  }`}
+                >
+                  [{i + 1}]
+                </button>
+              ))}
+            </div>
           </div>
         ) : null}
       </div>
