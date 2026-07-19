@@ -694,11 +694,21 @@ export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, str
                         <div className="km-form-help" style={{ marginTop: 2 }}>
                           Preview what your family will hear from your biography.
                         </div>
-                      ) : b.date_of_birth ? (
-                        <div className="km-form-help" style={{ marginTop: 2 }}>
-                          Born {formatDateOfBirth(b.date_of_birth)}
-                        </div>
-                      ) : null}
+                      ) : (
+                        <>
+                          {b.date_of_birth ? (
+                            <div className="km-form-help" style={{ marginTop: 2 }}>
+                              Born {formatDateOfBirth(b.date_of_birth)}
+                            </div>
+                          ) : null}
+                          {b.is_sample ? (
+                            <div className="km-form-help" style={{ marginTop: 2 }}>
+                              Sample biography — try it out to see how Kinin
+                              biographies work.
+                            </div>
+                          ) : null}
+                        </>
+                      )}
                     </div>
                   </div>
                 </button>
