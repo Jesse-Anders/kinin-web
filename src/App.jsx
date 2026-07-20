@@ -3730,7 +3730,7 @@ export default function App() {
 
   return (
     <div className="km-app-shell">
-      {showNavigation ? (
+      {showNavigation && isAuthed ? (
         <div className="km-top-widgets">
           <AlertsMenu
             alerts={activeAlerts}
@@ -3951,6 +3951,7 @@ export default function App() {
             <button
               type="button"
               className="km-btn km-btn-primary km-btn-sm km-topbar-signin"
+              style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
               onClick={() => onLogin()}
               disabled={isSigningIn}
             >
@@ -3958,7 +3959,7 @@ export default function App() {
                 <Spinner />
               ) : (
                 <CircleUserRound size={16} strokeWidth={1.6} />
-              )}{" "}
+              )}
               Sign in
             </button>
           ) : null}
@@ -4410,6 +4411,7 @@ export default function App() {
                     <button
                       type="button"
                       className="km-btn km-btn-primary"
+                      style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
                       onClick={() => onLogin()}
                       disabled={isSigningIn}
                     >
@@ -4417,7 +4419,7 @@ export default function App() {
                         <Spinner />
                       ) : (
                         <CircleUserRound size={18} strokeWidth={1.6} />
-                      )}{" "}
+                      )}
                       Sign in to start
                     </button>
                     {GOOGLE_LOGIN_ENABLED ? (
@@ -4430,9 +4432,6 @@ export default function App() {
                         Continue with Google
                       </button>
                     ) : null}
-                  </div>
-                  <div className="km-chat-empty-note">
-                    New to Kinin? Signing in lets you create your free account.
                   </div>
                 </div>
               )
@@ -4479,7 +4478,11 @@ export default function App() {
                 autoResizeMessageInput(e.target);
               }}
               onInput={(e) => autoResizeMessageInput(e.target)}
-              placeholder="Type a message..."
+              placeholder={
+                isAuthed
+                  ? "Type a message..."
+                  : "Must be logged in before starting interview"
+              }
               className="km-chat-input"
               maxLength={CHAT_MESSAGE_MAX_CHARS}
               rows={1}
