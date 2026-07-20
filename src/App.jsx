@@ -3950,14 +3950,14 @@ export default function App() {
           {!isAuthed ? (
             <button
               type="button"
-              className="km-topbar-signin"
+              className="km-btn km-btn-ghost km-btn-sm km-topbar-signin"
               onClick={() => onLogin()}
               disabled={isSigningIn}
             >
               {isSigningIn ? (
                 <Spinner />
               ) : (
-                <CircleUserRound size={18} strokeWidth={1.6} />
+                <CircleUserRound size={15} strokeWidth={1.6} />
               )}
               Sign in
             </button>

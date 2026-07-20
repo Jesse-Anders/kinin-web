@@ -1668,30 +1668,16 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 12px;
+  padding-right: 16px;
 }
-/* Subtle, help-link-style sign-in pill (distinct from the home CTA's solid
-   button and the sidebar's plain "My Account" link). */
+/* Grey ghost-outline sign-in, all-caps like our other km-btns. Distinct from
+   the home CTA's solid button and the sidebar's plain "My Account" link. */
 .km-topbar-signin {
   margin-left: auto;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 16px;
-  border: 1px solid var(--sage-deep);
-  background: var(--cream);
-  color: var(--sage-deep);
-  font-family: var(--font-body);
-  font-size: 15px;
-  font-weight: 500;
-  border-radius: 999px;
-  cursor: pointer;
-  transition: background var(--t-fast), color var(--t-fast);
 }
-.km-topbar-signin:hover:not(:disabled) {
-  background: var(--sage-deep);
-  color: var(--cream);
-}
-.km-topbar-signin:disabled { opacity: 0.5; cursor: not-allowed; }
 
 @media (max-width: 768px) {
   .km-sidebar {
