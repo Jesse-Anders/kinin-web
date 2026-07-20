@@ -734,6 +734,18 @@ a:hover {
   font-size: 18px;
   font-variation-settings: "opsz" 24, "SOFT" 100;
 }
+.km-chat-empty-cta {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+.km-chat-empty-note {
+  margin-top: 14px;
+  font-size: 13px;
+  font-style: normal;
+}
 .km-chat-loading {
   max-width: 320px;
   margin: 64px auto;
@@ -1649,6 +1661,17 @@ a:hover {
   min-width: 0;
 }
 .km-main-no-sidebar { margin-left: 0; }
+
+/* Top bar row: mobile hamburger on the left, persistent sign-in on the right.
+   On desktop the hamburger is hidden, so the sign-in sits alone at the right. */
+.km-topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.km-topbar-signin {
+  margin-left: auto;
+}
 
 @media (max-width: 768px) {
   .km-sidebar {

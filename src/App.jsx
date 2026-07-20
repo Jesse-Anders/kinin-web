@@ -3942,10 +3942,27 @@ export default function App() {
       ) : null}
       <main className={`km-main ${showNavigation ? "" : "km-main-no-sidebar"}`}>
         {showNavigation ? (
-        <button type="button" className="km-menu-toggle" onClick={() => setMenuOpen(true)}>
-          <Menu size={22} strokeWidth={1.5} />
-          Kinin
-        </button>
+        <div className="km-topbar">
+          <button type="button" className="km-menu-toggle" onClick={() => setMenuOpen(true)}>
+            <Menu size={22} strokeWidth={1.5} />
+            Kinin
+          </button>
+          {!isAuthed ? (
+            <button
+              type="button"
+              className="km-btn km-btn-primary km-btn-sm km-topbar-signin"
+              onClick={() => onLogin()}
+              disabled={isSigningIn}
+            >
+              {isSigningIn ? (
+                <Spinner />
+              ) : (
+                <CircleUserRound size={16} strokeWidth={1.6} />
+              )}{" "}
+              Sign in
+            </button>
+          ) : null}
+        </div>
         ) : null}
         {(
           activePage === "admin" ||
@@ -4382,8 +4399,42 @@ export default function App() {
                   <Skeleton short />
                   <div className="km-chat-loading-tag">Preparing your interview...</div>
                 </div>
+              ) : isAuthed ? (
+                <div className="km-chat-empty">Start chatting to begin your interview.</div>
               ) : (
-                <div className="km-chat-empty">Start chatting after logging in.</div>
+                <div className="km-chat-empty">
+                  <div className="km-chat-empty-title">
+                    Start chatting after logging in.
+                  </div>
+                  <div className="km-chat-empty-cta">
+                    <button
+                      type="button"
+                      className="km-btn km-btn-primary"
+                      onClick={() => onLogin()}
+                      disabled={isSigningIn}
+                    >
+                      {isSigningIn ? (
+                        <Spinner />
+                      ) : (
+                        <CircleUserRound size={18} strokeWidth={1.6} />
+                      )}{" "}
+                      Sign in to start
+                    </button>
+                    {GOOGLE_LOGIN_ENABLED ? (
+                      <button
+                        type="button"
+                        className="km-btn km-btn-ghost"
+                        onClick={() => onLogin(GOOGLE_PROVIDER_NAME)}
+                        disabled={isSigningIn}
+                      >
+                        Continue with Google
+                      </button>
+                    ) : null}
+                  </div>
+                  <div className="km-chat-empty-note">
+                    New to Kinin? Signing in lets you create your free account.
+                  </div>
+                </div>
               )
             ) : (
               chat.map((m, idx) => (
@@ -4428,7 +4479,7 @@ export default function App() {
                 autoResizeMessageInput(e.target);
               }}
               onInput={(e) => autoResizeMessageInput(e.target)}
-              placeholder={isAuthed ? "Type a message..." : "Login to chat..."}
+              placeholder="Type a message..."
               className="km-chat-input"
               maxLength={CHAT_MESSAGE_MAX_CHARS}
               rows={1}
