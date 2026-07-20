@@ -3867,7 +3867,7 @@ export default function App() {
                 }}
               >
                 <CircleUserRound className="km-sidebar-icon" size={20} strokeWidth={1.5} />
-                Sign In
+                My Account
               </button>
               {GOOGLE_LOGIN_ENABLED ? (
                 <button
@@ -3950,15 +3950,14 @@ export default function App() {
           {!isAuthed ? (
             <button
               type="button"
-              className="km-btn km-btn-primary km-btn-sm km-topbar-signin"
-              style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+              className="km-topbar-signin"
               onClick={() => onLogin()}
               disabled={isSigningIn}
             >
               {isSigningIn ? (
                 <Spinner />
               ) : (
-                <CircleUserRound size={16} strokeWidth={1.6} />
+                <CircleUserRound size={18} strokeWidth={1.6} />
               )}
               Sign in
             </button>
@@ -4405,7 +4404,7 @@ export default function App() {
               ) : (
                 <div className="km-chat-empty">
                   <div className="km-chat-empty-title">
-                    Start chatting after logging in.
+                    Start chatting after signing in.
                   </div>
                   <div className="km-chat-empty-cta">
                     <button
