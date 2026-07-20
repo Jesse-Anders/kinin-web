@@ -4480,7 +4480,7 @@ export default function App() {
               placeholder={
                 isAuthed
                   ? "Type a message..."
-                  : "Must be logged in before starting interview"
+                  : "Currently logged out..."
               }
               className="km-chat-input"
               maxLength={CHAT_MESSAGE_MAX_CHARS}
