@@ -2,6 +2,8 @@
 // (Cognito access token). The Lambda proxy sometimes double-envelopes responses
 // ({ body: "<json string>" }), so parse defensively.
 
+import { throwIfUnauthorized } from "./authSession";
+
 function parseApiPayload(text) {
   try {
     const outer = JSON.parse(text);
@@ -20,6 +22,7 @@ async function request(apiBase, token, path, { method = "GET", body } = {}) {
     },
     body: body ? JSON.stringify(body) : undefined,
   });
+  await throwIfUnauthorized(res);
   const text = await res.text();
   const parsed = parseApiPayload(text);
   if (!res.ok) {

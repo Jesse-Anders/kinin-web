@@ -32,7 +32,13 @@ import {
   updatePassword,
   updateUserAttributes,
 } from "aws-amplify/auth";
+import { Hub } from "aws-amplify/utils";
 import { useLocation, useNavigate } from "react-router-dom";
+import {
+  isAuthExpiredError,
+  registerAuthFailureHandler,
+  reportAuthFailure,
+} from "./services/authSession";
 import FaqPage from "./pages/FaqPage";
 import FeedbackPage from "./pages/FeedbackPage";
 import ContactPage from "./pages/ContactPage";
@@ -505,6 +511,9 @@ export default function App() {
   // Settings toggles, executor actions, and the profile load all route here.
   const [profileError, setProfileError] = useState("");
   const [profileNotice, setProfileNotice] = useState("");
+  // Cognito session died while the UI still looked signed-in. Cleared on a
+  // successful sign-in; drives the calm re-auth banner instead of red API dumps.
+  const [sessionExpired, setSessionExpired] = useState(false);
   const [accessBlocked, setAccessBlocked] = useState(null);
   const [didStart, setDidStart] = useState(false);
   const [_showProfile, setShowProfile] = useState(false);
@@ -1469,10 +1478,21 @@ export default function App() {
   }, [activePage, bioProfile, accountExecutor, continuitySettings]);
 
   async function getAccessToken() {
-    const session = await fetchAuthSession();
-    const token = session.tokens?.accessToken?.toString();
-    if (!token) throw new Error("Missing accessToken. Are you logged in?");
-    return token;
+    try {
+      const session = await fetchAuthSession();
+      const token = session.tokens?.accessToken?.toString();
+      if (!token) {
+        // Only treat as an unexpected expiry when the UI still thinks we're
+        // signed in — cold logged-out calls should not flash the banner.
+        if (isAuthedRef.current) await reportAuthFailure();
+        throw new Error("Missing accessToken. Are you logged in?");
+      }
+      return token;
+    } catch (e) {
+      if (isAuthExpiredError(e)) throw e;
+      if (isAuthedRef.current) await reportAuthFailure();
+      throw e;
+    }
   }
 
   async function getApiErrorPayload(res) {
@@ -1489,6 +1509,9 @@ export default function App() {
 
   async function ensureApiOk(res) {
     if (res.ok) return;
+    if (res.status === 401) {
+      await reportAuthFailure();
+    }
     const { text, parsed } = await getApiErrorPayload(res);
     if (res.status === 403 && parsed?.error === "onboarding_required") {
       setOnboardingStatus((prev) => ({
@@ -1517,14 +1540,26 @@ export default function App() {
   }
 
   function setTopErrorFromException(e) {
-    if (e?.name === "AccessBlockedError" || e?.name === "OnboardingRequiredError") return;
+    if (
+      e?.name === "AccessBlockedError" ||
+      e?.name === "OnboardingRequiredError" ||
+      isAuthExpiredError(e)
+    ) {
+      return;
+    }
     setError(e?.message || String(e));
   }
 
   // Profile/settings-scoped counterpart of setTopErrorFromException. Writes to
   // `profileError`, which is only rendered inside the account/onboarding pages.
   function setProfileErrorFromException(e) {
-    if (e?.name === "AccessBlockedError" || e?.name === "OnboardingRequiredError") return;
+    if (
+      e?.name === "AccessBlockedError" ||
+      e?.name === "OnboardingRequiredError" ||
+      isAuthExpiredError(e)
+    ) {
+      return;
+    }
     setProfileError(e?.message || String(e));
   }
 
@@ -1833,6 +1868,7 @@ export default function App() {
           setIsFederatedUser(!!payload.identities);
           const u = await getCurrentUser();
           setUser(u);
+          setSessionExpired(false);
 
           // Clean up ?code=... in URL after login
           if (window.location.search.includes("code=")) {
@@ -1990,6 +2026,7 @@ export default function App() {
   async function onLogout() {
     setError("");
     setAccessBlocked(null);
+    setSessionExpired(false);
     await signOut({ global: true });
     setUser(null);
     setDidStart(false);
@@ -1999,6 +2036,48 @@ export default function App() {
     setOnboardingStatus({ required: false, completed_at: null, current_step: 1 });
     setOnboardingChecked(false);
   }
+
+  // Cognito session died while the UI still looked signed-in. Clear local auth
+  // once and show a calm re-sign-in banner instead of a cascade of red API errors.
+  const handleAuthFailure = useCallback(async () => {
+    setSessionExpired(true);
+    setError("");
+    setProfileError("");
+    setAccessBlocked(null);
+    setUser(null);
+    setDidStart(false);
+    setChat([]);
+    setChatPin(null);
+    setChatPinCompleted(false);
+    setOnboardingStatus({ required: false, completed_at: null, current_step: 1 });
+    setOnboardingChecked(false);
+    try {
+      // Local only — refresh/access tokens are already unusable; a global
+      // revoke would just add another failing network call.
+      await signOut({ global: false });
+    } catch {
+      // Ignore — tokens may already be gone.
+    }
+  }, []);
+
+  useEffect(() => {
+    registerAuthFailureHandler(handleAuthFailure);
+    return () => registerAuthFailureHandler(null);
+  }, [handleAuthFailure]);
+
+  useEffect(() => {
+    // Amplify emits this when a background token refresh fails (typical after
+    // long idle). signedOut is NOT handled here — intentional logout and our
+    // own recovery signOut would otherwise loop.
+    const unsubscribe = Hub.listen("auth", ({ payload }) => {
+      if (payload?.event !== "tokenRefresh_failure") return;
+      if (!isAuthedRef.current) return;
+      void reportAuthFailure().catch(() => {
+        // AuthExpiredError is expected; swallow at the Hub boundary.
+      });
+    });
+    return unsubscribe;
+  }, []);
 
   async function closeAccount() {
     setAccountError("");
@@ -4044,6 +4123,21 @@ export default function App() {
               onClose={closeTopicChooser}
             />
           ) : null}
+
+      {sessionExpired && !isAuthed ? (
+        <Banner tone="info">
+          <div>
+            <div>
+              <strong>Your session expired.</strong> Sign in again to continue.
+            </div>
+            <div style={{ marginTop: 10 }}>
+              <Button variant="primary" onClick={() => onLogin()} disabled={isSigningIn}>
+                Sign in
+              </Button>
+            </div>
+          </div>
+        </Banner>
+      ) : null}
 
       {error && (
         <Banner tone="danger">

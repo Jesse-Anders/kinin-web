@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Banner, Button, Frame, Section, Spinner, TextArea, TextInput } from "../theme";
+import { isAuthExpiredError, throwIfUnauthorized } from "../services/authSession";
 
 function parseApiPayload(text) {
   try {
@@ -151,6 +152,7 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
         },
         body: JSON.stringify(payload),
       });
+      await throwIfUnauthorized(res);
       const text = await res.text();
       const parsed = parseApiPayload(text);
       if (!res.ok) {
@@ -161,7 +163,7 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
       setNextKey(parsed?.next_start_key || null);
       setStatus(`Loaded ${rows.length} turn rows.`);
     } catch (e) {
-      setError(e?.message || String(e));
+      if (!isAuthExpiredError(e)) setError(e?.message || String(e));
     } finally {
       setBusy(false);
     }
@@ -220,6 +222,7 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
         },
         body: JSON.stringify(payload),
       });
+      await throwIfUnauthorized(res);
       const text = await res.text();
       const parsed = parseApiPayload(text);
       if (!res.ok) {
@@ -243,7 +246,7 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
       setEditRowKey("");
       setEditDraft("");
     } catch (e) {
-      setError(e?.message || String(e));
+      if (!isAuthExpiredError(e)) setError(e?.message || String(e));
     } finally {
       setEditBusy(false);
     }

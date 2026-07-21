@@ -11,6 +11,7 @@ import {
   TextArea,
   TextInput,
 } from "../theme";
+import { isAuthExpiredError, throwIfUnauthorized } from "../services/authSession";
 
 const STORY_REQUEST_MAX = 1000;
 
@@ -203,6 +204,7 @@ export default function FamilyCirclePage({
         method: "GET",
         headers: { Authorization: `Bearer ${token}` },
       });
+      await throwIfUnauthorized(res);
       const parsed = parseApiPayload(await res.text());
       if (!res.ok) {
         throw new Error(parsed?.detail || parsed?.error || `Request failed (${res.status})`);
@@ -210,6 +212,7 @@ export default function FamilyCirclePage({
       setMembers(Array.isArray(parsed?.members) ? parsed.members : []);
       setPendingInvites(Array.isArray(parsed?.pending_invites) ? parsed.pending_invites : []);
     } catch (e) {
+      if (isAuthExpiredError(e)) return;
       setError(e?.message || String(e));
     } finally {
       setLoading(false);
@@ -285,6 +288,7 @@ export default function FamilyCirclePage({
         },
         body: JSON.stringify({ email, relationship }),
       });
+      await throwIfUnauthorized(res);
       const parsed = parseApiPayload(await res.text());
       if (!res.ok) {
         if (parsed?.error === "invite_limit_reached") {
@@ -307,6 +311,7 @@ export default function FamilyCirclePage({
       setShareRelationship("");
       await loadCircle();
     } catch (err) {
+      if (isAuthExpiredError(err)) return;
       setError(err?.message || String(err));
     } finally {
       setBusy(false);
@@ -328,6 +333,7 @@ export default function FamilyCirclePage({
         },
         body: JSON.stringify({ listener_user_id: member.member_id }),
       });
+      await throwIfUnauthorized(res);
       const parsed = parseApiPayload(await res.text());
       if (!res.ok) {
         throw new Error(parsed?.detail || parsed?.error || `Request failed (${res.status})`);
@@ -335,6 +341,7 @@ export default function FamilyCirclePage({
       setNotice(`${member.display_name || "That person"} can no longer reach your biography.`);
       await loadCircle();
     } catch (err) {
+      if (isAuthExpiredError(err)) return;
       setError(err?.message || String(err));
     } finally {
       setBusy(false);
@@ -356,6 +363,7 @@ export default function FamilyCirclePage({
         },
         body: JSON.stringify({ invitee_email: email }),
       });
+      await throwIfUnauthorized(res);
       const parsed = parseApiPayload(await res.text());
       if (!res.ok) {
         throw new Error(parsed?.detail || parsed?.error || `Request failed (${res.status})`);
@@ -363,6 +371,7 @@ export default function FamilyCirclePage({
       setNotice(`Invitation to ${email} has been cancelled.`);
       await loadCircle();
     } catch (err) {
+      if (isAuthExpiredError(err)) return;
       setError(err?.message || String(err));
     } finally {
       setBusy(false);
@@ -383,6 +392,7 @@ export default function FamilyCirclePage({
         },
         body: JSON.stringify({ target_user_id: requestTarget.member_id, message }),
       });
+      await throwIfUnauthorized(res);
       const parsed = parseApiPayload(await res.text());
       if (!res.ok) {
         throw new Error(parsed?.detail || parsed?.error || `Request failed (${res.status})`);
@@ -392,6 +402,7 @@ export default function FamilyCirclePage({
       setNotice(`Your memory request is on its way to ${name}.`);
       loadStoryRequests();
     } catch (err) {
+      if (isAuthExpiredError(err)) return;
       setRequestError(err?.message || String(err));
     } finally {
       setRequestBusy(false);

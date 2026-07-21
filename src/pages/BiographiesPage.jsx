@@ -13,6 +13,7 @@ import {
   streamBiography,
   isStreamTransportError,
 } from "../services/biographyStreamClient";
+import { isAuthExpiredError, throwIfUnauthorized } from "../services/authSession";
 
 const MESSAGE_MAX_CHARS = 4000;
 
@@ -262,6 +263,7 @@ export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, str
           method: "GET",
           headers: { Authorization: `Bearer ${token}` },
         });
+        await throwIfUnauthorized(res);
         const text = await res.text();
         const parsed = parseApiPayload(text);
         if (!res.ok) {
@@ -286,7 +288,7 @@ export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, str
           saveSelectedOwner(restore);
         }
       } catch (e) {
-        if (cancelled) return;
+        if (cancelled || isAuthExpiredError(e)) return;
         setBiosError(e?.message || String(e));
       } finally {
         if (!cancelled) setBiosLoading(false);
@@ -365,6 +367,7 @@ export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, str
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
+      await throwIfUnauthorized(res);
       const text = await res.text();
       const parsed = parseApiPayload(text);
       if (!res.ok) {
@@ -373,7 +376,7 @@ export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, str
       setViewer((v) => ({ ...(v || {}), plan_state: parsed?.plan_state || "beta_invited", can_upgrade: false }));
       if (typeof onUpgraded === "function") onUpgraded();
     } catch (e) {
-      setUpgradeError(e?.message || String(e));
+      if (!isAuthExpiredError(e)) setUpgradeError(e?.message || String(e));
     } finally {
       setUpgrading(false);
     }
@@ -530,6 +533,7 @@ export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, str
           ...(history.length ? { history } : {}),
         }),
       });
+      await throwIfUnauthorized(res);
       const text = await res.text();
       const parsed = parseApiPayload(text);
       if (!res.ok) {
@@ -544,6 +548,10 @@ export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, str
       }
       finalizeAssistant(placeholder.id, parsed);
     } catch (e) {
+      if (isAuthExpiredError(e)) {
+        removePlaceholder();
+        return;
+      }
       setChatError(e?.message || String(e));
       removePlaceholder();
     } finally {

@@ -92,6 +92,8 @@ function countWords(text) {
 // Prefix errors with the operation that failed, and translate raw fetch
 // transport failures ("Load failed" / "Failed to fetch") into something clearer.
 function describeError(context, e) {
+  // Session expiry is handled globally (calm re-sign-in banner); don't paint red.
+  if (e?.name === "AuthExpiredError") return "";
   const raw = e?.message || String(e || "");
   const isNetwork = /load failed|failed to fetch|networkerror/i.test(raw);
   const detail = isNetwork ? "network request didn't complete (connection or CORS)" : raw;

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Check, HeartHandshake, MapPin, MessageCircle, NotebookPen, RotateCcw, Trash2 } from "lucide-react";
 import { Banner, Button, Frame, Section, Spinner, TextArea } from "../theme";
 import { createPin, deletePin, listPins, updatePin } from "../services/pinsClient";
+import { isAuthExpiredError } from "../services/authSession";
 
 const PIN_TEXT_MAX_CHARS = 2000;
 
@@ -45,7 +46,7 @@ export default function PinsPage({
       const data = await listPins({ apiBase, token, status: filter });
       setPins(Array.isArray(data?.pins) ? data.pins : []);
     } catch (e) {
-      setError(e?.message || String(e));
+      if (!isAuthExpiredError(e)) setError(e?.message || String(e));
     } finally {
       setLoading(false);
     }
@@ -75,7 +76,7 @@ export default function PinsPage({
       setNewPinText("");
       setStatus("Pin saved.");
     } catch (e) {
-      setError(e?.message || String(e));
+      if (!isAuthExpiredError(e)) setError(e?.message || String(e));
     } finally {
       setCreating(false);
     }
@@ -93,7 +94,7 @@ export default function PinsPage({
       setPins((prev) => prev.filter((p) => p.pin_id !== pin.pin_id));
       setStatus(doneMessage);
     } catch (e) {
-      setError(e?.message || String(e));
+      if (!isAuthExpiredError(e)) setError(e?.message || String(e));
     } finally {
       setUpdatingPinId("");
     }
@@ -114,7 +115,7 @@ export default function PinsPage({
       setPins((prev) => prev.filter((p) => p.pin_id !== pin.pin_id));
       setStatus("Pin deleted.");
     } catch (e) {
-      setError(e?.message || String(e));
+      if (!isAuthExpiredError(e)) setError(e?.message || String(e));
     } finally {
       setUpdatingPinId("");
     }

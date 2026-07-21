@@ -5,6 +5,8 @@
 // pipelines. Non-streamed request/response (unlike the interview turn, which
 // streams over the websocket).
 
+import { throwIfUnauthorized } from "./authSession";
+
 export async function sendHelpTurn({ apiBase, token, message, helpSessionId }) {
   if (!apiBase) throw new Error("help_api_base_missing");
   const body = { message };
@@ -19,6 +21,7 @@ export async function sendHelpTurn({ apiBase, token, message, helpSessionId }) {
     body: JSON.stringify(body),
   });
 
+  await throwIfUnauthorized(res);
   if (!res.ok) {
     let detail = "";
     try {
