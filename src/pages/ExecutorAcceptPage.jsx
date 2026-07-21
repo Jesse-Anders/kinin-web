@@ -100,8 +100,11 @@ export default function ExecutorAcceptPage({ apiBase }) {
           <p>
             Kinin is an AI biographer where people share their stories,
             memories, and life experiences over time. Being someone's
-            executor means they trust you to look after the record of their
-            life if they can no longer do so themselves.
+            trusted contact means they trust you to steward the record of their
+            life if they can no longer do so themselves. Confirming this
+            invitation does not give you access to their biography yet —
+            stewardship activates only through a clear handoff or a verified
+            request when the time comes.
           </p>
         </div>
 

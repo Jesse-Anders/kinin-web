@@ -137,11 +137,11 @@
     },
     {
       "q": "What is a trusted contact / account executor?",
-      "a": "You can designate a trusted family member or close friend as your account executor. You add their name and email in your My Account settings and send them an invite, which they confirm by email. It's optional, but strongly encouraged."
+      "a": "A trusted contact (also called an account executor) is someone you name to steward your Kinin biography if you can no longer maintain it yourself. In My Account you add their name and email and send an invite; they confirm by email. Designation alone does not give them access to your biography or login — stewardship activates only if you hand the biography off, or if they complete a verified stewardship request after a protective waiting period. Naming a trusted contact in Kinin is not the same as appointing a legal estate executor. Optional, but strongly encouraged."
     },
     {
       "q": "What happens when I first sign up?",
-      "a": "A short setup walks you through a warm welcome, a few profile details (like your preferred name and date of birth), the chance to name a trusted contact, and how often you'd like Kinin to check in. You can change any of it later in My Account and Settings."
+      "a": "A short setup walks you through a warm welcome, a few profile details (like your preferred name and date of birth), and how often you'd like Kinin to check in. You can name a trusted contact anytime in My Account, and change any of these later in My Account and Settings."
     },
     {
       "q": "How do I stop or change Kinin's emails?",

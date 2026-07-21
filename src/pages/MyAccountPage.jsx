@@ -42,6 +42,9 @@ export default function MyAccountPage({
   saveAccountExecutor,
   resendAccountExecutorInvite,
   removeAccountExecutor,
+  interviewSealed = false,
+  executorStatus,
+  onOpenStewardship,
   onOpenDangerZone,
   onClose,
 }) {
@@ -150,11 +153,14 @@ export default function MyAccountPage({
 
         {security ? <AccountSecuritySection {...security} /> : null}
 
-        <Frame label="Account executor">
+        <Frame label="Trusted contact">
           <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
             <p>
-              Optional but strongly encouraged. Add a family member or close
-              friend who can be designated as your account executor.
+              Optional but strongly encouraged. Name a family member or close
+              friend who can steward your biography if you can no longer
+              maintain it. Confirming the invite does not give them access yet —
+              stewardship begins only if you hand the biography off, or through
+              a verified request later.
             </p>
           </div>
           <div className="km-form-grid">
@@ -201,21 +207,33 @@ export default function MyAccountPage({
             <Button
               variant="primary"
               onClick={() => saveAccountExecutor({ sendInvite: false })}
-              disabled={profileBusy}
+              disabled={profileBusy || interviewSealed}
             >
               Save contact
             </Button>
             {hasExecutorDetails ? (
               <>
-                <Button onClick={resendAccountExecutorInvite} disabled={profileBusy}>
+                <Button onClick={resendAccountExecutorInvite} disabled={profileBusy || interviewSealed}>
                   {resendButtonLabel}
                 </Button>
-                <Button onClick={removeAccountExecutor} disabled={profileBusy}>
-                  Remove executor
+                <Button onClick={removeAccountExecutor} disabled={profileBusy || interviewSealed}>
+                  Remove contact
                 </Button>
               </>
             ) : null}
           </div>
+          {interviewSealed ? (
+            <div className="km-form-help" style={{ fontStyle: "normal", marginTop: 14 }}>
+              This biography is stewarded and sealed. Manage family access from Stewardship.
+            </div>
+          ) : null}
+          {hasExecutorDetails && (executorStatus === "confirmed" || accountExecutor?.status === "confirmed") && !interviewSealed ? (
+            <div className="km-row" style={{ marginTop: 14 }}>
+              <Button onClick={onOpenStewardship} disabled={profileBusy}>
+                Hand off / stewardship
+              </Button>
+            </div>
+          ) : null}
         </Frame>
 
         <Frame label="Danger zone / Delete account">

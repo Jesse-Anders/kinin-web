@@ -19,6 +19,7 @@ import {
   Settings as SettingsIcon,
   Square,
   UsersRound,
+  Handshake,
   X,
 } from "lucide-react";
 import kininHomeIcon from "./assets/icons/kinin-icon-390sq.png";
@@ -69,6 +70,7 @@ import {
 import { updatePin } from "./services/pinsClient";
 import BiographiesPage from "./pages/BiographiesPage";
 import FamilyCirclePage from "./pages/FamilyCirclePage";
+import StewardshipPage from "./pages/StewardshipPage";
 import UnsubscribePage from "./pages/UnsubscribePage";
 import OnboardingPage from "./pages/OnboardingPage";
 import ExecutorAcceptPage from "./pages/ExecutorAcceptPage";
@@ -201,6 +203,7 @@ const PAGE_TO_PATH = {
   journal: "/journal",
   biographies: "/biographies",
   "family-circle": "/family-circle",
+  stewardship: "/stewardship",
   contact: "/contact",
   privacy: "/privacy",
   unsubscribe: "/unsubscribe",
@@ -479,6 +482,7 @@ export default function App() {
   // "Reader" account (invited to interact with someone's biography, no
   // interview of their own); everything else is treated as a full "Storyteller".
   const [planState, setPlanState] = useState("");
+  const [interviewSealed, setInterviewSealed] = useState(false);
   // Count of live story-request pins waiting on this user — powers the
   // "a family member would love a story" alert. Derived server-side from pins.
   const [pendingStoryRequests, setPendingStoryRequests] = useState(0);
@@ -1169,6 +1173,13 @@ export default function App() {
       onClick: () => navigateToPage("family-circle"),
     },
     {
+      id: "stewardship",
+      label: "Stewardship",
+      icon: Handshake,
+      requiresAuth: true,
+      onClick: () => navigateToPage("stewardship"),
+    },
+    {
       id: "feedback",
       label: "Feedback",
       requiresAuth: true,
@@ -1417,6 +1428,7 @@ export default function App() {
       activePage === "journal" ||
       activePage === "biographies" ||
       activePage === "family-circle" ||
+      activePage === "stewardship" ||
       activePage === "help";
     const isAdminPage =
       activePage === "admin" ||
@@ -1705,6 +1717,9 @@ export default function App() {
     }
     if (parsed && typeof parsed === "object" && "plan_state" in parsed) {
       setPlanState(typeof parsed.plan_state === "string" ? parsed.plan_state : "");
+    }
+    if (parsed && typeof parsed === "object" && "interview_sealed" in parsed) {
+      setInterviewSealed(parsed.interview_sealed === true);
     }
     if (parsed && typeof parsed === "object" && "pending_story_requests" in parsed) {
       const n = Number(parsed.pending_story_requests);
@@ -4282,6 +4297,18 @@ export default function App() {
             navigateToPage("biographies");
           }}
         />
+      ) : activePage === "stewardship" ? (
+        <StewardshipPage
+          isAuthed={isAuthed}
+          getAccessToken={getAccessToken}
+          apiBase={API_BASE}
+          onOpenBiography={(ownerId) => {
+            const id = String(ownerId || "").trim();
+            if (!id) return;
+            setBiographyOpenOwnerId(id);
+            navigateToPage("biographies");
+          }}
+        />
       ) : activePage === "unsubscribe" ? (
         <UnsubscribePage apiBase={API_BASE} />
       ) : activePage === "executor-accept" ? (
@@ -4417,6 +4444,9 @@ export default function App() {
           saveAccountExecutor={saveAccountExecutor}
           resendAccountExecutorInvite={resendAccountExecutorInvite}
           removeAccountExecutor={removeAccountExecutor}
+          interviewSealed={interviewSealed}
+          executorStatus={accountExecutor?.status}
+          onOpenStewardship={() => navigateToPage("stewardship")}
           onOpenDangerZone={() => navigateToPage("danger-zone")}
           onClose={() => {
             setShowProfile(false);
