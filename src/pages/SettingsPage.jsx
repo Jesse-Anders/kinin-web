@@ -82,7 +82,7 @@ export default function SettingsPage({
       {profileError ? (
         <div style={{ margin: "20px 0" }}>
           <Banner tone="danger">
-            <span><strong>Error.</strong> {profileError}</span>
+            <span><strong>Something went wrong.</strong> {profileError}</span>
           </Banner>
         </div>
       ) : null}

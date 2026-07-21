@@ -31,6 +31,7 @@ import {
   uploadPhotoToS3,
 } from "../services/journalClient";
 import { updatePin } from "../services/pinsClient";
+import { describeApiErrorMessage } from "../services/describeApiError";
 
 const TITLE_MAX_CHARS = 200;
 const REVIEW_MAX_WORDS = 6000;
@@ -89,15 +90,10 @@ function countWords(text) {
   return (text || "").trim() ? (text || "").trim().split(/\s+/).length : 0;
 }
 
-// Prefix errors with the operation that failed, and translate raw fetch
-// transport failures ("Load failed" / "Failed to fetch") into something clearer.
+// Prefix errors with the operation that failed; map API/network failures to
+// calm user-facing copy (session expiry returns "" and paints nothing).
 function describeError(context, e) {
-  // Session expiry is handled globally (calm re-sign-in banner); don't paint red.
-  if (e?.name === "AuthExpiredError") return "";
-  const raw = e?.message || String(e || "");
-  const isNetwork = /load failed|failed to fetch|networkerror/i.test(raw);
-  const detail = isNetwork ? "network request didn't complete (connection or CORS)" : raw;
-  return `${context}: ${detail}`;
+  return describeApiErrorMessage(e, { context });
 }
 
 function formatDate(value) {
@@ -849,7 +845,11 @@ export default function JournalPage({
       ) : null}
       {error ? (
         <div style={{ marginBottom: 16 }}>
-          <Banner tone="danger">{error}</Banner>
+          <Banner tone="danger">
+            <span>
+              <strong>Something went wrong.</strong> {error}
+            </span>
+          </Banner>
         </div>
       ) : null}
 

@@ -39,6 +39,7 @@ import {
   registerAuthFailureHandler,
   reportAuthFailure,
 } from "./services/authSession";
+import { describeApiErrorMessage } from "./services/describeApiError";
 import FaqPage from "./pages/FaqPage";
 import FeedbackPage from "./pages/FeedbackPage";
 import ContactPage from "./pages/ContactPage";
@@ -1540,27 +1541,17 @@ export default function App() {
   }
 
   function setTopErrorFromException(e) {
-    if (
-      e?.name === "AccessBlockedError" ||
-      e?.name === "OnboardingRequiredError" ||
-      isAuthExpiredError(e)
-    ) {
-      return;
-    }
-    setError(e?.message || String(e));
+    const message = describeApiErrorMessage(e);
+    if (!message) return;
+    setError(message);
   }
 
   // Profile/settings-scoped counterpart of setTopErrorFromException. Writes to
   // `profileError`, which is only rendered inside the account/onboarding pages.
   function setProfileErrorFromException(e) {
-    if (
-      e?.name === "AccessBlockedError" ||
-      e?.name === "OnboardingRequiredError" ||
-      isAuthExpiredError(e)
-    ) {
-      return;
-    }
-    setProfileError(e?.message || String(e));
+    const message = describeApiErrorMessage(e);
+    if (!message) return;
+    setProfileError(message);
   }
 
   // Send one PUT /profile, serialized behind any in-flight profile writes.
@@ -2344,7 +2335,7 @@ export default function App() {
       await updatePin({ apiBase: API_BASE, token, pinId: chatPin.id, updates: { status: "completed" } });
       setChatPinCompleted(true);
     } catch (e) {
-      setError(e?.message || String(e));
+      setTopErrorFromException(e);
     } finally {
       setCompletingChatPin(false);
     }
@@ -2395,7 +2386,7 @@ export default function App() {
       setJournalOpenEntryId(entryId);
       navigateToPage("journal");
     } catch (e) {
-      setError(e?.message || String(e));
+      setTopErrorFromException(e);
     } finally {
       setStartingJournalPinId("");
     }
@@ -4141,7 +4132,9 @@ export default function App() {
 
       {error && (
         <Banner tone="danger">
-          <span><strong>Error.</strong> {error}</span>
+          <span>
+            <strong>Something went wrong.</strong> {error}
+          </span>
         </Banner>
       )}
 

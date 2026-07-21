@@ -3,6 +3,7 @@ import { Check, HeartHandshake, MapPin, MessageCircle, NotebookPen, RotateCcw, T
 import { Banner, Button, Frame, Section, Spinner, TextArea } from "../theme";
 import { createPin, deletePin, listPins, updatePin } from "../services/pinsClient";
 import { isAuthExpiredError } from "../services/authSession";
+import { describeApiErrorMessage } from "../services/describeApiError";
 
 const PIN_TEXT_MAX_CHARS = 2000;
 
@@ -46,7 +47,7 @@ export default function PinsPage({
       const data = await listPins({ apiBase, token, status: filter });
       setPins(Array.isArray(data?.pins) ? data.pins : []);
     } catch (e) {
-      if (!isAuthExpiredError(e)) setError(e?.message || String(e));
+      if (!isAuthExpiredError(e)) setError(describeApiErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -76,7 +77,7 @@ export default function PinsPage({
       setNewPinText("");
       setStatus("Pin saved.");
     } catch (e) {
-      if (!isAuthExpiredError(e)) setError(e?.message || String(e));
+      if (!isAuthExpiredError(e)) setError(describeApiErrorMessage(e));
     } finally {
       setCreating(false);
     }
@@ -94,7 +95,7 @@ export default function PinsPage({
       setPins((prev) => prev.filter((p) => p.pin_id !== pin.pin_id));
       setStatus(doneMessage);
     } catch (e) {
-      if (!isAuthExpiredError(e)) setError(e?.message || String(e));
+      if (!isAuthExpiredError(e)) setError(describeApiErrorMessage(e));
     } finally {
       setUpdatingPinId("");
     }
@@ -115,7 +116,7 @@ export default function PinsPage({
       setPins((prev) => prev.filter((p) => p.pin_id !== pin.pin_id));
       setStatus("Pin deleted.");
     } catch (e) {
-      if (!isAuthExpiredError(e)) setError(e?.message || String(e));
+      if (!isAuthExpiredError(e)) setError(describeApiErrorMessage(e));
     } finally {
       setUpdatingPinId("");
     }
@@ -200,7 +201,11 @@ export default function PinsPage({
       ) : null}
       {error ? (
         <div style={{ marginTop: 20 }}>
-          <Banner tone="danger">{error}</Banner>
+          <Banner tone="danger">
+            <span>
+              <strong>Something went wrong.</strong> {error}
+            </span>
+          </Banner>
         </div>
       ) : null}
 

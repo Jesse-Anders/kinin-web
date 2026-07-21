@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Banner, Button, Frame, Section, Spinner, TextArea, TextInput } from "../theme";
 import { isAuthExpiredError, throwIfUnauthorized } from "../services/authSession";
+import { describeApiErrorMessage } from "../services/describeApiError";
 
 function parseApiPayload(text) {
   try {
@@ -163,7 +164,7 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
       setNextKey(parsed?.next_start_key || null);
       setStatus(`Loaded ${rows.length} turn rows.`);
     } catch (e) {
-      if (!isAuthExpiredError(e)) setError(e?.message || String(e));
+      if (!isAuthExpiredError(e)) setError(describeApiErrorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -246,7 +247,7 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
       setEditRowKey("");
       setEditDraft("");
     } catch (e) {
-      if (!isAuthExpiredError(e)) setError(e?.message || String(e));
+      if (!isAuthExpiredError(e)) setError(describeApiErrorMessage(e));
     } finally {
       setEditBusy(false);
     }
@@ -391,7 +392,11 @@ export default function ReviewEditChatsPage({ isAuthed, getAccessToken, apiBase,
       ) : null}
       {error ? (
         <div style={{ marginTop: 20 }}>
-          <Banner tone="danger">{error}</Banner>
+          <Banner tone="danger">
+            <span>
+              <strong>Something went wrong.</strong> {error}
+            </span>
+          </Banner>
         </div>
       ) : null}
 

@@ -88,7 +88,7 @@ export default function MyAccountPage({
       {profileError ? (
         <div style={{ marginBottom: 20 }}>
           <Banner tone="danger">
-            <span><strong>Error.</strong> {profileError}</span>
+            <span><strong>Something went wrong.</strong> {profileError}</span>
           </Banner>
         </div>
       ) : null}

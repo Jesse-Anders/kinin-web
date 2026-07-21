@@ -12,6 +12,7 @@ import {
   TextInput,
 } from "../theme";
 import { isAuthExpiredError, throwIfUnauthorized } from "../services/authSession";
+import { describeApiErrorMessage } from "../services/describeApiError";
 
 const STORY_REQUEST_MAX = 1000;
 
@@ -123,7 +124,11 @@ function StoryRequestModal({ member, busy, error, onSend, onClose }) {
         </div>
         {error ? (
           <div style={{ marginTop: 12 }}>
-            <Banner tone="danger">{error}</Banner>
+            <Banner tone="danger">
+              <span>
+                <strong>Something went wrong.</strong> {error}
+              </span>
+            </Banner>
           </div>
         ) : null}
         <div className="km-row" style={{ marginTop: 16, gap: 10, justifyContent: "flex-end" }}>
@@ -213,7 +218,7 @@ export default function FamilyCirclePage({
       setPendingInvites(Array.isArray(parsed?.pending_invites) ? parsed.pending_invites : []);
     } catch (e) {
       if (isAuthExpiredError(e)) return;
-      setError(e?.message || String(e));
+      setError(describeApiErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -312,7 +317,7 @@ export default function FamilyCirclePage({
       await loadCircle();
     } catch (err) {
       if (isAuthExpiredError(err)) return;
-      setError(err?.message || String(err));
+      setError(describeApiErrorMessage(err));
     } finally {
       setBusy(false);
     }
@@ -342,7 +347,7 @@ export default function FamilyCirclePage({
       await loadCircle();
     } catch (err) {
       if (isAuthExpiredError(err)) return;
-      setError(err?.message || String(err));
+      setError(describeApiErrorMessage(err));
     } finally {
       setBusy(false);
     }
@@ -372,7 +377,7 @@ export default function FamilyCirclePage({
       await loadCircle();
     } catch (err) {
       if (isAuthExpiredError(err)) return;
-      setError(err?.message || String(err));
+      setError(describeApiErrorMessage(err));
     } finally {
       setBusy(false);
     }
@@ -403,7 +408,7 @@ export default function FamilyCirclePage({
       loadStoryRequests();
     } catch (err) {
       if (isAuthExpiredError(err)) return;
-      setRequestError(err?.message || String(err));
+      setRequestError(describeApiErrorMessage(err));
     } finally {
       setRequestBusy(false);
     }
@@ -464,7 +469,11 @@ export default function FamilyCirclePage({
       ) : null}
       {error ? (
         <div style={{ marginBottom: 14 }}>
-          <Banner tone="danger">{error}</Banner>
+          <Banner tone="danger">
+            <span>
+              <strong>Something went wrong.</strong> {error}
+            </span>
+          </Banner>
         </div>
       ) : null}
 

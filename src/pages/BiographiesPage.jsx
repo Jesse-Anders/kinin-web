@@ -14,6 +14,7 @@ import {
   isStreamTransportError,
 } from "../services/biographyStreamClient";
 import { isAuthExpiredError, throwIfUnauthorized } from "../services/authSession";
+import { describeApiError, describeApiErrorMessage } from "../services/describeApiError";
 
 const MESSAGE_MAX_CHARS = 4000;
 
@@ -289,7 +290,7 @@ export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, str
         }
       } catch (e) {
         if (cancelled || isAuthExpiredError(e)) return;
-        setBiosError(e?.message || String(e));
+        setBiosError(describeApiErrorMessage(e, { context: "Couldn't load biographies" }));
       } finally {
         if (!cancelled) setBiosLoading(false);
       }
@@ -376,7 +377,7 @@ export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, str
       setViewer((v) => ({ ...(v || {}), plan_state: parsed?.plan_state || "beta_invited", can_upgrade: false }));
       if (typeof onUpgraded === "function") onUpgraded();
     } catch (e) {
-      if (!isAuthExpiredError(e)) setUpgradeError(e?.message || String(e));
+      if (!isAuthExpiredError(e)) setUpgradeError(describeApiErrorMessage(e));
     } finally {
       setUpgrading(false);
     }
@@ -507,10 +508,9 @@ export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, str
           if (showSoft(streamErr?.code)) return;
           if (!isStreamTransportError(streamErr)) {
             removePlaceholder();
-            setChatErrorTone("danger");
-            setChatError(
-              streamErr?.detail || streamErr?.message || "Something went wrong.",
-            );
+            const described = describeApiError(streamErr);
+            setChatErrorTone(described?.tone || "danger");
+            setChatError(described?.message || "Something went wrong. Please try again.");
             return;
           }
           // Transport/availability failure — clear any partial text and fall
@@ -540,10 +540,13 @@ export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, str
         const code = String(parsed?.error || "");
         if (showSoft(code)) return;
         removePlaceholder();
-        const detail =
-          parsed?.detail || parsed?.error || (parsed ? JSON.stringify(parsed) : text);
-        setChatErrorTone("danger");
-        setChatError(`${res.status} — ${detail}`);
+        const described = describeApiError({
+          status: res.status,
+          payload: parsed,
+          message: `API error ${res.status}: ${parsed ? JSON.stringify(parsed) : text}`,
+        });
+        setChatErrorTone(described?.tone || "danger");
+        setChatError(described?.message || "Something went wrong. Please try again.");
         return;
       }
       finalizeAssistant(placeholder.id, parsed);
@@ -552,7 +555,9 @@ export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, str
         removePlaceholder();
         return;
       }
-      setChatError(e?.message || String(e));
+      const described = describeApiError(e);
+      setChatErrorTone(described?.tone || "danger");
+      setChatError(described?.message || "Something went wrong. Please try again.");
       removePlaceholder();
     } finally {
       setSending(false);
@@ -648,7 +653,11 @@ export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, str
             </div>
             {upgradeError ? (
               <div style={{ marginBottom: 12 }}>
-                <Banner tone="danger"><span>{upgradeError}</span></Banner>
+                <Banner tone="danger">
+                  <span>
+                    <strong>Something went wrong.</strong> {upgradeError}
+                  </span>
+                </Banner>
               </div>
             ) : null}
             <Button variant="primary" onClick={upgradeAccount} disabled={upgrading}>
@@ -669,7 +678,9 @@ export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, str
           </div>
         ) : biosError ? (
           <Banner tone="danger">
-            <span>{biosError}</span>
+            <span>
+              <strong>Something went wrong.</strong> {biosError}
+            </span>
           </Banner>
         ) : bios.length === 0 ? (
           <div className="km-prose" style={{ maxWidth: 560 }}>
@@ -834,7 +845,12 @@ export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, str
           {chatError ? (
             <div style={{ marginTop: 12 }}>
               <Banner tone={chatErrorTone}>
-                <span>{chatError}</span>
+                <span>
+                  {chatErrorTone === "danger" ? (
+                    <strong>Something went wrong. </strong>
+                  ) : null}
+                  {chatError}
+                </span>
               </Banner>
             </div>
           ) : null}

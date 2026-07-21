@@ -77,7 +77,7 @@ export default function OnboardingPage({
       {profileError ? (
         <div style={{ marginTop: 16 }}>
           <Banner tone="danger">
-            <span><strong>Error.</strong> {profileError}</span>
+            <span><strong>Something went wrong.</strong> {profileError}</span>
           </Banner>
         </div>
       ) : null}
