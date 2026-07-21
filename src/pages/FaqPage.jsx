@@ -1,7 +1,7 @@
 import { FaqList, Section } from "../theme";
 import faqData from "../data/faq.json";
 
-// The FAQ content is GENERATED from the canonical Kinin help content in the
+// The FAQ content GENERATED from the canonical Kinin help content in the
 // kinin-lambda repo (src/kinin/data/kinin_help_content.json) via
 // scripts/gen_faq_from_kb.py, so the public FAQ and the in-app "Kinin Help"
 // agent can never drift apart. Do not hand-edit ../data/faq.json — edit the
