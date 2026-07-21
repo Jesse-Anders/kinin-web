@@ -490,6 +490,8 @@ export default function App() {
   const [startingPinId, setStartingPinId] = useState("");
   const [startingJournalPinId, setStartingJournalPinId] = useState("");
   const [journalOpenEntryId, setJournalOpenEntryId] = useState("");
+  // Deep-link from Family Circle → Biographies: select this owner on arrival.
+  const [biographyOpenOwnerId, setBiographyOpenOwnerId] = useState("");
   // The pin (if any) that seeded the current chat session — powers the
   // "Chat from Pin" note + Mark Pin Complete control at the bottom of the chat.
   const [chatPin, setChatPin] = useState(null);
@@ -4259,6 +4261,8 @@ export default function App() {
           getAccessToken={getAccessToken}
           apiBase={API_BASE}
           streamWsUrl={BIOGRAPHY_STREAMING_ENABLED ? STREAM_WS_URL : ""}
+          openOwnerId={biographyOpenOwnerId}
+          onOwnerOpened={() => setBiographyOpenOwnerId("")}
           onUpgraded={() => navigateToPage("interview")}
           onPersonaOpen={handleBiographyPersonaOpen}
         />
@@ -4271,6 +4275,12 @@ export default function App() {
           isReader={isReader}
           onManageSharing={() => navigateToPage("settings-biographies")}
           onStoryRequestsSeen={() => setFulfilledStoryRequests(0)}
+          onOpenBiography={(ownerId) => {
+            const id = String(ownerId || "").trim();
+            if (!id) return;
+            setBiographyOpenOwnerId(id);
+            navigateToPage("biographies");
+          }}
         />
       ) : activePage === "unsubscribe" ? (
         <UnsubscribePage apiBase={API_BASE} />

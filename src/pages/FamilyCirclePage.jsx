@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { HeartHandshake, MessageCircleHeart, UsersRound, X } from "lucide-react";
+import { BookOpen, HeartHandshake, MessageCircleHeart, UsersRound, X } from "lucide-react";
 import {
   Banner,
   Button,
@@ -172,6 +172,7 @@ export default function FamilyCirclePage({
   isReader = false,
   onManageSharing,
   onStoryRequestsSeen,
+  onOpenBiography,
 }) {
   const canLoad = !!apiBase && typeof getAccessToken === "function" && isAuthed;
   // Readers (biography_only) have no biography of their own to share, so they
@@ -527,10 +528,19 @@ export default function FamilyCirclePage({
                       </div>
 
                       <div className="km-fc-card-actions">
-                        {m.can_request_story ? (
+                        {m.shares_with_me && typeof onOpenBiography === "function" ? (
                           <Button
                             size="sm"
                             variant="primary"
+                            onClick={() => onOpenBiography(m.member_id)}
+                            disabled={busy}
+                          >
+                            <BookOpen size={15} strokeWidth={1.6} /> Open biography
+                          </Button>
+                        ) : null}
+                        {m.can_request_story ? (
+                          <Button
+                            size="sm"
                             onClick={() => {
                               setRequestError("");
                               setRequestTarget(m);

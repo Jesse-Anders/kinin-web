@@ -206,7 +206,16 @@ function clearAllBioChat() {
  * when the user taps a citation. Dismiss via backdrop tap, close button, or
  * Escape key.
  */
-export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, streamWsUrl = "", onUpgraded, onPersonaOpen }) {
+export default function BiographiesPage({
+  isAuthed,
+  getAccessToken,
+  apiBase,
+  streamWsUrl = "",
+  openOwnerId = "",
+  onOwnerOpened,
+  onUpgraded,
+  onPersonaOpen,
+}) {
   const [bios, setBios] = useState([]);
   const [biosLoading, setBiosLoading] = useState(false);
   const [biosError, setBiosError] = useState("");
@@ -276,17 +285,30 @@ export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, str
         if (cancelled) return;
         setBios(list);
         setViewer(parsed?.viewer || null);
-        // Restore the last-open biography (and its transcript) so navigating
-        // away and back leaves the conversation in place. Fall back to
-        // auto-selecting when there's exactly one biography.
+        // Prefer a deep-link from Family Circle, then the last-open biography,
+        // then auto-select when there's exactly one.
+        const deepLink = String(openOwnerId || "").trim();
         const stored = loadSelectedOwner();
         const restore =
+          (deepLink &&
+            list.some((b) => b.biography_owner_user_id === deepLink) &&
+            deepLink) ||
           (stored && list.some((b) => b.biography_owner_user_id === stored) && stored) ||
           (list.length === 1 ? list[0].biography_owner_user_id : "");
         if (restore) {
           setSelectedOwnerId(restore);
           setMessages(loadTranscript(restore));
           saveSelectedOwner(restore);
+          if (deepLink && restore === deepLink) {
+            onOwnerOpened?.();
+            onPersonaOpen?.();
+          }
+        } else if (deepLink) {
+          // Requested owner isn't in the accessible list (revoked/paused).
+          onOwnerOpened?.();
+          setBiosError(
+            "That biography isn't available right now. They may have paused sharing.",
+          );
         }
       } catch (e) {
         if (cancelled || isAuthExpiredError(e)) return;
@@ -298,7 +320,30 @@ export default function BiographiesPage({ isAuthed, getAccessToken, apiBase, str
     return () => {
       cancelled = true;
     };
+    // openOwnerId is read once on load; a later deep-link is handled below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthed, apiBase, getAccessToken]);
+
+  // Deep-link from Family Circle after the bios list is already loaded
+  // (e.g. user visited Biographies, left, then opened someone from Family Circle).
+  useEffect(() => {
+    const owner = String(openOwnerId || "").trim();
+    if (!owner || !isAuthed || biosLoading) return;
+    if (owner === selectedOwnerId) {
+      onOwnerOpened?.();
+      return;
+    }
+    if (!bios.some((b) => b.biography_owner_user_id === owner)) {
+      onOwnerOpened?.();
+      setBiosError(
+        "That biography isn't available right now. They may have paused sharing.",
+      );
+      return;
+    }
+    selectBio(owner);
+    onOwnerOpened?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openOwnerId, isAuthed, biosLoading, bios]);
 
   useEffect(() => {
     // Scroll chat surface to bottom on new messages or while waiting.
