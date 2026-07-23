@@ -24,60 +24,24 @@ function formatDateLong(dateOfBirth) {
   return new Intl.DateTimeFormat(undefined, { dateStyle: "long" }).format(dt);
 }
 
-// "My Account" — identity, sign-in/security, Account Steward, and the danger
-// zone. Category settings (voice, reminders, biographies, interview) live on the
-// separate Settings pages. Each section saves on its own so a partial save
-// never clobbers another section.
+// "My Account" — identity, sign-in/security, and the danger zone. Account
+// Steward designation lives under Settings → Stewardship. Category settings
+// (voice, reminders, biographies, interview) live on the Settings pages.
 export default function MyAccountPage({
   profileSchema,
   bioProfile,
   setBioProfile,
-  accountExecutor,
-  setAccountExecutor,
   profileBusy,
   profileNotice,
   profileError,
   security,
   saveBioProfile,
-  saveAccountExecutor,
-  resendAccountExecutorInvite,
-  removeAccountExecutor,
-  interviewSealed = false,
-  executorStatus,
-  onOpenStewardship,
   onOpenDangerZone,
   onClose,
 }) {
   const showInitialLoader = profileBusy && !profileSchema;
   const selectedDobText = formatDateLong(bioProfile.date_of_birth);
   const derivedAge = deriveAgeFromDateOfBirth(bioProfile.date_of_birth);
-
-  // Prefer the prop (from App); fall back to the executor object.
-  const resolvedExecutorStatus = executorStatus || accountExecutor?.status || "";
-  const executorStatusNorm = String(resolvedExecutorStatus).trim().toLowerCase();
-  const hasInviteBeenSent =
-    !!accountExecutor?.last_invite_sent_at ||
-    executorStatusNorm === "pending" ||
-    executorStatusNorm === "confirmed";
-  const hasExecutorDetails = !!((accountExecutor?.name || "").trim() || (accountExecutor?.email || "").trim());
-  const hasExistingExecutor =
-    !!((accountExecutor?.name || "").trim() && (accountExecutor?.email || "").trim()) &&
-    (hasInviteBeenSent || !!executorStatusNorm || !!accountExecutor?.confirmed_at);
-  const executorEmailNorm = (accountExecutor?.email || "").trim().toLowerCase();
-  const executorConfirmEmailNorm = (accountExecutor?.confirm_email || "").trim().toLowerCase();
-  const showExecutorEmailMismatch =
-    !!executorEmailNorm && !!executorConfirmEmailNorm && executorEmailNorm !== executorConfirmEmailNorm;
-  let executorStatusLabel = "";
-  if (executorStatusNorm === "confirmed" || !!accountExecutor?.confirmed_at) {
-    executorStatusLabel = "Confirmed (no access yet)";
-  } else if (executorStatusNorm === "saved_not_invited") {
-    executorStatusLabel = "Saved (not invited yet)";
-  } else if (hasInviteBeenSent) {
-    executorStatusLabel = "Invite sent (awaiting confirmation)";
-  } else if (resolvedExecutorStatus) {
-    executorStatusLabel = resolvedExecutorStatus;
-  }
-  const resendButtonLabel = hasInviteBeenSent ? "Resend invite" : "Send invite";
 
   return (
     <Section
@@ -153,90 +117,6 @@ export default function MyAccountPage({
         </Frame>
 
         {security ? <AccountSecuritySection {...security} /> : null}
-
-        <Frame label="Account Steward">
-          <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
-            <p>
-              Optional but strongly encouraged. Name a family member or close
-              friend as your Account Steward — someone who can look after your
-              biography if you can no longer maintain it. Confirming the invite
-              does not give them access yet. Stewardship begins only if you hand
-              the biography off, or through a verified request later.
-            </p>
-          </div>
-          <div className="km-form-grid">
-            <FormRow label="Steward name">
-              <TextInput
-                value={accountExecutor?.name || ""}
-                onChange={(e) => setAccountExecutor((p) => ({ ...p, name: e.target.value }))}
-                disabled={profileBusy}
-              />
-            </FormRow>
-            <FormRow label="Steward email">
-              <TextInput
-                value={accountExecutor?.email || ""}
-                onChange={(e) => setAccountExecutor((p) => ({ ...p, email: e.target.value }))}
-                disabled={profileBusy}
-                inputMode="email"
-              />
-            </FormRow>
-            <FormRow
-              label="Confirm steward email"
-              error={showExecutorEmailMismatch ? "Email addresses do not match." : ""}
-            >
-              <TextInput
-                value={accountExecutor?.confirm_email || ""}
-                onChange={(e) => setAccountExecutor((p) => ({ ...p, confirm_email: e.target.value }))}
-                disabled={profileBusy}
-                inputMode="email"
-              />
-            </FormRow>
-          </div>
-
-          {hasExistingExecutor ? (
-            <div className="km-form-help" style={{ fontStyle: "normal", marginTop: 18 }}>
-              Account Steward on file: <strong>{accountExecutor.name}</strong> ({accountExecutor.email})
-            </div>
-          ) : null}
-          {executorStatusLabel ? (
-            <div className="km-form-help" style={{ fontStyle: "normal", marginTop: 4 }}>
-              Status: <strong>{executorStatusLabel}</strong>
-            </div>
-          ) : null}
-
-          <div className="km-row" style={{ marginTop: 18 }}>
-            <Button
-              variant="primary"
-              onClick={() => saveAccountExecutor({ sendInvite: false })}
-              disabled={profileBusy || interviewSealed}
-            >
-              Save steward
-            </Button>
-            {hasExecutorDetails ? (
-              <>
-                <Button onClick={resendAccountExecutorInvite} disabled={profileBusy || interviewSealed}>
-                  {resendButtonLabel}
-                </Button>
-                <Button onClick={removeAccountExecutor} disabled={profileBusy || interviewSealed}>
-                  Remove steward
-                </Button>
-              </>
-            ) : null}
-          </div>
-          {interviewSealed ? (
-            <div className="km-form-help" style={{ fontStyle: "normal", marginTop: 14 }}>
-              This biography is under active Stewardship and the interview is sealed.
-              Manage family access from the Stewardship page.
-            </div>
-          ) : null}
-          {hasExecutorDetails && (resolvedExecutorStatus === "confirmed" || accountExecutor?.status === "confirmed") && !interviewSealed ? (
-            <div className="km-row" style={{ marginTop: 14 }}>
-              <Button onClick={onOpenStewardship} disabled={profileBusy}>
-                Open Stewardship
-              </Button>
-            </div>
-          ) : null}
-        </Frame>
 
         <Frame label="Danger zone / Delete account">
           <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>

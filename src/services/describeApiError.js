@@ -64,7 +64,7 @@ const CODE_MESSAGES = {
   request_in_progress: "Still working on your last request. Please wait a moment.",
 
   // Stewardship
-  account_steward_required: "Name and invite an Account Steward in My Account first.",
+  account_steward_required: "Name and invite an Account Steward in Settings → Stewardship first.",
   account_steward_unconfirmed: "Your Account Steward needs to confirm their invitation before you can hand off.",
   stewardship_not_found: "That Stewardship role isn't available.",
   handoff_not_pending: "There isn't a handoff waiting to accept.",

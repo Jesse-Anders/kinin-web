@@ -37,7 +37,7 @@ export const ALERTS = [
     title: "Add an Account Steward",
     body:
       "Name someone who can look after your Kinin biography if you can no longer maintain it. Confirming the invite does not give them access yet — Stewardship activates only when needed.",
-    cta: { label: "Add an Account Steward", page: "account" },
+    cta: { label: "Add an Account Steward", page: "settings-stewardship" },
     // Show ~2 weeks after signup if the user still has no Account Steward.
     isEligible(ctx) {
       if (ctx.hasExecutor) return false;

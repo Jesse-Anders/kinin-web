@@ -10,6 +10,7 @@ import {
   TextArea,
   TextInput,
 } from "../theme";
+import AccountStewardSection from "../components/AccountStewardSection";
 import { isAuthExpiredError, throwIfUnauthorized } from "../services/authSession";
 import { describeApiErrorMessage } from "../services/describeApiError";
 
@@ -58,6 +59,17 @@ export default function StewardshipPage({
   apiBase,
   ownLifecycle = null,
   onOpenBiography,
+  // When true, omit the outer Section (Settings page already provides chrome).
+  panelOnly = false,
+  // Designate steward (owner side) — same controls formerly on My Account.
+  accountExecutor,
+  setAccountExecutor,
+  profileBusy = false,
+  interviewSealed = false,
+  executorStatus = "",
+  saveAccountExecutor,
+  resendAccountExecutorInvite,
+  removeAccountExecutor,
 }) {
   const [roles, setRoles] = useState([]);
   const [own, setOwn] = useState(ownLifecycle);
@@ -136,21 +148,15 @@ export default function StewardshipPage({
     URL.revokeObjectURL(url);
   }
 
-  if (!isAuthed) {
-    return (
-      <Section eyebrow="Stewardship" title="Account Steward roles">
-        <Banner tone="info">Sign in to see biographies you’re named to steward.</Banner>
-      </Section>
-    );
-  }
-
-  return (
-    <Section eyebrow="Stewardship" title="Account Stewardship">
+  const body = !isAuthed ? (
+    <Banner tone="info">Sign in to manage your Account Steward and stewardship roles.</Banner>
+  ) : (
+    <>
       <div className="km-prose" style={{ maxWidth: 640, marginBottom: 18 }}>
         <p>
-          When someone names you as their Account Steward, the role appears here.
-          Confirming the invite does not open their biography. Stewardship begins
-          only after a voluntary handoff from them, or after a verified stewardship
+          Name your Account Steward here, and manage biographies you’re named to
+          steward. Confirming an invite does not open their biography. Stewardship
+          begins only after a voluntary handoff, or after a verified stewardship
           request with a protective waiting period.
         </p>
       </div>
@@ -166,6 +172,21 @@ export default function StewardshipPage({
         </div>
       ) : null}
 
+      {typeof saveAccountExecutor === "function" ? (
+        <div style={{ marginBottom: 20 }}>
+          <AccountStewardSection
+            accountExecutor={accountExecutor}
+            setAccountExecutor={setAccountExecutor}
+            profileBusy={profileBusy}
+            interviewSealed={interviewSealed}
+            executorStatus={executorStatus}
+            saveAccountExecutor={saveAccountExecutor}
+            resendAccountExecutorInvite={resendAccountExecutorInvite}
+            removeAccountExecutor={removeAccountExecutor}
+          />
+        </div>
+      ) : null}
+
       <Frame label="Your own biography">
         {loading && !own ? (
           <Skeleton height={48} />
@@ -177,7 +198,7 @@ export default function StewardshipPage({
               {own?.interview_sealed ? " · interview sealed (read-only)" : ""}
             </p>
             <p className="km-form-help" style={{ fontStyle: "normal", marginTop: 8 }}>
-              Name your Account Steward in My Account first. From here you can mark
+              Name your Account Steward above first. From here you can mark
               your biography complete, hand it off when you’re ready, or confirm
               you’re still here if a request was started.
             </p>
@@ -509,6 +530,16 @@ export default function StewardshipPage({
         </Frame>
         </div>
       ) : null}
+    </>
+  );
+
+  if (panelOnly) {
+    return <div className="km-stack" style={{ gap: 8, marginTop: 8 }}>{body}</div>;
+  }
+
+  return (
+    <Section eyebrow="Stewardship" title="Account Stewardship">
+      {body}
     </Section>
   );
 }

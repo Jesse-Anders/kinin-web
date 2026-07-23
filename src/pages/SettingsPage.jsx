@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Banner, Button, Frame, Section } from "../theme";
 import InterviewDetailsPanel from "../components/InterviewDetailsPanel";
 import VoicePickerSection from "../components/VoicePickerSection";
+import StewardshipPage from "./StewardshipPage";
 
 // Audio features (mic dictation + Kinin's spoken voice) are currently on for
 // every user, so the per-account enable/disable toggle is hidden. Flip this to
@@ -41,6 +42,8 @@ export default function SettingsPage({
   replayWalkthroughs,
   // interview
   interviewDetails,
+  // stewardship
+  stewardshipProps = null,
 }) {
   const biographyEnabled = biographySettings?.enabled !== false;
   const helpTipsOn = helpTipsEnabled !== false;
@@ -340,6 +343,10 @@ export default function SettingsPage({
               </p>
             </div>
           )
+        ) : null}
+
+        {category === "stewardship" && stewardshipProps ? (
+          <StewardshipPage panelOnly {...stewardshipProps} />
         ) : null}
       </div>
 

@@ -61,7 +61,7 @@
     },
     {
       "q": "Where do I manage my account and preferences?",
-      "a": "A few places, all in the menu. 'My Account' holds your profile (your preferred name and date of birth), your sign-in and security details, your Account Steward, and the option to delete your account. 'Settings' is where you choose Kinin's speaking voice, your reminder rhythm, whether your biography is available to share, and behind-the-scenes interview details. 'Family Circle' is where you invite the people who can interact with your biography. 'Stewardship' is where Account Stewards manage roles and handoffs."
+      "a": "A few places, all in the menu. 'My Account' holds your profile (your preferred name and date of birth), your sign-in and security details, and the option to delete your account. 'Settings' is where you choose Kinin's speaking voice, your reminder rhythm, whether your biography is available to share, behind-the-scenes interview details, and Stewardship (name your Account Steward and manage stewardship roles). 'Family Circle' is where you invite the people who can interact with your biography."
     },
     {
       "q": "Will Kinin remind me to keep going?",
@@ -137,11 +137,11 @@
     },
     {
       "q": "What is an Account Steward?",
-      "a": "An Account Steward is someone you name to look after your Kinin biography if you can no longer maintain it yourself. In My Account you add their name and email and send an invite; they confirm by email. Designation alone does not give them access to your biography or login — Stewardship activates only if you hand the biography off, or if they complete a verified stewardship request after a protective waiting period. Naming an Account Steward in Kinin is not the same as appointing a legal estate executor. Optional, but strongly encouraged."
+      "a": "An Account Steward is someone you name to look after your Kinin biography if you can no longer maintain it yourself. In Settings → Stewardship you add their name and email and send an invite; they confirm by email. Designation alone does not give them access to your biography or login — Stewardship activates only if you hand the biography off, or if they complete a verified stewardship request after a protective waiting period. Naming an Account Steward in Kinin is not the same as appointing a legal estate executor. Optional, but strongly encouraged."
     },
     {
       "q": "What happens when I first sign up?",
-      "a": "A short setup walks you through a warm welcome, a few profile details (like your preferred name and date of birth), and how often you'd like Kinin to check in. You can name an Account Steward anytime in My Account, and change any of these later in My Account and Settings."
+      "a": "A short setup walks you through a warm welcome, a few profile details (like your preferred name and date of birth), and how often you'd like Kinin to check in. You can name an Account Steward anytime in Settings → Stewardship, and change any of these later in My Account and Settings."
     },
     {
       "q": "How do I stop or change Kinin's emails?",

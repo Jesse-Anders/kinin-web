@@ -19,7 +19,6 @@ import {
   Settings as SettingsIcon,
   Square,
   UsersRound,
-  Handshake,
   X,
 } from "lucide-react";
 import kininHomeIcon from "./assets/icons/kinin-icon-390sq.png";
@@ -70,7 +69,6 @@ import {
 import { updatePin } from "./services/pinsClient";
 import BiographiesPage from "./pages/BiographiesPage";
 import FamilyCirclePage from "./pages/FamilyCirclePage";
-import StewardshipPage from "./pages/StewardshipPage";
 import UnsubscribePage from "./pages/UnsubscribePage";
 import OnboardingPage from "./pages/OnboardingPage";
 import ExecutorAcceptPage from "./pages/ExecutorAcceptPage";
@@ -203,7 +201,6 @@ const PAGE_TO_PATH = {
   journal: "/journal",
   biographies: "/biographies",
   "family-circle": "/family-circle",
-  stewardship: "/stewardship",
   contact: "/contact",
   privacy: "/privacy",
   unsubscribe: "/unsubscribe",
@@ -231,6 +228,7 @@ const PAGE_TO_PATH = {
   "settings-biographies": "/settings/biographies",
   "settings-interview": "/settings/interview",
   "settings-help": "/settings/help",
+  "settings-stewardship": "/settings/stewardship",
 };
 // Settings category pages, in menu order. Kept as data so the breakout menu
 // and the routing/render switch stay in sync.
@@ -240,6 +238,7 @@ const SETTINGS_CATEGORIES = [
   { id: "biographies", page: "settings-biographies", label: "Biographies", blurb: "Turn sharing of your biography on or off." },
   { id: "interview", page: "settings-interview", label: "Interview details", blurb: "Behind-the-scenes session context." },
   { id: "help", page: "settings-help", label: "Help & tips", blurb: "Guided tours and helpful pop-up tips." },
+  { id: "stewardship", page: "settings-stewardship", label: "Stewardship", blurb: "Name your Account Steward and manage stewardship roles." },
 ];
 const SETTINGS_PAGE_TO_CATEGORY = Object.fromEntries(
   SETTINGS_CATEGORIES.map((c) => [c.page, c.id]),
@@ -248,6 +247,8 @@ const PATH_TO_PAGE = {
   ...Object.fromEntries(Object.entries(PAGE_TO_PATH).map(([page, path]) => [path, page])),
   // Legacy alias: the old profile/bio route now lives under My Account.
   "/bio": "account",
+  // Legacy top-level Stewardship URL → Settings → Stewardship.
+  "/stewardship": "settings-stewardship",
 };
 
 function normalizePath(pathname, hash = "") {
@@ -1173,13 +1174,6 @@ export default function App() {
       onClick: () => navigateToPage("family-circle"),
     },
     {
-      id: "stewardship",
-      label: "Stewardship",
-      icon: Handshake,
-      requiresAuth: true,
-      onClick: () => navigateToPage("stewardship"),
-    },
-    {
       id: "feedback",
       label: "Feedback",
       requiresAuth: true,
@@ -1428,8 +1422,8 @@ export default function App() {
       activePage === "journal" ||
       activePage === "biographies" ||
       activePage === "family-circle" ||
-      activePage === "stewardship" ||
-      activePage === "help";
+      activePage === "help" ||
+      activePage.startsWith("settings");
     const isAdminPage =
       activePage === "admin" ||
       activePage === "admin-onboarding-preview" ||
@@ -4297,18 +4291,6 @@ export default function App() {
             navigateToPage("biographies");
           }}
         />
-      ) : activePage === "stewardship" ? (
-        <StewardshipPage
-          isAuthed={isAuthed}
-          getAccessToken={getAccessToken}
-          apiBase={API_BASE}
-          onOpenBiography={(ownerId) => {
-            const id = String(ownerId || "").trim();
-            if (!id) return;
-            setBiographyOpenOwnerId(id);
-            navigateToPage("biographies");
-          }}
-        />
       ) : activePage === "unsubscribe" ? (
         <UnsubscribePage apiBase={API_BASE} />
       ) : activePage === "executor-accept" ? (
@@ -4415,8 +4397,6 @@ export default function App() {
           profileSchema={profileSchema}
           bioProfile={bioProfile}
           setBioProfile={setBioProfile}
-          accountExecutor={accountExecutor}
-          setAccountExecutor={setAccountExecutor}
           profileBusy={profileBusy}
           profileNotice={profileNotice}
           profileError={profileError}
@@ -4441,12 +4421,6 @@ export default function App() {
             changePassword,
           }}
           saveBioProfile={saveBioProfile}
-          saveAccountExecutor={saveAccountExecutor}
-          resendAccountExecutorInvite={resendAccountExecutorInvite}
-          removeAccountExecutor={removeAccountExecutor}
-          interviewSealed={interviewSealed}
-          executorStatus={accountExecutor?.status}
-          onOpenStewardship={() => navigateToPage("stewardship")}
           onOpenDangerZone={() => navigateToPage("danger-zone")}
           onClose={() => {
             setShowProfile(false);
@@ -4490,6 +4464,25 @@ export default function App() {
             labelGroups,
             progressForDisplay,
             uiState,
+          }}
+          stewardshipProps={{
+            isAuthed,
+            getAccessToken,
+            apiBase: API_BASE,
+            accountExecutor,
+            setAccountExecutor,
+            profileBusy,
+            interviewSealed,
+            executorStatus: accountExecutor?.status,
+            saveAccountExecutor,
+            resendAccountExecutorInvite,
+            removeAccountExecutor,
+            onOpenBiography: (ownerId) => {
+              const id = String(ownerId || "").trim();
+              if (!id) return;
+              setBiographyOpenOwnerId(id);
+              navigateToPage("biographies");
+            },
           }}
         />
       ) : activePage === "danger-zone" ? (
