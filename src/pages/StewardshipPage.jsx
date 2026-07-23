@@ -148,13 +148,20 @@ export default function StewardshipPage({
       });
       throwIfUnauthorized(res);
       const parsed = parseApiPayload(await res.text());
-      if (!res.ok) throw new Error(parsed?.error || parsed?.detail || `HTTP ${res.status}`);
+      if (!res.ok) {
+        const code =
+          parsed?.error || parsed?.detail || parsed?.message || `HTTP ${res.status}`;
+        const err = new Error(code);
+        err.status = res.status;
+        err.payload = parsed;
+        throw err;
+      }
       setNotice(successNotice);
       await load();
       return parsed;
     } catch (e) {
       if (isAuthExpiredError(e)) return null;
-      setError(describeApiErrorMessage(e, "Request failed."));
+      setError(describeApiErrorMessage(e, { context: "Request failed" }));
       return null;
     } finally {
       setBusy(false);
@@ -856,6 +863,16 @@ export default function StewardshipPage({
       {transferDraft.owner_user_id ? (
         <div style={{ marginTop: 20 }}>
           <Frame label="Hand off Stewardship">
+            {error ? (
+              <div style={{ marginBottom: 12 }}>
+                <Banner tone="danger">{error}</Banner>
+              </div>
+            ) : null}
+            {notice ? (
+              <div style={{ marginBottom: 12 }}>
+                <Banner tone="info">{notice}</Banner>
+              </div>
+            ) : null}
             <div className="km-prose" style={{ maxWidth: 560, marginBottom: 12 }}>
               <p>
                 Transfer Stewardship of the completed biography for{" "}

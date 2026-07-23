@@ -231,6 +231,18 @@ export function describeApiError(err, opts = {}) {
     return { message: CODE_MESSAGES.rate_limited, tone: "info" };
   }
 
+  // API Gateway missing-route / stage mismatch often returns bare Not Found.
+  if (
+    status === 404 ||
+    /^(not found|http 404)$/i.test(String(raw || code || "").trim()) ||
+    /not found/i.test(String(payload?.message || ""))
+  ) {
+    const message = context
+      ? `${context}. That Stewardship action isn't available on this API yet (missing route).`
+      : "That Stewardship action isn't available on this API yet (missing route).";
+    return { message, tone: "danger" };
+  }
+
   if (status && status >= 500) {
     const message =
       (context ? `${context}. ${GENERIC_5XX}` : GENERIC_5XX) + requestIdRef(payload);
