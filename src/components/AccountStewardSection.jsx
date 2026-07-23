@@ -30,7 +30,7 @@ export default function AccountStewardSection({
 
   let executorStatusLabel = "";
   if (stewardConfirmed) {
-    executorStatusLabel = "Confirmed (no access yet)";
+    executorStatusLabel = "Confirmed";
   } else if (executorStatusNorm === "saved_not_invited") {
     executorStatusLabel = "Saved (not invited yet)";
   } else if (hasInviteBeenSent || executorStatusNorm === "pending") {

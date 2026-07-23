@@ -25,7 +25,7 @@ function parseApiPayload(text) {
 
 function statusLabel(status) {
   const map = {
-    designated: "Account Steward confirmed — no access yet",
+    designated: "Account Steward confirmed",
     handoff_pending: "Handoff waiting for you to accept",
     claim_pending: "Stewardship request pending (waiting period)",
     active: "Stewardship active",
@@ -107,7 +107,7 @@ export default function StewardshipPage({
     load();
   }, [load]);
 
-  async function post(path, body) {
+  async function post(path, body, successNotice = "Saved.") {
     setBusy(true);
     setError("");
     setNotice("");
@@ -124,7 +124,7 @@ export default function StewardshipPage({
       throwIfUnauthorized(res);
       const parsed = parseApiPayload(await res.text());
       if (!res.ok) throw new Error(parsed?.error || parsed?.detail || `HTTP ${res.status}`);
-      setNotice("Saved.");
+      setNotice(successNotice);
       await load();
       return parsed;
     } catch (e) {
@@ -134,6 +134,23 @@ export default function StewardshipPage({
     } finally {
       setBusy(false);
     }
+  }
+
+  async function requestHandoff() {
+    const stewardName = (accountExecutor?.name || "").trim() || "your Account Steward";
+    const stewardEmail = (accountExecutor?.email || "").trim();
+    const who = stewardEmail ? `${stewardName} (${stewardEmail})` : stewardName;
+    const ok = window.confirm(
+      `Send a handoff request to ${who}?\n\n` +
+        "They will be asked to accept Stewardship of your biography. " +
+        "Your interview stays editable until they accept.",
+    );
+    if (!ok) return;
+    await post(
+      "/stewardship/handoff",
+      {},
+      `Handoff request sent to ${stewardName}. We've emailed them to accept.`,
+    );
   }
 
   async function exportBio(ownerUserId) {
@@ -197,19 +214,49 @@ export default function StewardshipPage({
               <strong>{lifecycleLabel(own?.biography_lifecycle_state)}</strong>
               {own?.interview_sealed ? " · interview sealed (read-only)" : ""}
             </p>
+            {own?.own_designation?.status === "handoff_pending" ? (
+              <Banner tone="info">
+                <span>
+                  Handoff request sent
+                  {own.own_designation.steward_name
+                    ? ` to ${own.own_designation.steward_name}`
+                    : ""}
+                  . Waiting for them to accept. Your interview stays editable until then.
+                </span>
+              </Banner>
+            ) : null}
             <p className="km-form-help" style={{ fontStyle: "normal", marginTop: 8 }}>
-              Name your Account Steward above first. From here you can mark
-              your biography complete, hand it off when you’re ready, or confirm
-              you’re still here if a request was started.
+              Name your Account Steward above first. When you’re ready for them to
+              look after this biography, send a handoff request. Use “I’m still here”
+              if a stewardship request was started and you want to cancel it.
             </p>
             <div className="km-row" style={{ marginTop: 12, flexWrap: "wrap", gap: 8 }}>
-              <Button disabled={busy || own?.interview_sealed} onClick={() => post("/stewardship/complete", {})}>
+              <Button
+                disabled={busy || own?.interview_sealed}
+                onClick={() =>
+                  post("/stewardship/complete", {}, "Biography marked complete.")
+                }
+              >
                 Mark biography complete
               </Button>
-              <Button disabled={busy || own?.interview_sealed} onClick={() => post("/stewardship/handoff", {})}>
-                Hand off to Account Steward
+              <Button
+                disabled={
+                  busy ||
+                  own?.interview_sealed ||
+                  own?.own_designation?.status === "handoff_pending"
+                }
+                onClick={requestHandoff}
+              >
+                {own?.own_designation?.status === "handoff_pending"
+                  ? "Handoff already sent"
+                  : "Hand off to Account Steward"}
               </Button>
-              <Button disabled={busy} onClick={() => post("/stewardship/still-here", {})}>
+              <Button
+                disabled={busy}
+                onClick={() =>
+                  post("/stewardship/still-here", {}, "Thanks — we've noted that you're still here.")
+                }
+              >
                 I’m still here
               </Button>
             </div>
@@ -238,73 +285,133 @@ export default function StewardshipPage({
                   {role.billing_plan ? ` · ${billingLabel(role.billing_plan)}` : ""}
                   {role.claim_cooling_ends_at ? ` · waiting period ends ${role.claim_cooling_ends_at}` : ""}
                 </div>
-                <div className="km-row" style={{ marginTop: 10, flexWrap: "wrap", gap: 8 }}>
+                <div style={{ marginTop: 10 }}>
                   {role.status === "handoff_pending" ? (
-                    <>
-                      <Button
-                        variant="primary"
-                        disabled={busy}
-                        onClick={() =>
-                          post("/stewardship/handoff/accept", {
-                            owner_user_id: role.owner_user_id,
-                            billing_plan: "legacy",
-                          })
-                        }
-                      >
-                        Accept — Legacy Stewardship ($4.99)
-                      </Button>
-                      <Button
-                        disabled={busy}
-                        onClick={() =>
-                          post("/stewardship/handoff/accept", {
-                            owner_user_id: role.owner_user_id,
-                            billing_plan: "dormant",
-                          })
-                        }
-                      >
-                        Accept — Dormant Archive ($0.99)
-                      </Button>
-                    </>
+                    <div className="km-prose" style={{ maxWidth: 560, marginBottom: 10 }}>
+                      <p>
+                        <strong>They asked you to take over.</strong> Accepting
+                        activates Stewardship and seals their interview. Choose how
+                        you’d like to keep the biography (billing comes later — pick
+                        the mode that fits for now):
+                      </p>
+                      <ul>
+                        <li>
+                          <strong>Legacy Stewardship</strong> — explore the biography
+                          and invite family.
+                        </li>
+                        <li>
+                          <strong>Dormant Archive</strong> — keep it stored with
+                          limited chat.
+                        </li>
+                      </ul>
+                      <div className="km-row" style={{ marginTop: 10, flexWrap: "wrap", gap: 8 }}>
+                        <Button
+                          variant="primary"
+                          disabled={busy}
+                          onClick={() =>
+                            post(
+                              "/stewardship/handoff/accept",
+                              {
+                                owner_user_id: role.owner_user_id,
+                                billing_plan: "legacy",
+                              },
+                              "Stewardship accepted (Legacy). The interview is now sealed.",
+                            )
+                          }
+                        >
+                          Accept handoff — Legacy ($4.99/mo)
+                        </Button>
+                        <Button
+                          disabled={busy}
+                          onClick={() =>
+                            post(
+                              "/stewardship/handoff/accept",
+                              {
+                                owner_user_id: role.owner_user_id,
+                                billing_plan: "dormant",
+                              },
+                              "Stewardship accepted (Dormant Archive). The interview is now sealed.",
+                            )
+                          }
+                        >
+                          Accept handoff — Dormant ($0.99/mo)
+                        </Button>
+                        <Button
+                          disabled={busy}
+                          onClick={() =>
+                            post(
+                              "/stewardship/decline",
+                              {
+                                owner_user_id: role.owner_user_id,
+                                steward_email: role.steward_email,
+                              },
+                              "Handoff declined.",
+                            )
+                          }
+                        >
+                          Decline handoff
+                        </Button>
+                      </div>
+                    </div>
                   ) : null}
-                  {role.status === "designated" || role.status === "handoff_pending" ? (
-                    <>
-                      <Button
-                        disabled={busy}
-                        onClick={() =>
-                          setClaimDraft({
-                            owner_user_id: role.owner_user_id,
-                            reason: "death",
-                            attestation: "",
-                            death_certificate_key: "",
-                          })
-                        }
-                      >
-                        Begin stewardship request
-                      </Button>
-                      <Button
-                        disabled={busy}
-                        onClick={() =>
-                          post("/stewardship/pause", {
-                            owner_user_id: role.owner_user_id,
-                            steward_email: role.steward_email,
-                          })
-                        }
-                      >
-                        I’m checking on them
-                      </Button>
-                      <Button
-                        disabled={busy}
-                        onClick={() =>
-                          post("/stewardship/decline", {
-                            owner_user_id: role.owner_user_id,
-                            steward_email: role.steward_email,
-                          })
-                        }
-                      >
-                        Decline Account Steward role
-                      </Button>
-                    </>
+
+                  {role.status === "designated" ? (
+                    <div className="km-prose" style={{ maxWidth: 560, marginBottom: 10 }}>
+                      <p>
+                        You’re named as their Account Steward, but they haven’t handed
+                        the biography off yet. No access until they hand it off, or
+                        until you start a stewardship request if they can no longer
+                        manage the account themselves.
+                      </p>
+                      <div className="km-row" style={{ marginTop: 10, flexWrap: "wrap", gap: 8 }}>
+                        <Button
+                          disabled={busy}
+                          onClick={() =>
+                            setClaimDraft({
+                              owner_user_id: role.owner_user_id,
+                              reason: "death",
+                              attestation: "",
+                              death_certificate_key: "",
+                            })
+                          }
+                        >
+                          Request stewardship (they can’t manage it)
+                        </Button>
+                        <Button
+                          disabled={busy}
+                          onClick={() =>
+                            post(
+                              "/stewardship/pause",
+                              {
+                                owner_user_id: role.owner_user_id,
+                                steward_email: role.steward_email,
+                              },
+                              "Thanks — we'll pause quiet reminders while you check on them.",
+                            )
+                          }
+                        >
+                          I’m checking on them
+                        </Button>
+                        <Button
+                          disabled={busy}
+                          onClick={() =>
+                            post(
+                              "/stewardship/decline",
+                              {
+                                owner_user_id: role.owner_user_id,
+                                steward_email: role.steward_email,
+                              },
+                              "Account Steward role declined.",
+                            )
+                          }
+                        >
+                          Decline role
+                        </Button>
+                      </div>
+                    </div>
                   ) : null}
+
+                  <div className="km-row" style={{ marginTop: 10, flexWrap: "wrap", gap: 8 }}>
                   {role.status === "active" ? (
                     <>
                       <Button
@@ -375,16 +482,17 @@ export default function StewardshipPage({
 
       {claimDraft.owner_user_id ? (
         <div style={{ marginTop: 20 }}>
-        <Frame label="Stewardship request attestation">
+        <Frame label="Request stewardship (they can’t manage it)">
           <div className="km-prose" style={{ maxWidth: 560, marginBottom: 12 }}>
             <p>
-              By submitting, you attest that the account holder is no longer willing
-              or able to maintain this Kinin account, and that you are their
-              designated Account Steward. False statements may result in account
-              suspension. A protective waiting period applies unless a death
-              certificate reference is provided for expedited review. During the
-              waiting period, the account holder can cancel by signing in or choosing
-              “I’m still here.”
+              Use this only when the account holder cannot hand the biography off
+              themselves (for example death or permanent incapacity). By submitting,
+              you attest that they are no longer willing or able to maintain this
+              Kinin account, and that you are their designated Account Steward.
+              False statements may result in account suspension. A protective waiting
+              period applies unless a death certificate reference is provided for
+              expedited review. During the waiting period, they can cancel by signing
+              in or choosing “I’m still here.”
             </p>
           </div>
           <div className="km-form-grid">
