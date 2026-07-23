@@ -50,6 +50,12 @@ export default function AccountStewardSection({
           does not give them access yet. Stewardship begins only if you hand
           the biography off, or through a verified request later.
         </p>
+        <p>
+          If you already steward other people’s biographies, those care
+          responsibilities pass to your Account Steward when Stewardship of
+          your account becomes active. They continue the same chain — there is
+          no separate successor role.
+        </p>
       </div>
 
       {stewardOnFile ? (

@@ -53,6 +53,18 @@ function billingLabel(plan) {
   return plan || "";
 }
 
+/** One help line above its button — used in Stewardship action stacks. */
+function ActionBlock({ help, children }) {
+  return (
+    <div style={{ display: "grid", gap: 8 }}>
+      <p className="km-form-help" style={{ fontStyle: "normal", margin: 0 }}>
+        {help}
+      </p>
+      <div>{children}</div>
+    </div>
+  );
+}
+
 export default function StewardshipPage({
   isAuthed,
   getAccessToken,
@@ -78,12 +90,6 @@ export default function StewardshipPage({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [claimDraft, setClaimDraft] = useState({ owner_user_id: "", reason: "death", attestation: "", death_certificate_key: "" });
-  const [successorDraft, setSuccessorDraft] = useState({
-    owner_user_id: "",
-    owner_display_name: "",
-    name: "",
-    email: "",
-  });
   const [shareDraft, setShareDraft] = useState({
     owner_user_id: "",
     owner_display_name: "",
@@ -249,34 +255,58 @@ export default function StewardshipPage({
               </Banner>
             ) : null}
             {!(own?.interview_sealed || interviewSealed) ? (
-              <>
-                <p className="km-form-help" style={{ fontStyle: "normal", marginTop: 8 }}>
+              <div style={{ display: "grid", gap: 16, marginTop: 12 }}>
+                <p className="km-form-help" style={{ fontStyle: "normal", margin: 0 }}>
                   Name your Account Steward above first. Handing off is an end-of-use
                   step for storytelling on this account: when they accept, you stop
-                  adding new interview or journal material here. Use “I’m still here”
-                  only if a stewardship request was started and you want to cancel it.
+                  adding new interview or journal material here.
                 </p>
-                <div className="km-row" style={{ marginTop: 12, flexWrap: "wrap", gap: 8 }}>
+                <ActionBlock
+                  help={
+                    <>
+                      <strong>Mark biography complete</strong> — optional milestone;
+                      you can still keep interviewing. Does not seal or hand off.
+                    </>
+                  }
+                >
                   <Button
                     disabled={busy}
                     onClick={() =>
                       post("/stewardship/complete", {}, "Biography marked complete.")
                     }
-                    title="Marks your biography complete for lifecycle timing. Does not seal or hand off."
                   >
                     Mark biography complete
                   </Button>
+                </ActionBlock>
+                <ActionBlock
+                  help={
+                    <>
+                      <strong>Hand off to Account Steward</strong> — emails them to
+                      accept. When they accept, Interview, Journal, Pins, and Review
+                      seal permanently on this account.
+                    </>
+                  }
+                >
                   <Button
                     disabled={
                       busy || own?.own_designation?.status === "handoff_pending"
                     }
                     onClick={requestHandoff}
-                    title="Emails your Account Steward to accept. When they accept, storytelling features seal permanently."
                   >
                     {own?.own_designation?.status === "handoff_pending"
                       ? "Handoff already sent"
                       : "Hand off to Account Steward"}
                   </Button>
+                </ActionBlock>
+                <ActionBlock
+                  help={
+                    <>
+                      <strong>I’m still here</strong> — cancels a claim or quiet
+                      outreach if someone started a stewardship request about you.
+                      Does not start a handoff.
+                    </>
+                  }
+                >
                   <Button
                     disabled={busy}
                     onClick={() =>
@@ -286,26 +316,11 @@ export default function StewardshipPage({
                         "Thanks — we've noted that you're still here.",
                       )
                     }
-                    title="Cancels a pending stewardship request or quiet outreach. Does not start a handoff."
                   >
                     I’m still here
                   </Button>
-                </div>
-                <ul className="km-form-help" style={{ fontStyle: "normal", marginTop: 10 }}>
-                  <li>
-                    <strong>Mark biography complete</strong> — optional milestone; you
-                    can still keep interviewing.
-                  </li>
-                  <li>
-                    <strong>Hand off to Account Steward</strong> — asks them to take
-                    over. Sealing happens only after they accept.
-                  </li>
-                  <li>
-                    <strong>I’m still here</strong> — cancels a claim or quiet
-                    outreach if someone started a stewardship request about you.
-                  </li>
-                </ul>
-              </>
+                </ActionBlock>
+              </div>
             ) : null}
           </div>
         )}
@@ -334,268 +349,297 @@ export default function StewardshipPage({
                 </div>
                 <div style={{ marginTop: 10 }}>
                   {role.status === "handoff_pending" ? (
-                    <div className="km-prose" style={{ maxWidth: 560, marginBottom: 10 }}>
+                    <div className="km-prose" style={{ maxWidth: 560 }}>
                       <p>
                         <strong>They asked you to take over.</strong> Accepting
                         activates Stewardship and permanently seals their Interview,
-                        Journal, Pins, and Review. Choose how you’d like to keep the
-                        biography (billing comes later — pick the mode that fits for
-                        now):
+                        Journal, Pins, and Review. Billing comes later — pick the mode
+                        that fits for now.
                       </p>
-                      <ul>
-                        <li>
-                          <strong>Legacy Stewardship ($4.99)</strong> — explore the
-                          biography with fuller chat and invite family.
-                        </li>
-                        <li>
-                          <strong>Dormant Archive ($0.99)</strong> — keep it stored
-                          with limited chat.
-                        </li>
-                        <li>
-                          <strong>Decline</strong> — turn down this handoff; they keep
-                          control of their account.
-                        </li>
-                      </ul>
-                      <div className="km-row" style={{ marginTop: 10, flexWrap: "wrap", gap: 8 }}>
-                        <Button
-                          variant="primary"
-                          disabled={busy}
-                          onClick={() =>
-                            post(
-                              "/stewardship/handoff/accept",
-                              {
-                                owner_user_id: role.owner_user_id,
-                                billing_plan: "legacy",
-                              },
-                              "Stewardship accepted (Legacy). Their interview is now sealed.",
-                            )
+                      <div style={{ display: "grid", gap: 16, marginTop: 12 }}>
+                        <ActionBlock
+                          help={
+                            <>
+                              <strong>Accept handoff — Legacy ($4.99/mo)</strong> —
+                              explore the biography with fuller chat and invite family.
+                            </>
                           }
                         >
-                          Accept handoff — Legacy ($4.99/mo)
-                        </Button>
-                        <Button
-                          disabled={busy}
-                          onClick={() =>
-                            post(
-                              "/stewardship/handoff/accept",
-                              {
-                                owner_user_id: role.owner_user_id,
-                                billing_plan: "dormant",
-                              },
-                              "Stewardship accepted (Dormant Archive). Their interview is now sealed.",
-                            )
+                          <Button
+                            variant="primary"
+                            disabled={busy}
+                            onClick={() =>
+                              post(
+                                "/stewardship/handoff/accept",
+                                {
+                                  owner_user_id: role.owner_user_id,
+                                  billing_plan: "legacy",
+                                },
+                                "Stewardship accepted (Legacy). Their interview is now sealed.",
+                              )
+                            }
+                          >
+                            Accept handoff — Legacy ($4.99/mo)
+                          </Button>
+                        </ActionBlock>
+                        <ActionBlock
+                          help={
+                            <>
+                              <strong>Accept handoff — Dormant ($0.99/mo)</strong> —
+                              keep the biography stored with limited chat.
+                            </>
                           }
                         >
-                          Accept handoff — Dormant ($0.99/mo)
-                        </Button>
-                        <Button
-                          disabled={busy}
-                          onClick={() =>
-                            post(
-                              "/stewardship/decline",
-                              {
-                                owner_user_id: role.owner_user_id,
-                                steward_email: role.steward_email,
-                              },
-                              "Handoff declined.",
-                            )
+                          <Button
+                            disabled={busy}
+                            onClick={() =>
+                              post(
+                                "/stewardship/handoff/accept",
+                                {
+                                  owner_user_id: role.owner_user_id,
+                                  billing_plan: "dormant",
+                                },
+                                "Stewardship accepted (Dormant Archive). Their interview is now sealed.",
+                              )
+                            }
+                          >
+                            Accept handoff — Dormant ($0.99/mo)
+                          </Button>
+                        </ActionBlock>
+                        <ActionBlock
+                          help={
+                            <>
+                              <strong>Decline handoff</strong> — turn down this
+                              handoff; they keep control of their account.
+                            </>
                           }
                         >
-                          Decline handoff
-                        </Button>
+                          <Button
+                            disabled={busy}
+                            onClick={() =>
+                              post(
+                                "/stewardship/decline",
+                                {
+                                  owner_user_id: role.owner_user_id,
+                                  steward_email: role.steward_email,
+                                },
+                                "Handoff declined.",
+                              )
+                            }
+                          >
+                            Decline handoff
+                          </Button>
+                        </ActionBlock>
                       </div>
                     </div>
                   ) : null}
 
                   {role.status === "designated" ? (
-                    <div className="km-prose" style={{ maxWidth: 560, marginBottom: 10 }}>
+                    <div className="km-prose" style={{ maxWidth: 560 }}>
                       <p>
                         You’re named as their Account Steward, but they haven’t handed
                         the biography off yet. You can’t open it until they hand it
                         off — or until you start a stewardship request because they
                         can no longer manage the account themselves.
                       </p>
-                      <ul>
-                        <li>
-                          <strong>Request stewardship</strong> — for death or lasting
-                          incapacity when they can’t hand off. Starts a protective
-                          waiting period (they can cancel with “I’m still here”).
-                        </li>
-                        <li>
-                          <strong>I’m checking on them</strong> — pauses quiet
-                          reminders while you look into things. Does not open the
-                          biography.
-                        </li>
-                        <li>
-                          <strong>Decline role</strong> — step down as their named
-                          Account Steward.
-                        </li>
-                      </ul>
-                      <div className="km-row" style={{ marginTop: 10, flexWrap: "wrap", gap: 8 }}>
-                        <Button
-                          disabled={busy}
-                          onClick={() =>
-                            setClaimDraft({
-                              owner_user_id: role.owner_user_id,
-                              reason: "death",
-                              attestation: "",
-                              death_certificate_key: "",
-                            })
+                      <div style={{ display: "grid", gap: 16, marginTop: 12 }}>
+                        <ActionBlock
+                          help={
+                            <>
+                              <strong>Request stewardship (they can’t manage it)</strong>{" "}
+                              — for death or lasting incapacity when they can’t hand
+                              off. Starts a protective waiting period (they can cancel
+                              with “I’m still here”).
+                            </>
                           }
                         >
-                          Request stewardship (they can’t manage it)
-                        </Button>
-                        <Button
-                          disabled={busy}
-                          onClick={() =>
-                            post(
-                              "/stewardship/pause",
-                              {
+                          <Button
+                            disabled={busy}
+                            onClick={() =>
+                              setClaimDraft({
                                 owner_user_id: role.owner_user_id,
-                                steward_email: role.steward_email,
-                              },
-                              "Thanks — we'll pause quiet reminders while you check on them.",
-                            )
+                                reason: "death",
+                                attestation: "",
+                                death_certificate_key: "",
+                              })
+                            }
+                          >
+                            Request stewardship (they can’t manage it)
+                          </Button>
+                        </ActionBlock>
+                        <ActionBlock
+                          help={
+                            <>
+                              <strong>I’m checking on them</strong> — pauses quiet
+                              reminders while you look into things. Does not open the
+                              biography.
+                            </>
                           }
                         >
-                          I’m checking on them
-                        </Button>
-                        <Button
-                          disabled={busy}
-                          onClick={() =>
-                            post(
-                              "/stewardship/decline",
-                              {
-                                owner_user_id: role.owner_user_id,
-                                steward_email: role.steward_email,
-                              },
-                              "Account Steward role declined.",
-                            )
+                          <Button
+                            disabled={busy}
+                            onClick={() =>
+                              post(
+                                "/stewardship/pause",
+                                {
+                                  owner_user_id: role.owner_user_id,
+                                  steward_email: role.steward_email,
+                                },
+                                "Thanks — we'll pause quiet reminders while you check on them.",
+                              )
+                            }
+                          >
+                            I’m checking on them
+                          </Button>
+                        </ActionBlock>
+                        <ActionBlock
+                          help={
+                            <>
+                              <strong>Decline role</strong> — step down as their named
+                              Account Steward.
+                            </>
                           }
                         >
-                          Decline role
-                        </Button>
+                          <Button
+                            disabled={busy}
+                            onClick={() =>
+                              post(
+                                "/stewardship/decline",
+                                {
+                                  owner_user_id: role.owner_user_id,
+                                  steward_email: role.steward_email,
+                                },
+                                "Account Steward role declined.",
+                              )
+                            }
+                          >
+                            Decline role
+                          </Button>
+                        </ActionBlock>
                       </div>
                     </div>
                   ) : null}
 
-                  <div className="km-row" style={{ marginTop: 10, flexWrap: "wrap", gap: 8 }}>
                   {role.status === "active" ? (
-                    <>
-                      {(() => {
-                        const ownerName = role.owner_display_name || "this person";
-                        const switchToDormant = role.billing_plan !== "dormant";
-                        return (
-                          <div style={{ width: "100%" }}>
-                            <p style={{ margin: "0 0 10px" }}>
-                              Stewardship is active for {ownerName}. Storytelling on
-                              that account is sealed. Use the actions below to care for
-                              the biography.
-                            </p>
-                            <ul className="km-form-help" style={{ fontStyle: "normal", margin: "0 0 12px" }}>
-                              <li>
+                    (() => {
+                      const ownerName = role.owner_display_name || "this person";
+                      const switchToDormant = role.billing_plan !== "dormant";
+                      const switchLabel = switchToDormant
+                        ? "Switch to Dormant Archive ($0.99)"
+                        : "Switch to Legacy Stewardship ($4.99)";
+                      const switchHelp = switchToDormant
+                        ? "keep the biography stored with limited chat (lower ongoing care)."
+                        : "restore fuller explore/chat and family-invite tools for this biography.";
+                      return (
+                        <div style={{ display: "grid", gap: 16, maxWidth: 560 }}>
+                          <p style={{ margin: 0 }}>
+                            Stewardship is active for {ownerName}. Storytelling on
+                            that account is sealed. Use the actions below to care for
+                            the biography. To pass this care on later, name your own
+                            Account Steward above — when Stewardship of your account
+                            becomes active, biographies you steward (including{" "}
+                            {ownerName}) move with you.
+                          </p>
+                          <ActionBlock
+                            help={
+                              <>
                                 <strong>Open biography</strong> — explore the sealed
                                 biography for {ownerName} (ask questions grounded in
                                 memories already shared).
-                              </li>
-                              <li>
+                              </>
+                            }
+                          >
+                            <Button
+                              variant="primary"
+                              disabled={busy}
+                              onClick={() => onOpenBiography?.(role.owner_user_id)}
+                            >
+                              Open biography
+                            </Button>
+                          </ActionBlock>
+                          <ActionBlock
+                            help={
+                              <>
                                 <strong>Export copy</strong> — download a portable
-                                JSON package of the biography for backup or offline use.
-                              </li>
-                              <li>
-                                <strong>
-                                  {switchToDormant
-                                    ? "Switch to Dormant Archive ($0.99)"
-                                    : "Switch to Legacy Stewardship ($4.99)"}
-                                </strong>
-                                {switchToDormant
-                                  ? " — keep the biography stored with limited chat (lower ongoing care)."
-                                  : " — restore fuller explore/chat and family-invite tools for this biography."}
-                              </li>
-                              <li>
-                                <strong>Name successor steward</strong> — invite
-                                someone who can take over Stewardship for {ownerName}
-                                if you can no longer serve.
-                              </li>
-                              <li>
+                                JSON package of the biography for backup or offline
+                                use.
+                              </>
+                            }
+                          >
+                            <Button
+                              disabled={busy}
+                              onClick={() => exportBio(role.owner_user_id)}
+                            >
+                              Export copy
+                            </Button>
+                          </ActionBlock>
+                          <ActionBlock
+                            help={
+                              <>
+                                <strong>{switchLabel}</strong> — {switchHelp}
+                              </>
+                            }
+                          >
+                            <Button
+                              disabled={busy}
+                              onClick={() =>
+                                post("/stewardship/billing", {
+                                  owner_user_id: role.owner_user_id,
+                                  billing_plan: switchToDormant ? "dormant" : "legacy",
+                                })
+                              }
+                            >
+                              {switchLabel}
+                            </Button>
+                          </ActionBlock>
+                          <ActionBlock
+                            help={
+                              <>
                                 <strong>Invite family access</strong> — invite a
                                 family member to explore the sealed biography for{" "}
                                 {ownerName}. They can ask questions; they cannot edit.
-                              </li>
-                              <li>
+                              </>
+                            }
+                          >
+                            <Button
+                              disabled={busy}
+                              onClick={() =>
+                                setShareDraft({
+                                  owner_user_id: role.owner_user_id,
+                                  owner_display_name: ownerName,
+                                  email: "",
+                                  relationship: "",
+                                })
+                              }
+                            >
+                              Invite family access
+                            </Button>
+                          </ActionBlock>
+                          <ActionBlock
+                            help={
+                              <>
                                 <strong>Resign stewardship</strong> — step down as
                                 active Account Steward for {ownerName}. This does not
                                 by itself reopen storytelling on that account.
-                              </li>
-                            </ul>
-                            <div className="km-row" style={{ flexWrap: "wrap", gap: 8 }}>
-                              <Button
-                                variant="primary"
-                                disabled={busy}
-                                onClick={() => onOpenBiography?.(role.owner_user_id)}
-                              >
-                                Open biography
-                              </Button>
-                              <Button disabled={busy} onClick={() => exportBio(role.owner_user_id)}>
-                                Export copy
-                              </Button>
-                              <Button
-                                disabled={busy}
-                                onClick={() =>
-                                  post("/stewardship/billing", {
-                                    owner_user_id: role.owner_user_id,
-                                    billing_plan: switchToDormant ? "dormant" : "legacy",
-                                  })
-                                }
-                              >
-                                {switchToDormant
-                                  ? "Switch to Dormant Archive ($0.99)"
-                                  : "Switch to Legacy Stewardship ($4.99)"}
-                              </Button>
-                              <Button
-                                disabled={busy}
-                                onClick={() =>
-                                  setSuccessorDraft({
-                                    owner_user_id: role.owner_user_id,
-                                    owner_display_name: ownerName,
-                                    name: "",
-                                    email: "",
-                                  })
-                                }
-                              >
-                                Name successor steward
-                              </Button>
-                              <Button
-                                disabled={busy}
-                                onClick={() =>
-                                  setShareDraft({
-                                    owner_user_id: role.owner_user_id,
-                                    owner_display_name: ownerName,
-                                    email: "",
-                                    relationship: "",
-                                  })
-                                }
-                              >
-                                Invite family access
-                              </Button>
-                              <Button
-                                disabled={busy}
-                                onClick={() =>
-                                  post("/stewardship/resign", {
-                                    owner_user_id: role.owner_user_id,
-                                    steward_email: role.steward_email,
-                                  })
-                                }
-                              >
-                                Resign stewardship
-                              </Button>
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </>
+                              </>
+                            }
+                          >
+                            <Button
+                              disabled={busy}
+                              onClick={() =>
+                                post("/stewardship/resign", {
+                                  owner_user_id: role.owner_user_id,
+                                  steward_email: role.steward_email,
+                                })
+                              }
+                            >
+                              Resign stewardship
+                            </Button>
+                          </ActionBlock>
+                        </div>
+                      );
+                    })()
                   ) : null}
-                  </div>
                 </div>
               </div>
             ))}
@@ -661,71 +705,6 @@ export default function StewardshipPage({
               Submit stewardship request
             </Button>
             <Button disabled={busy} onClick={() => setClaimDraft({ owner_user_id: "", reason: "death", attestation: "", death_certificate_key: "" })}>
-              Cancel
-            </Button>
-          </div>
-        </Frame>
-        </div>
-      ) : null}
-
-      {successorDraft.owner_user_id ? (
-        <div style={{ marginTop: 20 }}>
-        <Frame label="Successor Account Steward">
-          <div className="km-prose" style={{ maxWidth: 560, marginBottom: 12 }}>
-            <p>
-              Name someone who can take over Stewardship for{" "}
-              {successorDraft.owner_display_name || "this person"} if you can no
-              longer serve. They will be invited to confirm, just as you were.
-            </p>
-          </div>
-          <div className="km-form-grid">
-            <FormRow label="Name">
-              <TextInput
-                value={successorDraft.name}
-                onChange={(e) => setSuccessorDraft((p) => ({ ...p, name: e.target.value }))}
-                disabled={busy}
-              />
-            </FormRow>
-            <FormRow label="Email">
-              <TextInput
-                value={successorDraft.email}
-                onChange={(e) => setSuccessorDraft((p) => ({ ...p, email: e.target.value }))}
-                disabled={busy}
-                inputMode="email"
-              />
-            </FormRow>
-          </div>
-          <div className="km-row" style={{ marginTop: 14, gap: 8 }}>
-            <Button
-              variant="primary"
-              disabled={busy}
-              onClick={async () => {
-                await post("/stewardship/successor", {
-                  owner_user_id: successorDraft.owner_user_id,
-                  name: successorDraft.name,
-                  email: successorDraft.email,
-                });
-                setSuccessorDraft({
-                  owner_user_id: "",
-                  owner_display_name: "",
-                  name: "",
-                  email: "",
-                });
-              }}
-            >
-              Save successor
-            </Button>
-            <Button
-              disabled={busy}
-              onClick={() =>
-                setSuccessorDraft({
-                  owner_user_id: "",
-                  owner_display_name: "",
-                  name: "",
-                  email: "",
-                })
-              }
-            >
               Cancel
             </Button>
           </div>
