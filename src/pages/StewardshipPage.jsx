@@ -78,8 +78,18 @@ export default function StewardshipPage({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [claimDraft, setClaimDraft] = useState({ owner_user_id: "", reason: "death", attestation: "", death_certificate_key: "" });
-  const [successorDraft, setSuccessorDraft] = useState({ owner_user_id: "", name: "", email: "" });
-  const [shareDraft, setShareDraft] = useState({ owner_user_id: "", email: "", relationship: "" });
+  const [successorDraft, setSuccessorDraft] = useState({
+    owner_user_id: "",
+    owner_display_name: "",
+    name: "",
+    email: "",
+  });
+  const [shareDraft, setShareDraft] = useState({
+    owner_user_id: "",
+    owner_display_name: "",
+    email: "",
+    relationship: "",
+  });
 
   const load = useCallback(async () => {
     if (!isAuthed || !apiBase) return;
@@ -472,75 +482,117 @@ export default function StewardshipPage({
                   <div className="km-row" style={{ marginTop: 10, flexWrap: "wrap", gap: 8 }}>
                   {role.status === "active" ? (
                     <>
-                      <p style={{ width: "100%", margin: "0 0 4px" }}>
-                        Stewardship is active. Their storytelling features are sealed;
-                        you can explore the biography and invite family.
-                      </p>
-                      <Button
-                        variant="primary"
-                        disabled={busy}
-                        onClick={() => onOpenBiography?.(role.owner_user_id)}
-                        title="Open their sealed biography to explore."
-                      >
-                        Open biography
-                      </Button>
-                      <Button
-                        disabled={busy}
-                        onClick={() => exportBio(role.owner_user_id)}
-                        title="Download a JSON copy of the biography package."
-                      >
-                        Export copy
-                      </Button>
-                      <Button
-                        disabled={busy}
-                        onClick={() =>
-                          post("/stewardship/billing", {
-                            owner_user_id: role.owner_user_id,
-                            billing_plan: role.billing_plan === "dormant" ? "legacy" : "dormant",
-                          })
-                        }
-                        title="Change between Legacy (fuller explore) and Dormant Archive (limited)."
-                      >
-                        Switch to {role.billing_plan === "dormant" ? "Legacy Stewardship ($4.99)" : "Dormant Archive ($0.99)"}
-                      </Button>
-                      <Button
-                        disabled={busy}
-                        onClick={() =>
-                          setSuccessorDraft({
-                            owner_user_id: role.owner_user_id,
-                            name: "",
-                            email: "",
-                          })
-                        }
-                        title="Name someone who can take over Stewardship after you."
-                      >
-                        Name successor steward
-                      </Button>
-                      <Button
-                        disabled={busy}
-                        onClick={() =>
-                          setShareDraft({
-                            owner_user_id: role.owner_user_id,
-                            email: "",
-                            relationship: "",
-                          })
-                        }
-                        title="Invite a family member to explore this sealed biography."
-                      >
-                        Invite family access
-                      </Button>
-                      <Button
-                        disabled={busy}
-                        onClick={() =>
-                          post("/stewardship/resign", {
-                            owner_user_id: role.owner_user_id,
-                            steward_email: role.steward_email,
-                          })
-                        }
-                        title="Step down as active steward. Does not unseal their account by itself."
-                      >
-                        Resign stewardship
-                      </Button>
+                      {(() => {
+                        const ownerName = role.owner_display_name || "this person";
+                        const switchToDormant = role.billing_plan !== "dormant";
+                        return (
+                          <div style={{ width: "100%" }}>
+                            <p style={{ margin: "0 0 10px" }}>
+                              Stewardship is active for {ownerName}. Storytelling on
+                              that account is sealed. Use the actions below to care for
+                              the biography.
+                            </p>
+                            <ul className="km-form-help" style={{ fontStyle: "normal", margin: "0 0 12px" }}>
+                              <li>
+                                <strong>Open biography</strong> — explore the sealed
+                                biography for {ownerName} (ask questions grounded in
+                                memories already shared).
+                              </li>
+                              <li>
+                                <strong>Export copy</strong> — download a portable
+                                JSON package of the biography for backup or offline use.
+                              </li>
+                              <li>
+                                <strong>
+                                  {switchToDormant
+                                    ? "Switch to Dormant Archive ($0.99)"
+                                    : "Switch to Legacy Stewardship ($4.99)"}
+                                </strong>
+                                {switchToDormant
+                                  ? " — keep the biography stored with limited chat (lower ongoing care)."
+                                  : " — restore fuller explore/chat and family-invite tools for this biography."}
+                              </li>
+                              <li>
+                                <strong>Name successor steward</strong> — invite
+                                someone who can take over Stewardship for {ownerName}
+                                if you can no longer serve.
+                              </li>
+                              <li>
+                                <strong>Invite family access</strong> — invite a
+                                family member to explore the sealed biography for{" "}
+                                {ownerName}. They can ask questions; they cannot edit.
+                              </li>
+                              <li>
+                                <strong>Resign stewardship</strong> — step down as
+                                active Account Steward for {ownerName}. This does not
+                                by itself reopen storytelling on that account.
+                              </li>
+                            </ul>
+                            <div className="km-row" style={{ flexWrap: "wrap", gap: 8 }}>
+                              <Button
+                                variant="primary"
+                                disabled={busy}
+                                onClick={() => onOpenBiography?.(role.owner_user_id)}
+                              >
+                                Open biography
+                              </Button>
+                              <Button disabled={busy} onClick={() => exportBio(role.owner_user_id)}>
+                                Export copy
+                              </Button>
+                              <Button
+                                disabled={busy}
+                                onClick={() =>
+                                  post("/stewardship/billing", {
+                                    owner_user_id: role.owner_user_id,
+                                    billing_plan: switchToDormant ? "dormant" : "legacy",
+                                  })
+                                }
+                              >
+                                {switchToDormant
+                                  ? "Switch to Dormant Archive ($0.99)"
+                                  : "Switch to Legacy Stewardship ($4.99)"}
+                              </Button>
+                              <Button
+                                disabled={busy}
+                                onClick={() =>
+                                  setSuccessorDraft({
+                                    owner_user_id: role.owner_user_id,
+                                    owner_display_name: ownerName,
+                                    name: "",
+                                    email: "",
+                                  })
+                                }
+                              >
+                                Name successor steward
+                              </Button>
+                              <Button
+                                disabled={busy}
+                                onClick={() =>
+                                  setShareDraft({
+                                    owner_user_id: role.owner_user_id,
+                                    owner_display_name: ownerName,
+                                    email: "",
+                                    relationship: "",
+                                  })
+                                }
+                              >
+                                Invite family access
+                              </Button>
+                              <Button
+                                disabled={busy}
+                                onClick={() =>
+                                  post("/stewardship/resign", {
+                                    owner_user_id: role.owner_user_id,
+                                    steward_email: role.steward_email,
+                                  })
+                                }
+                              >
+                                Resign stewardship
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </>
                   ) : null}
                   </div>
@@ -621,8 +673,9 @@ export default function StewardshipPage({
         <Frame label="Successor Account Steward">
           <div className="km-prose" style={{ maxWidth: 560, marginBottom: 12 }}>
             <p>
-              Name someone who can take over Stewardship if you can no longer serve.
-              They will be invited to confirm, just as you were.
+              Name someone who can take over Stewardship for{" "}
+              {successorDraft.owner_display_name || "this person"} if you can no
+              longer serve. They will be invited to confirm, just as you were.
             </p>
           </div>
           <div className="km-form-grid">
@@ -652,12 +705,27 @@ export default function StewardshipPage({
                   name: successorDraft.name,
                   email: successorDraft.email,
                 });
-                setSuccessorDraft({ owner_user_id: "", name: "", email: "" });
+                setSuccessorDraft({
+                  owner_user_id: "",
+                  owner_display_name: "",
+                  name: "",
+                  email: "",
+                });
               }}
             >
               Save successor
             </Button>
-            <Button disabled={busy} onClick={() => setSuccessorDraft({ owner_user_id: "", name: "", email: "" })}>
+            <Button
+              disabled={busy}
+              onClick={() =>
+                setSuccessorDraft({
+                  owner_user_id: "",
+                  owner_display_name: "",
+                  name: "",
+                  email: "",
+                })
+              }
+            >
               Cancel
             </Button>
           </div>
@@ -670,9 +738,10 @@ export default function StewardshipPage({
         <Frame label="Invite family access">
           <div className="km-prose" style={{ maxWidth: 560, marginBottom: 12 }}>
             <p>
-              Invite a family member to explore this sealed biography. They can ask
-              questions grounded in the memories already shared — they cannot edit
-              the interview.
+              Invite a family member to explore the sealed biography for{" "}
+              {shareDraft.owner_display_name || "this person"}. They can ask
+              questions grounded in memories already shared. They cannot edit the
+              interview or journal.
             </p>
           </div>
           <div className="km-form-grid">
@@ -697,13 +766,32 @@ export default function StewardshipPage({
               variant="primary"
               disabled={busy}
               onClick={async () => {
-                await post("/stewardship/shares", shareDraft);
-                setShareDraft({ owner_user_id: "", email: "", relationship: "" });
+                await post("/stewardship/shares", {
+                  owner_user_id: shareDraft.owner_user_id,
+                  email: shareDraft.email,
+                  relationship: shareDraft.relationship,
+                });
+                setShareDraft({
+                  owner_user_id: "",
+                  owner_display_name: "",
+                  email: "",
+                  relationship: "",
+                });
               }}
             >
               Send invite
             </Button>
-            <Button disabled={busy} onClick={() => setShareDraft({ owner_user_id: "", email: "", relationship: "" })}>
+            <Button
+              disabled={busy}
+              onClick={() =>
+                setShareDraft({
+                  owner_user_id: "",
+                  owner_display_name: "",
+                  email: "",
+                  relationship: "",
+                })
+              }
+            >
               Cancel
             </Button>
           </div>
