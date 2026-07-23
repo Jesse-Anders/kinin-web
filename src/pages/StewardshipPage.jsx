@@ -339,14 +339,35 @@ export default function StewardshipPage({
             {roles.map((role) => (
               <div key={`${role.owner_user_id}-${role.steward_email}`} className="km-prose" style={{ borderTop: "1px solid rgba(26,20,11,0.12)", paddingTop: 14 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <Shield size={16} aria-hidden="true" />
-                  <strong>{role.owner_display_name || "Someone"}</strong>
+                  <Shield size={18} aria-hidden="true" />
+                  <strong style={{ fontSize: "1.15rem" }}>
+                    {role.owner_display_name || "Someone"}
+                  </strong>
                 </div>
-                <div className="km-form-help" style={{ fontStyle: "normal", marginTop: 4 }}>
+                <div
+                  style={{
+                    marginTop: 8,
+                    fontSize: role.status === "active" ? "1.2rem" : "1.05rem",
+                    fontWeight: 600,
+                    lineHeight: 1.35,
+                    letterSpacing: "0.01em",
+                  }}
+                >
                   {statusLabel(role.status)}
-                  {role.billing_plan ? ` · ${billingLabel(role.billing_plan)}` : ""}
-                  {role.claim_cooling_ends_at ? ` · waiting period ends ${role.claim_cooling_ends_at}` : ""}
+                  {role.billing_plan ? (
+                    <>
+                      {" · "}
+                      <span style={{ whiteSpace: "nowrap" }}>
+                        {billingLabel(role.billing_plan)}
+                      </span>
+                    </>
+                  ) : null}
                 </div>
+                {role.claim_cooling_ends_at ? (
+                  <div className="km-form-help" style={{ fontStyle: "normal", marginTop: 4 }}>
+                    Waiting period ends {role.claim_cooling_ends_at}
+                  </div>
+                ) : null}
                 <div style={{ marginTop: 10 }}>
                   {role.status === "handoff_pending" ? (
                     <div className="km-prose" style={{ maxWidth: 560 }}>
