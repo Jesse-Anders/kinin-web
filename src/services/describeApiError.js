@@ -77,6 +77,8 @@ const CODE_MESSAGES = {
   cannot_remove_active_steward: "An active Account Steward can't be removed this way.",
   interview_sealed:
     "This biography is under Stewardship and sealed. Interview, journal, pins, and review are permanently closed on this account.",
+  legacy_chat_disabled:
+    "This biography is on the Dormant Archive plan. The Account Steward can switch to Legacy Stewardship to enable chat.",
 
   // Contact / misc
   email_required: "Please enter an email address.",
@@ -203,7 +205,8 @@ export function describeApiError(err, opts = {}) {
     code === "biography_disabled_by_owner" ||
     code === "no_memories_available" ||
     code === "onboarding_required" ||
-    code === "interview_sealed"
+    code === "interview_sealed" ||
+    code === "legacy_chat_disabled"
   ) {
     return { message: CODE_MESSAGES[code], tone: "info" };
   }

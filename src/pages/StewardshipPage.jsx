@@ -344,25 +344,33 @@ export default function StewardshipPage({
                     {role.owner_display_name || "Someone"}
                   </strong>
                 </div>
-                <div
-                  style={{
-                    marginTop: 8,
-                    fontSize: role.status === "active" ? "1.2rem" : "1.05rem",
-                    fontWeight: 600,
-                    lineHeight: 1.35,
-                    letterSpacing: "0.01em",
-                  }}
-                >
-                  {statusLabel(role.status)}
-                  {role.billing_plan ? (
-                    <>
-                      {" · "}
-                      <span style={{ whiteSpace: "nowrap" }}>
-                        {billingLabel(role.billing_plan)}
-                      </span>
-                    </>
-                  ) : null}
-                </div>
+                {role.status === "active" && role.billing_plan ? (
+                  <div
+                    style={{
+                      marginTop: 8,
+                      fontSize: "1.2rem",
+                      fontWeight: 600,
+                      lineHeight: 1.35,
+                      letterSpacing: "0.01em",
+                    }}
+                  >
+                    Current Plan:{" "}
+                    <span style={{ whiteSpace: "nowrap" }}>
+                      {billingLabel(role.billing_plan)}
+                    </span>
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      marginTop: 8,
+                      fontSize: "1.05rem",
+                      fontWeight: 600,
+                      lineHeight: 1.35,
+                    }}
+                  >
+                    {statusLabel(role.status)}
+                  </div>
+                )}
                 {role.claim_cooling_ends_at ? (
                   <div className="km-form-help" style={{ fontStyle: "normal", marginTop: 4 }}>
                     Waiting period ends {role.claim_cooling_ends_at}

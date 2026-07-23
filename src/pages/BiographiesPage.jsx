@@ -248,8 +248,13 @@ export default function BiographiesPage({
   );
 
   const speakerTag = selectedBio?.display_name || "Biography";
+  const selectedIsDormant = !!selectedBio?.is_dormant_archive;
   const sendDisabled =
-    !isAuthed || sending || !selectedOwnerId || !(draft || "").trim();
+    !isAuthed ||
+    sending ||
+    !selectedOwnerId ||
+    selectedIsDormant ||
+    !(draft || "").trim();
 
   const closeSource = useCallback(() => setActiveSource(null), []);
 
@@ -454,6 +459,15 @@ export default function BiographiesPage({
         tone: "danger",
         message:
           "You don't have access to this biography anymore. Ask an administrator to restore it.",
+      };
+    }
+    if (code === "legacy_chat_disabled") {
+      const isSteward = !!selectedBio?.viewer_is_active_steward;
+      return {
+        tone: "info",
+        message: isSteward
+          ? "This biography is on the Dormant Archive plan. Switch to Legacy Stewardship in Settings → Stewardship to enable chat."
+          : "This biography is on the Dormant Archive plan. The Account Steward can switch to Legacy Stewardship to enable chat.",
       };
     }
     return null;
@@ -764,6 +778,14 @@ export default function BiographiesPage({
                         </div>
                       ) : (
                         <>
+                          {b.is_dormant_archive ? (
+                            <div
+                              className="km-form-help"
+                              style={{ marginTop: 2, fontWeight: 600, fontStyle: "normal" }}
+                            >
+                              Dormant Archive — chat paused
+                            </div>
+                          ) : null}
                           {b.date_of_birth ? (
                             <div className="km-form-help" style={{ marginTop: 2 }}>
                               Born {formatDateOfBirth(b.date_of_birth)}
@@ -799,19 +821,38 @@ export default function BiographiesPage({
             <div className="km-mono-label">
               {selectedBio.is_self
                 ? "Previewing your biography"
-                : `Talking with ${selectedBio.display_name || "this Kinin member"}`}
+                : selectedIsDormant
+                  ? `Biography for ${selectedBio.display_name || "this Kinin member"}`
+                  : `Talking with ${selectedBio.display_name || "this Kinin member"}`}
             </div>
-            {messages.length > 0 ? (
+            {messages.length > 0 && !selectedIsDormant ? (
               <Button size="sm" onClick={startNewConversation} disabled={sending}>
                 Start new
               </Button>
             ) : null}
           </div>
 
+          {selectedIsDormant ? (
+            <div style={{ marginBottom: 12 }}>
+              <Banner tone="info">
+                <span>
+                  <strong>Dormant Archive.</strong>{" "}
+                  {selectedBio.viewer_is_active_steward
+                    ? "Chat is paused on this plan. Switch to Legacy Stewardship in Settings → Stewardship to enable explore chat."
+                    : "Chat is paused on this plan. The Account Steward can switch to Legacy Stewardship to activate chat."}
+                </span>
+              </Banner>
+            </div>
+          ) : null}
+
           <div ref={surfaceRef} className="km-chat-surface km-chat km-biography-surface" data-help-anchor="biography-chat">
             {messages.length === 0 ? (
               <div className="km-chat-empty">
-                {selectedBio.is_self
+                {selectedIsDormant
+                  ? selectedBio.viewer_is_active_steward
+                    ? "This biography is in Dormant Archive. Upgrade the plan in Settings → Stewardship to ask questions here."
+                    : "This biography is in Dormant Archive. Ask the Account Steward to activate Legacy Stewardship if you need to explore it in chat."
+                  : selectedBio.is_self
                   ? "Ask anything a family member might ask — try questions about your childhood, work, or the things you care about — and see how your biography replies."
                   : "Ask anything — about their family, their work, the things they cared about."}
               </div>
@@ -900,6 +941,7 @@ export default function BiographiesPage({
             </div>
           ) : null}
 
+          {!selectedIsDormant ? (
           <div className="km-chat-input-row" style={{ marginTop: 12 }} data-help-anchor="biography-input">
             <textarea
               ref={inputRef}
@@ -931,6 +973,7 @@ export default function BiographiesPage({
               {sending ? "Sending..." : "Send"}
             </Button>
           </div>
+          ) : null}
           <div
             className="km-form-help"
             style={{ marginTop: 8, fontStyle: "italic" }}
