@@ -462,12 +462,13 @@ export default function BiographiesPage({
       };
     }
     if (code === "legacy_chat_disabled") {
-      const isSteward = !!selectedBio?.viewer_is_active_steward;
+      const stewardLabel =
+        selectedBio?.account_steward_name ||
+        selectedBio?.account_steward_email ||
+        "for this account";
       return {
         tone: "info",
-        message: isSteward
-          ? "This biography is on the Dormant Archive plan. Switch to Legacy Stewardship in Settings → Stewardship to enable chat."
-          : "This biography is on the Dormant Archive plan. The Account Steward can switch to Legacy Stewardship to enable chat.",
+        message: `Archived Biography. Chat is paused on this plan. Legacy Steward ${stewardLabel} determines access for this biography.`,
       };
     }
     return null;
@@ -778,18 +779,28 @@ export default function BiographiesPage({
                         </div>
                       ) : (
                         <>
-                          {b.is_dormant_archive ? (
-                            <div
-                              className="km-form-help"
-                              style={{ marginTop: 2, fontWeight: 600, fontStyle: "normal" }}
-                            >
-                              Dormant Archive — chat paused
-                            </div>
-                          ) : null}
                           {b.date_of_birth ? (
                             <div className="km-form-help" style={{ marginTop: 2 }}>
                               Born {formatDateOfBirth(b.date_of_birth)}
                             </div>
+                          ) : null}
+                          {b.is_dormant_archive ? (
+                            <>
+                              <div
+                                className="km-form-help"
+                                style={{ marginTop: 2, fontWeight: 600, fontStyle: "normal" }}
+                              >
+                                Archived Biography - Chat Paused
+                              </div>
+                              {b.account_steward_name || b.account_steward_email ? (
+                                <div className="km-form-help" style={{ marginTop: 2, fontStyle: "normal" }}>
+                                  Account Steward -{" "}
+                                  {[b.account_steward_name, b.account_steward_email]
+                                    .filter(Boolean)
+                                    .join(", ")}
+                                </div>
+                              ) : null}
+                            </>
                           ) : null}
                           {b.is_sample ? (
                             <div className="km-form-help" style={{ marginTop: 2 }}>
@@ -836,10 +847,12 @@ export default function BiographiesPage({
             <div style={{ marginBottom: 12 }}>
               <Banner tone="info">
                 <span>
-                  <strong>Dormant Archive.</strong>{" "}
-                  {selectedBio.viewer_is_active_steward
-                    ? "Chat is paused on this plan. Switch to Legacy Stewardship in Settings → Stewardship to enable explore chat."
-                    : "Chat is paused on this plan. The Account Steward can switch to Legacy Stewardship to activate chat."}
+                  <strong>Archived Biography.</strong> Chat is paused on this plan.
+                  Legacy Steward{" "}
+                  {selectedBio.account_steward_name ||
+                    selectedBio.account_steward_email ||
+                    "for this account"}{" "}
+                  determines access for this biography.
                 </span>
               </Banner>
             </div>
@@ -849,9 +862,11 @@ export default function BiographiesPage({
             {messages.length === 0 ? (
               <div className="km-chat-empty">
                 {selectedIsDormant
-                  ? selectedBio.viewer_is_active_steward
-                    ? "This biography is in Dormant Archive. Upgrade the plan in Settings → Stewardship to ask questions here."
-                    : "This biography is in Dormant Archive. Ask the Account Steward to activate Legacy Stewardship if you need to explore it in chat."
+                  ? `Archived Biography. Chat is paused. Legacy Steward ${
+                      selectedBio.account_steward_name ||
+                      selectedBio.account_steward_email ||
+                      "for this account"
+                    } determines access for this biography.`
                   : selectedBio.is_self
                   ? "Ask anything a family member might ask — try questions about your childhood, work, or the things you care about — and see how your biography replies."
                   : "Ask anything — about their family, their work, the things they cared about."}

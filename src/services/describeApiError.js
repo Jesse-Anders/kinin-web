@@ -78,7 +78,7 @@ const CODE_MESSAGES = {
   interview_sealed:
     "This biography is under Stewardship and completed. Interview, journal, pins, and review are permanently closed on this account.",
   legacy_chat_disabled:
-    "This biography is on the Dormant Archive plan. The Account Steward can switch to Legacy Stewardship to enable chat.",
+    "Archived Biography. Chat is paused on this plan. The Legacy Steward determines access for this biography.",
   steward_account_required:
     "That person needs a Kinin account before you can hand off Stewardship to them.",
   cannot_transfer_to_self: "You can't hand off Stewardship to yourself.",
