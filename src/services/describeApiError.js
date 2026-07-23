@@ -76,9 +76,14 @@ const CODE_MESSAGES = {
   cannot_decline_active: "You can't decline after Stewardship is already active. Resign instead.",
   cannot_remove_active_steward: "An active Account Steward can't be removed this way.",
   interview_sealed:
-    "This biography is under Stewardship and sealed. Interview, journal, pins, and review are permanently closed on this account.",
+    "This biography is under Stewardship and completed. Interview, journal, pins, and review are permanently closed on this account.",
   legacy_chat_disabled:
     "This biography is on the Dormant Archive plan. The Account Steward can switch to Legacy Stewardship to enable chat.",
+  steward_account_required:
+    "That person needs a Kinin account before you can hand off Stewardship to them.",
+  cannot_transfer_to_self: "You can't hand off Stewardship to yourself.",
+  not_steward_transfer: "That isn't a stewardship transfer request.",
+  use_transfer_accept: "Accept this as a stewardship transfer, not an owner handoff.",
 
   // Contact / misc
   email_required: "Please enter an email address.",

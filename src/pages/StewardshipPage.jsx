@@ -23,7 +23,10 @@ function parseApiPayload(text) {
   }
 }
 
-function statusLabel(status) {
+function statusLabel(status, { isStewardTransfer = false } = {}) {
+  if (status === "handoff_pending" && isStewardTransfer) {
+    return "Stewardship transfer waiting for you to accept";
+  }
   const map = {
     designated: "Account Steward confirmed",
     handoff_pending: "Handoff waiting for you to accept",
@@ -41,7 +44,7 @@ function lifecycleLabel(state) {
     active_complete: "Active — marked complete",
     outreach: "Quiet outreach in progress",
     dormant: "Dormant hold",
-    stewarded: "Under Stewardship",
+    stewarded: "Completed — under Stewardship",
     closed: "Closed",
   };
   return map[state] || state || "Active — interview in progress";
@@ -95,6 +98,12 @@ export default function StewardshipPage({
     owner_display_name: "",
     email: "",
     relationship: "",
+  });
+  const [transferDraft, setTransferDraft] = useState({
+    owner_user_id: "",
+    owner_display_name: "",
+    email: "",
+    name: "",
   });
 
   const load = useCallback(async () => {
@@ -229,15 +238,15 @@ export default function StewardshipPage({
             <p>
               Status:{" "}
               <strong>{lifecycleLabel(own?.biography_lifecycle_state)}</strong>
-              {own?.interview_sealed || interviewSealed ? " · sealed (read-only)" : ""}
+              {own?.interview_sealed || interviewSealed ? " · completed (read-only)" : ""}
             </p>
             {own?.interview_sealed || interviewSealed ? (
               <Banner tone="info">
                 <span>
-                  Stewardship is active. Interview, Journal, Pins, and Review are
-                  permanently closed on this account. You can still open your
-                  biography under Biographies; your Account Steward looks after
-                  ongoing care and family access.
+                  Stewardship is active and this biography is completed. Interview,
+                  Journal, Pins, and Review are permanently closed on this account.
+                  You can still open your biography under Biographies; your Account
+                  Steward looks after ongoing care and family access.
                 </span>
               </Banner>
             ) : null}
@@ -265,7 +274,8 @@ export default function StewardshipPage({
                   help={
                     <>
                       <strong>Mark biography complete</strong> — optional milestone;
-                      you can still keep interviewing. Does not seal or hand off.
+                      you can still keep interviewing. Does not hand off or close
+                      storytelling.
                     </>
                   }
                 >
@@ -368,7 +378,9 @@ export default function StewardshipPage({
                       lineHeight: 1.35,
                     }}
                   >
-                    {statusLabel(role.status)}
+                    {statusLabel(role.status, {
+                      isStewardTransfer: !!role.is_steward_transfer,
+                    })}
                   </div>
                 )}
                 {role.claim_cooling_ends_at ? (
@@ -377,7 +389,66 @@ export default function StewardshipPage({
                   </div>
                 ) : null}
                 <div style={{ marginTop: 10 }}>
-                  {role.status === "handoff_pending" ? (
+                  {role.status === "handoff_pending" && role.is_steward_transfer ? (
+                    <div className="km-prose" style={{ maxWidth: 560 }}>
+                      <p>
+                        <strong>An Account Steward asked you to take over.</strong>{" "}
+                        Accepting transfers Stewardship of this completed biography to
+                        you. You inherit the current plan and can switch later.
+                      </p>
+                      <div style={{ display: "grid", gap: 16, marginTop: 12 }}>
+                        <ActionBlock
+                          help={
+                            <>
+                              <strong>Accept stewardship transfer</strong> — take over
+                              care, family invites, and the current Legacy or Dormant
+                              plan for this biography.
+                            </>
+                          }
+                        >
+                          <Button
+                            variant="primary"
+                            disabled={busy}
+                            onClick={() =>
+                              post(
+                                "/stewardship/transfer/accept",
+                                { owner_user_id: role.owner_user_id },
+                                "Stewardship transfer accepted. You are now the Account Steward.",
+                              )
+                            }
+                          >
+                            Accept stewardship transfer
+                          </Button>
+                        </ActionBlock>
+                        <ActionBlock
+                          help={
+                            <>
+                              <strong>Decline transfer</strong> — turn this down; the
+                              current Account Steward keeps the role.
+                            </>
+                          }
+                        >
+                          <Button
+                            disabled={busy}
+                            onClick={() =>
+                              post(
+                                "/stewardship/decline",
+                                {
+                                  owner_user_id: role.owner_user_id,
+                                  steward_email: role.steward_email,
+                                },
+                                "Stewardship transfer declined.",
+                              )
+                            }
+                          >
+                            Decline transfer
+                          </Button>
+                        </ActionBlock>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {role.status === "handoff_pending" && !role.is_steward_transfer ? (
                     <div className="km-prose" style={{ maxWidth: 560 }}>
                       <p>
                         <strong>They asked you to take over.</strong> Accepting
@@ -404,7 +475,7 @@ export default function StewardshipPage({
                                   owner_user_id: role.owner_user_id,
                                   billing_plan: "legacy",
                                 },
-                                "Stewardship accepted (Legacy). Their interview is now sealed.",
+                                "Stewardship accepted (Legacy). Their biography is now completed.",
                               )
                             }
                           >
@@ -428,7 +499,7 @@ export default function StewardshipPage({
                                   owner_user_id: role.owner_user_id,
                                   billing_plan: "dormant",
                                 },
-                                "Stewardship accepted (Dormant Archive). Their interview is now sealed.",
+                                "Stewardship accepted (Dormant Archive). Their biography is now completed.",
                               )
                             }
                           >
@@ -562,17 +633,29 @@ export default function StewardshipPage({
                       return (
                         <div style={{ display: "grid", gap: 16, maxWidth: 560 }}>
                           <p style={{ margin: 0 }}>
-                            Stewardship is active for {ownerName}. Storytelling on
-                            that account is sealed. Use the actions below to care for
-                            the biography. To pass this care on later, name your own
-                            Account Steward above — when Stewardship of your account
-                            becomes active, biographies you steward (including{" "}
-                            {ownerName}) move with you.
+                            Stewardship is active for {ownerName}. Their biography is
+                            completed — storytelling on that account is closed. Use the
+                            actions below to care for it. To pass this biography to
+                            someone else for safekeeping or payment, use Hand off
+                            Stewardship (they must already have a Kinin account).
+                            Biographies you steward also move with you if your own
+                            account later becomes stewarded.
                           </p>
+                          {role.pending_transfer_to_email ? (
+                            <Banner tone="info">
+                              <span>
+                                Transfer pending to {role.pending_transfer_to_email}
+                                {role.pending_transfer_to_name
+                                  ? ` (${role.pending_transfer_to_name})`
+                                  : ""}
+                                . They must accept in Settings → Stewardship.
+                              </span>
+                            </Banner>
+                          ) : null}
                           <ActionBlock
                             help={
                               <>
-                                <strong>Open biography</strong> — explore the sealed
+                                <strong>Open biography</strong> — explore the completed
                                 biography for {ownerName} (ask questions grounded in
                                 memories already shared).
                               </>
@@ -625,7 +708,7 @@ export default function StewardshipPage({
                             help={
                               <>
                                 <strong>Invite family access</strong> — invite a
-                                family member to explore the sealed biography for{" "}
+                                family member to explore the completed biography for{" "}
                                 {ownerName}. They can ask questions; they cannot edit.
                               </>
                             }
@@ -644,27 +727,57 @@ export default function StewardshipPage({
                               Invite family access
                             </Button>
                           </ActionBlock>
-                          <ActionBlock
-                            help={
-                              <>
-                                <strong>Resign stewardship</strong> — step down as
-                                active Account Steward for {ownerName}. This does not
-                                by itself reopen storytelling on that account.
-                              </>
-                            }
-                          >
-                            <Button
-                              disabled={busy}
-                              onClick={() =>
-                                post("/stewardship/resign", {
-                                  owner_user_id: role.owner_user_id,
-                                  steward_email: role.steward_email,
-                                })
+                          {role.pending_transfer_to_email ? (
+                            <ActionBlock
+                              help={
+                                <>
+                                  <strong>Cancel transfer</strong> — withdraw the
+                                  pending Hand off Stewardship request. You remain the
+                                  Account Steward.
+                                </>
                               }
                             >
-                              Resign stewardship
-                            </Button>
-                          </ActionBlock>
+                              <Button
+                                disabled={busy}
+                                onClick={() =>
+                                  post(
+                                    "/stewardship/transfer/cancel",
+                                    { owner_user_id: role.owner_user_id },
+                                    "Stewardship transfer cancelled.",
+                                  )
+                                }
+                              >
+                                Cancel transfer
+                              </Button>
+                            </ActionBlock>
+                          ) : (
+                            <ActionBlock
+                              help={
+                                <>
+                                  <strong>Hand off Stewardship</strong> — transfer care
+                                  of {ownerName}’s completed biography to another
+                                  person who already has a Kinin account. They get an
+                                  email and must accept in Settings → Stewardship. You
+                                  keep explore access afterward unless access is
+                                  removed later.
+                                </>
+                              }
+                            >
+                              <Button
+                                disabled={busy}
+                                onClick={() =>
+                                  setTransferDraft({
+                                    owner_user_id: role.owner_user_id,
+                                    owner_display_name: ownerName,
+                                    email: "",
+                                    name: "",
+                                  })
+                                }
+                              >
+                                Hand off Stewardship
+                              </Button>
+                            </ActionBlock>
+                          )}
                         </div>
                       );
                     })()
@@ -741,12 +854,86 @@ export default function StewardshipPage({
         </div>
       ) : null}
 
+      {transferDraft.owner_user_id ? (
+        <div style={{ marginTop: 20 }}>
+          <Frame label="Hand off Stewardship">
+            <div className="km-prose" style={{ maxWidth: 560, marginBottom: 12 }}>
+              <p>
+                Transfer Stewardship of the completed biography for{" "}
+                {transferDraft.owner_display_name || "this person"} to someone who
+                already has a Kinin account. They will receive an email and must
+                accept in Settings → Stewardship. They inherit the current plan.
+              </p>
+            </div>
+            <div className="km-form-grid">
+              <FormRow label="Recipient name (optional)">
+                <TextInput
+                  value={transferDraft.name}
+                  onChange={(e) =>
+                    setTransferDraft((p) => ({ ...p, name: e.target.value }))
+                  }
+                  disabled={busy}
+                />
+              </FormRow>
+              <FormRow label="Recipient email">
+                <TextInput
+                  value={transferDraft.email}
+                  onChange={(e) =>
+                    setTransferDraft((p) => ({ ...p, email: e.target.value }))
+                  }
+                  disabled={busy}
+                  inputMode="email"
+                />
+              </FormRow>
+            </div>
+            <div className="km-row" style={{ marginTop: 14, gap: 8 }}>
+              <Button
+                variant="primary"
+                disabled={busy || !(transferDraft.email || "").trim()}
+                onClick={async () => {
+                  await post(
+                    "/stewardship/transfer",
+                    {
+                      owner_user_id: transferDraft.owner_user_id,
+                      email: transferDraft.email,
+                      name: transferDraft.name,
+                    },
+                    "Stewardship transfer sent. We've emailed them to accept.",
+                  );
+                  setTransferDraft({
+                    owner_user_id: "",
+                    owner_display_name: "",
+                    email: "",
+                    name: "",
+                  });
+                }}
+              >
+                Send transfer request
+              </Button>
+              <Button
+                disabled={busy}
+                onClick={() =>
+                  setTransferDraft({
+                    owner_user_id: "",
+                    owner_display_name: "",
+                    email: "",
+                    name: "",
+                  })
+                }
+              >
+                Cancel
+              </Button>
+            </div>
+          </Frame>
+        </div>
+      ) : null}
+
       {shareDraft.owner_user_id ? (
         <div style={{ marginTop: 20 }}>
         <Frame label="Invite family access">
           <div className="km-prose" style={{ maxWidth: 560, marginBottom: 12 }}>
             <p>
-              Invite a family member to explore the sealed biography for{" "}
+              Invite a family member to explore the completed biography for{" "}
               {shareDraft.owner_display_name || "this person"}. They can ask
               questions grounded in memories already shared. They cannot edit the
               interview or journal.
