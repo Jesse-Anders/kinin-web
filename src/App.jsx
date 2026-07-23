@@ -482,6 +482,7 @@ export default function App() {
   // Account type from the entitlement plan. "biography_only" is a read-only
   // "Reader" account (invited to interact with someone's biography, no
   // interview of their own); everything else is treated as a full "Storyteller".
+  // Sealed stewarded biographies reuse the same write-surface gates as Readers.
   const [planState, setPlanState] = useState("");
   const [interviewSealed, setInterviewSealed] = useState(false);
   // Count of live story-request pins waiting on this user — powers the
@@ -1331,13 +1332,15 @@ export default function App() {
   const NESTED_WHEN_AUTHED_IDS = new Set(["about", "faq", "feedback"]);
   // A "Reader" (biography_only) account has no interview of their own, so the
   // interviewer-only sections (Interview, Journal, Pins, Review) are hidden.
+  // Sealed (stewarded) accounts use the same gates: write surfaces end permanently.
   const isReader = planState === "biography_only";
+  const hideWriteSurfaces = isReader || interviewSealed;
   const visibleTopItems = menuItems.filter(
     (item) =>
       item.section !== "bottom" &&
       (isAuthed || !item.requiresAuth) &&
       !(item.hideForBetaLite && IS_BETA_LITE) &&
-      !(item.hideForReader && isReader) &&
+      !(item.hideForReader && hideWriteSurfaces) &&
       !(isAuthed && NESTED_WHEN_AUTHED_IDS.has(item.id))
   );
   const nestedTopItems = isAuthed
@@ -1459,18 +1462,18 @@ export default function App() {
     }
   }, [activePage, isAuthed, onboardingChecked, onboardingRequired]);
 
-  // Readers (biography_only) have no interviewer surface, so steer them away
-  // from those pages if they arrive via a direct URL/back-button to Biographies.
-  const READER_FORBIDDEN_PAGES = useMemo(
+  // Readers and sealed stewarded accounts have no write surface — steer away
+  // from Interview / Journal / Pins / Review if hit via URL or back button.
+  const WRITE_FORBIDDEN_PAGES = useMemo(
     () => new Set(["interview", "journal", "pins", "review-chats"]),
     [],
   );
   useEffect(() => {
     if (!isAuthed || !onboardingChecked) return;
-    if (planState === "biography_only" && READER_FORBIDDEN_PAGES.has(activePage)) {
+    if (hideWriteSurfaces && WRITE_FORBIDDEN_PAGES.has(activePage)) {
       navigateToPage("biographies", { replace: true });
     }
-  }, [activePage, isAuthed, onboardingChecked, planState, READER_FORBIDDEN_PAGES]);
+  }, [activePage, isAuthed, onboardingChecked, hideWriteSurfaces, WRITE_FORBIDDEN_PAGES]);
 
   useEffect(() => {
     if (activePage !== "admin-onboarding-preview") return;

@@ -141,15 +141,16 @@ export default function StewardshipPage({
     const stewardEmail = (accountExecutor?.email || "").trim();
     const who = stewardEmail ? `${stewardName} (${stewardEmail})` : stewardName;
     const ok = window.confirm(
-      `Send a handoff request to ${who}?\n\n` +
-        "They will be asked to accept Stewardship of your biography. " +
-        "Your interview stays editable until they accept.",
+      `Hand off your biography to ${who}?\n\n` +
+        "When they accept, Stewardship becomes active and your Interview, Journal, Pins, and Review are permanently sealed on this account. " +
+        "You can still explore the biography in Biographies, but you will no longer add new stories here.\n\n" +
+        "Until they accept, your interview stays editable and you can keep using Kinin as usual.",
     );
     if (!ok) return;
     await post(
       "/stewardship/handoff",
       {},
-      `Handoff request sent to ${stewardName}. We've emailed them to accept.`,
+      `Handoff request sent to ${stewardName}. We've emailed them to accept. Your interview stays open until they accept.`,
     );
   }
 
@@ -212,8 +213,18 @@ export default function StewardshipPage({
             <p>
               Status:{" "}
               <strong>{lifecycleLabel(own?.biography_lifecycle_state)}</strong>
-              {own?.interview_sealed ? " · interview sealed (read-only)" : ""}
+              {own?.interview_sealed || interviewSealed ? " · sealed (read-only)" : ""}
             </p>
+            {own?.interview_sealed || interviewSealed ? (
+              <Banner tone="info">
+                <span>
+                  Stewardship is active. Interview, Journal, Pins, and Review are
+                  permanently closed on this account. You can still open your
+                  biography under Biographies; your Account Steward looks after
+                  ongoing care and family access.
+                </span>
+              </Banner>
+            ) : null}
             {own?.own_designation?.status === "handoff_pending" ? (
               <Banner tone="info">
                 <span>
@@ -221,45 +232,71 @@ export default function StewardshipPage({
                   {own.own_designation.steward_name
                     ? ` to ${own.own_designation.steward_name}`
                     : ""}
-                  . Waiting for them to accept. Your interview stays editable until then.
+                  . Waiting for them to accept. Your interview stays editable until
+                  then — once they accept, Interview, Journal, Pins, and Review end
+                  permanently on this account.
                 </span>
               </Banner>
             ) : null}
-            <p className="km-form-help" style={{ fontStyle: "normal", marginTop: 8 }}>
-              Name your Account Steward above first. When you’re ready for them to
-              look after this biography, send a handoff request. Use “I’m still here”
-              if a stewardship request was started and you want to cancel it.
-            </p>
-            <div className="km-row" style={{ marginTop: 12, flexWrap: "wrap", gap: 8 }}>
-              <Button
-                disabled={busy || own?.interview_sealed}
-                onClick={() =>
-                  post("/stewardship/complete", {}, "Biography marked complete.")
-                }
-              >
-                Mark biography complete
-              </Button>
-              <Button
-                disabled={
-                  busy ||
-                  own?.interview_sealed ||
-                  own?.own_designation?.status === "handoff_pending"
-                }
-                onClick={requestHandoff}
-              >
-                {own?.own_designation?.status === "handoff_pending"
-                  ? "Handoff already sent"
-                  : "Hand off to Account Steward"}
-              </Button>
-              <Button
-                disabled={busy}
-                onClick={() =>
-                  post("/stewardship/still-here", {}, "Thanks — we've noted that you're still here.")
-                }
-              >
-                I’m still here
-              </Button>
-            </div>
+            {!(own?.interview_sealed || interviewSealed) ? (
+              <>
+                <p className="km-form-help" style={{ fontStyle: "normal", marginTop: 8 }}>
+                  Name your Account Steward above first. Handing off is an end-of-use
+                  step for storytelling on this account: when they accept, you stop
+                  adding new interview or journal material here. Use “I’m still here”
+                  only if a stewardship request was started and you want to cancel it.
+                </p>
+                <div className="km-row" style={{ marginTop: 12, flexWrap: "wrap", gap: 8 }}>
+                  <Button
+                    disabled={busy}
+                    onClick={() =>
+                      post("/stewardship/complete", {}, "Biography marked complete.")
+                    }
+                    title="Marks your biography complete for lifecycle timing. Does not seal or hand off."
+                  >
+                    Mark biography complete
+                  </Button>
+                  <Button
+                    disabled={
+                      busy || own?.own_designation?.status === "handoff_pending"
+                    }
+                    onClick={requestHandoff}
+                    title="Emails your Account Steward to accept. When they accept, storytelling features seal permanently."
+                  >
+                    {own?.own_designation?.status === "handoff_pending"
+                      ? "Handoff already sent"
+                      : "Hand off to Account Steward"}
+                  </Button>
+                  <Button
+                    disabled={busy}
+                    onClick={() =>
+                      post(
+                        "/stewardship/still-here",
+                        {},
+                        "Thanks — we've noted that you're still here.",
+                      )
+                    }
+                    title="Cancels a pending stewardship request or quiet outreach. Does not start a handoff."
+                  >
+                    I’m still here
+                  </Button>
+                </div>
+                <ul className="km-form-help" style={{ fontStyle: "normal", marginTop: 10 }}>
+                  <li>
+                    <strong>Mark biography complete</strong> — optional milestone; you
+                    can still keep interviewing.
+                  </li>
+                  <li>
+                    <strong>Hand off to Account Steward</strong> — asks them to take
+                    over. Sealing happens only after they accept.
+                  </li>
+                  <li>
+                    <strong>I’m still here</strong> — cancels a claim or quiet
+                    outreach if someone started a stewardship request about you.
+                  </li>
+                </ul>
+              </>
+            ) : null}
           </div>
         )}
       </Frame>
@@ -290,18 +327,23 @@ export default function StewardshipPage({
                     <div className="km-prose" style={{ maxWidth: 560, marginBottom: 10 }}>
                       <p>
                         <strong>They asked you to take over.</strong> Accepting
-                        activates Stewardship and seals their interview. Choose how
-                        you’d like to keep the biography (billing comes later — pick
-                        the mode that fits for now):
+                        activates Stewardship and permanently seals their Interview,
+                        Journal, Pins, and Review. Choose how you’d like to keep the
+                        biography (billing comes later — pick the mode that fits for
+                        now):
                       </p>
                       <ul>
                         <li>
-                          <strong>Legacy Stewardship</strong> — explore the biography
-                          and invite family.
+                          <strong>Legacy Stewardship ($4.99)</strong> — explore the
+                          biography with fuller chat and invite family.
                         </li>
                         <li>
-                          <strong>Dormant Archive</strong> — keep it stored with
-                          limited chat.
+                          <strong>Dormant Archive ($0.99)</strong> — keep it stored
+                          with limited chat.
+                        </li>
+                        <li>
+                          <strong>Decline</strong> — turn down this handoff; they keep
+                          control of their account.
                         </li>
                       </ul>
                       <div className="km-row" style={{ marginTop: 10, flexWrap: "wrap", gap: 8 }}>
@@ -315,7 +357,7 @@ export default function StewardshipPage({
                                 owner_user_id: role.owner_user_id,
                                 billing_plan: "legacy",
                               },
-                              "Stewardship accepted (Legacy). The interview is now sealed.",
+                              "Stewardship accepted (Legacy). Their interview is now sealed.",
                             )
                           }
                         >
@@ -330,7 +372,7 @@ export default function StewardshipPage({
                                 owner_user_id: role.owner_user_id,
                                 billing_plan: "dormant",
                               },
-                              "Stewardship accepted (Dormant Archive). The interview is now sealed.",
+                              "Stewardship accepted (Dormant Archive). Their interview is now sealed.",
                             )
                           }
                         >
@@ -359,10 +401,26 @@ export default function StewardshipPage({
                     <div className="km-prose" style={{ maxWidth: 560, marginBottom: 10 }}>
                       <p>
                         You’re named as their Account Steward, but they haven’t handed
-                        the biography off yet. No access until they hand it off, or
-                        until you start a stewardship request if they can no longer
-                        manage the account themselves.
+                        the biography off yet. You can’t open it until they hand it
+                        off — or until you start a stewardship request because they
+                        can no longer manage the account themselves.
                       </p>
+                      <ul>
+                        <li>
+                          <strong>Request stewardship</strong> — for death or lasting
+                          incapacity when they can’t hand off. Starts a protective
+                          waiting period (they can cancel with “I’m still here”).
+                        </li>
+                        <li>
+                          <strong>I’m checking on them</strong> — pauses quiet
+                          reminders while you look into things. Does not open the
+                          biography.
+                        </li>
+                        <li>
+                          <strong>Decline role</strong> — step down as their named
+                          Account Steward.
+                        </li>
+                      </ul>
                       <div className="km-row" style={{ marginTop: 10, flexWrap: "wrap", gap: 8 }}>
                         <Button
                           disabled={busy}
@@ -414,14 +472,23 @@ export default function StewardshipPage({
                   <div className="km-row" style={{ marginTop: 10, flexWrap: "wrap", gap: 8 }}>
                   {role.status === "active" ? (
                     <>
+                      <p style={{ width: "100%", margin: "0 0 4px" }}>
+                        Stewardship is active. Their storytelling features are sealed;
+                        you can explore the biography and invite family.
+                      </p>
                       <Button
                         variant="primary"
                         disabled={busy}
                         onClick={() => onOpenBiography?.(role.owner_user_id)}
+                        title="Open their sealed biography to explore."
                       >
                         Open biography
                       </Button>
-                      <Button disabled={busy} onClick={() => exportBio(role.owner_user_id)}>
+                      <Button
+                        disabled={busy}
+                        onClick={() => exportBio(role.owner_user_id)}
+                        title="Download a JSON copy of the biography package."
+                      >
                         Export copy
                       </Button>
                       <Button
@@ -432,6 +499,7 @@ export default function StewardshipPage({
                             billing_plan: role.billing_plan === "dormant" ? "legacy" : "dormant",
                           })
                         }
+                        title="Change between Legacy (fuller explore) and Dormant Archive (limited)."
                       >
                         Switch to {role.billing_plan === "dormant" ? "Legacy Stewardship ($4.99)" : "Dormant Archive ($0.99)"}
                       </Button>
@@ -444,6 +512,7 @@ export default function StewardshipPage({
                             email: "",
                           })
                         }
+                        title="Name someone who can take over Stewardship after you."
                       >
                         Name successor steward
                       </Button>
@@ -456,6 +525,7 @@ export default function StewardshipPage({
                             relationship: "",
                           })
                         }
+                        title="Invite a family member to explore this sealed biography."
                       >
                         Invite family access
                       </Button>
@@ -467,6 +537,7 @@ export default function StewardshipPage({
                             steward_email: role.steward_email,
                           })
                         }
+                        title="Step down as active steward. Does not unseal their account by itself."
                       >
                         Resign stewardship
                       </Button>

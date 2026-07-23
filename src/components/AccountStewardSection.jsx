@@ -143,8 +143,10 @@ export default function AccountStewardSection({
 
       {interviewSealed ? (
         <div className="km-form-help" style={{ fontStyle: "normal", marginTop: 14 }}>
-          This biography is under active Stewardship and the interview is sealed.
-          Use the sections below to manage handoff and family access.
+          Stewardship is active and this biography is sealed. Interview, Journal,
+          Pins, and Review are permanently closed here. Your Account Steward can
+          explore the biography and manage family access from their Stewardship
+          settings.
         </div>
       ) : null}
     </Frame>

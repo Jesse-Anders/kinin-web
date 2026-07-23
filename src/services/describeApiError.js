@@ -75,6 +75,8 @@ const CODE_MESSAGES = {
   role_not_active: "Stewardship isn't active for this biography yet.",
   cannot_decline_active: "You can't decline after Stewardship is already active. Resign instead.",
   cannot_remove_active_steward: "An active Account Steward can't be removed this way.",
+  interview_sealed:
+    "This biography is under Stewardship and sealed. Interview, journal, pins, and review are permanently closed on this account.",
 
   // Contact / misc
   email_required: "Please enter an email address.",
@@ -200,7 +202,8 @@ export function describeApiError(err, opts = {}) {
   if (
     code === "biography_disabled_by_owner" ||
     code === "no_memories_available" ||
-    code === "onboarding_required"
+    code === "onboarding_required" ||
+    code === "interview_sealed"
   ) {
     return { message: CODE_MESSAGES[code], tone: "info" };
   }
