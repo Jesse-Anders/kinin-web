@@ -52,8 +52,9 @@ export default function MyAccountPage({
   const selectedDobText = formatDateLong(bioProfile.date_of_birth);
   const derivedAge = deriveAgeFromDateOfBirth(bioProfile.date_of_birth);
 
-  const executorStatus = accountExecutor?.status || "";
-  const executorStatusNorm = String(executorStatus).trim().toLowerCase();
+  // Prefer the prop (from App); fall back to the executor object.
+  const resolvedExecutorStatus = executorStatus || accountExecutor?.status || "";
+  const executorStatusNorm = String(resolvedExecutorStatus).trim().toLowerCase();
   const hasInviteBeenSent =
     !!accountExecutor?.last_invite_sent_at ||
     executorStatusNorm === "pending" ||
@@ -73,8 +74,8 @@ export default function MyAccountPage({
     executorStatusLabel = "Saved (not invited yet)";
   } else if (hasInviteBeenSent) {
     executorStatusLabel = "Invite sent (awaiting confirmation)";
-  } else if (executorStatus) {
-    executorStatusLabel = executorStatus;
+  } else if (resolvedExecutorStatus) {
+    executorStatusLabel = resolvedExecutorStatus;
   }
   const resendButtonLabel = hasInviteBeenSent ? "Resend invite" : "Send invite";
 
@@ -228,7 +229,7 @@ export default function MyAccountPage({
               Manage family access from the Stewardship page.
             </div>
           ) : null}
-          {hasExecutorDetails && (executorStatus === "confirmed" || accountExecutor?.status === "confirmed") && !interviewSealed ? (
+          {hasExecutorDetails && (resolvedExecutorStatus === "confirmed" || accountExecutor?.status === "confirmed") && !interviewSealed ? (
             <div className="km-row" style={{ marginTop: 14 }}>
               <Button onClick={onOpenStewardship} disabled={profileBusy}>
                 Open Stewardship
