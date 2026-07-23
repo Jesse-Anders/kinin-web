@@ -34,11 +34,11 @@ export const ALERTS = [
   {
     id: "trusted-contact",
     tone: "info",
-    title: "Add a trusted contact",
+    title: "Add an Account Steward",
     body:
-      "Naming someone you trust means your Kinin story can reach the people who matter most down the road. It only takes a minute, and you can change or remove it anytime.",
-    cta: { label: "Add a trusted contact", page: "account" },
-    // Show ~2 weeks after signup if the user still has no trusted contact.
+      "Name someone who can look after your Kinin biography if you can no longer maintain it. Confirming the invite does not give them access yet — Stewardship activates only when needed.",
+    cta: { label: "Add an Account Steward", page: "account" },
+    // Show ~2 weeks after signup if the user still has no Account Steward.
     isEligible(ctx) {
       if (ctx.hasExecutor) return false;
       const age = daysBetween(ctx.signupAt, ctx.nowMs);

@@ -1031,7 +1031,18 @@ export default function JournalPage({
               </div>
             </Frame>
           ) : (
-            <div className="km-chat-empty">Select an entry or start a new one to begin writing.</div>
+            <div className="km-chat-empty">
+              <div>Select an entry or start a new one to begin writing.</div>
+              <div style={{ marginTop: 18 }}>
+                <Button
+                  variant="primary"
+                  onClick={handleNewEntry}
+                  disabled={!isAuthed || creating}
+                >
+                  {creating ? <Spinner /> : <Plus size={16} strokeWidth={1.5} />} Start a new entry
+                </Button>
+              </div>
+            </div>
           )}
         </div>
 

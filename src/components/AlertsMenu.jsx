@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Bell, Clock, X } from "lucide-react";
 
 // Top-right notification widget, shown beside the Help control. Surfaces gentle,
-// non-ominous nudges (e.g. "add a trusted contact" ~2 weeks after signup, and
+// non-ominous nudges (e.g. "add an Account Steward" ~2 weeks after signup, and
 // future new-feature announcements). Renders nothing when there are no active
 // alerts. Each alert offers one primary action plus "Remind me later" (snooze)
 // and "Dismiss" (permanently clear). State is persisted by the parent.

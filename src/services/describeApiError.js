@@ -63,6 +63,19 @@ const CODE_MESSAGES = {
   turn_in_progress: "Still finishing your last reply. Please wait a moment.",
   request_in_progress: "Still working on your last request. Please wait a moment.",
 
+  // Stewardship
+  account_steward_required: "Name and invite an Account Steward in My Account first.",
+  account_steward_unconfirmed: "Your Account Steward needs to confirm their invitation before you can hand off.",
+  stewardship_not_found: "That Stewardship role isn't available.",
+  handoff_not_pending: "There isn't a handoff waiting to accept.",
+  already_stewarded: "Stewardship is already active for this biography.",
+  attestation_required: "Please write a short attestation before submitting.",
+  invalid_claim_reason: "Please choose a valid reason for the Stewardship request.",
+  invalid_billing_plan: "Please choose Legacy Stewardship or Dormant Archive.",
+  role_not_active: "Stewardship isn't active for this biography yet.",
+  cannot_decline_active: "You can't decline after Stewardship is already active. Resign instead.",
+  cannot_remove_active_steward: "An active Account Steward can't be removed this way.",
+
   // Contact / misc
   email_required: "Please enter an email address.",
   invalid_email: "Please enter a valid email address.",

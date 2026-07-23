@@ -24,7 +24,7 @@ function formatDateLong(dateOfBirth) {
   return new Intl.DateTimeFormat(undefined, { dateStyle: "long" }).format(dt);
 }
 
-// "My Account" — identity, sign-in/security, trusted contact, and the danger
+// "My Account" — identity, sign-in/security, Account Steward, and the danger
 // zone. Category settings (voice, reminders, biographies, interview) live on the
 // separate Settings pages. Each section saves on its own so a partial save
 // never clobbers another section.
@@ -68,7 +68,7 @@ export default function MyAccountPage({
     !!executorEmailNorm && !!executorConfirmEmailNorm && executorEmailNorm !== executorConfirmEmailNorm;
   let executorStatusLabel = "";
   if (executorStatusNorm === "confirmed" || !!accountExecutor?.confirmed_at) {
-    executorStatusLabel = "Confirmed";
+    executorStatusLabel = "Confirmed (no access yet)";
   } else if (executorStatusNorm === "saved_not_invited") {
     executorStatusLabel = "Saved (not invited yet)";
   } else if (hasInviteBeenSent) {
@@ -153,25 +153,25 @@ export default function MyAccountPage({
 
         {security ? <AccountSecuritySection {...security} /> : null}
 
-        <Frame label="Trusted contact">
+        <Frame label="Account Steward">
           <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
             <p>
               Optional but strongly encouraged. Name a family member or close
-              friend who can steward your biography if you can no longer
-              maintain it. Confirming the invite does not give them access yet —
-              stewardship begins only if you hand the biography off, or through
-              a verified request later.
+              friend as your Account Steward — someone who can look after your
+              biography if you can no longer maintain it. Confirming the invite
+              does not give them access yet. Stewardship begins only if you hand
+              the biography off, or through a verified request later.
             </p>
           </div>
           <div className="km-form-grid">
-            <FormRow label="Executor name">
+            <FormRow label="Steward name">
               <TextInput
                 value={accountExecutor?.name || ""}
                 onChange={(e) => setAccountExecutor((p) => ({ ...p, name: e.target.value }))}
                 disabled={profileBusy}
               />
             </FormRow>
-            <FormRow label="Executor email">
+            <FormRow label="Steward email">
               <TextInput
                 value={accountExecutor?.email || ""}
                 onChange={(e) => setAccountExecutor((p) => ({ ...p, email: e.target.value }))}
@@ -180,7 +180,7 @@ export default function MyAccountPage({
               />
             </FormRow>
             <FormRow
-              label="Confirm executor email"
+              label="Confirm steward email"
               error={showExecutorEmailMismatch ? "Email addresses do not match." : ""}
             >
               <TextInput
@@ -194,7 +194,7 @@ export default function MyAccountPage({
 
           {hasExistingExecutor ? (
             <div className="km-form-help" style={{ fontStyle: "normal", marginTop: 18 }}>
-              Existing executor on file: <strong>{accountExecutor.name}</strong> ({accountExecutor.email})
+              Account Steward on file: <strong>{accountExecutor.name}</strong> ({accountExecutor.email})
             </div>
           ) : null}
           {executorStatusLabel ? (
@@ -209,7 +209,7 @@ export default function MyAccountPage({
               onClick={() => saveAccountExecutor({ sendInvite: false })}
               disabled={profileBusy || interviewSealed}
             >
-              Save contact
+              Save steward
             </Button>
             {hasExecutorDetails ? (
               <>
@@ -217,20 +217,21 @@ export default function MyAccountPage({
                   {resendButtonLabel}
                 </Button>
                 <Button onClick={removeAccountExecutor} disabled={profileBusy || interviewSealed}>
-                  Remove contact
+                  Remove steward
                 </Button>
               </>
             ) : null}
           </div>
           {interviewSealed ? (
             <div className="km-form-help" style={{ fontStyle: "normal", marginTop: 14 }}>
-              This biography is stewarded and sealed. Manage family access from Stewardship.
+              This biography is under active Stewardship and the interview is sealed.
+              Manage family access from the Stewardship page.
             </div>
           ) : null}
           {hasExecutorDetails && (executorStatus === "confirmed" || accountExecutor?.status === "confirmed") && !interviewSealed ? (
             <div className="km-row" style={{ marginTop: 14 }}>
               <Button onClick={onOpenStewardship} disabled={profileBusy}>
-                Hand off / stewardship
+                Open Stewardship
               </Button>
             </div>
           ) : null}

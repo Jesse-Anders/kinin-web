@@ -1744,10 +1744,10 @@ export default function App() {
     const hasAny = !!(draft.name || draft.email || draft.confirmEmail);
     if (!hasAny) return { ok: true, draft, hasAny: false };
     if (!draft.name || !draft.email || !draft.confirmEmail) {
-      return { ok: false, message: "Account executor requires name, email, and confirm email." };
+      return { ok: false, message: "Account Steward requires name, email, and confirm email." };
     }
     if (draft.email !== draft.confirmEmail) {
-      return { ok: false, message: "Account executor email and confirm email must match." };
+      return { ok: false, message: "Account Steward email and confirm email must match." };
     }
     return { ok: true, draft, hasAny: true };
   }
@@ -3137,7 +3137,7 @@ export default function App() {
       if (executorNotice) {
         setProfileNotice(executorNotice);
       } else if (payload.account_executor && !markOnboardingCompleted) {
-        setProfileNotice("Account executor invitation email sent.");
+        setProfileNotice("Account Steward invitation email sent.");
       }
       return true;
     } catch (e) {
@@ -3389,8 +3389,8 @@ export default function App() {
     }
   }
 
-  // A trusted contact (account executor) exists once both name and email are set
-  // (any invite status counts). Drives the "add a trusted contact" alert.
+  // An Account Steward exists once both name and email are set (any invite
+  // status counts). Drives the "Add an Account Steward" alert.
   const hasAccountExecutor = Boolean(
     (accountExecutor?.name || "").trim() && (accountExecutor?.email || "").trim(),
   );
@@ -3629,7 +3629,7 @@ export default function App() {
       return false;
     }
     if (!validation.hasAny) {
-      setProfileError("Enter your trusted contact's name and email.");
+      setProfileError("Enter your Account Steward's name and email.");
       return false;
     }
     setProfileBusy(true);
@@ -3643,7 +3643,7 @@ export default function App() {
       });
       applyAccountExecutorFromPayload(parsed);
       setProfileNotice(
-        notice || (sendInvite ? "Trusted contact saved and invited." : "Trusted contact saved."),
+        notice || (sendInvite ? "Account Steward saved and invited." : "Account Steward saved."),
       );
       return true;
     } catch (e) {
@@ -3661,18 +3661,18 @@ export default function App() {
       !!accountExecutor?.last_invite_sent_at || statusNorm === "pending" || statusNorm === "confirmed";
     const firstSend = !hasInviteBeenSent;
     if (!validation.ok) {
-      setProfileError(validation.message || "Please complete account executor details before sending an invite.");
+      setProfileError(validation.message || "Please complete Account Steward details before sending an invite.");
       return;
     }
     if (!validation.hasAny) {
-      setProfileError("Enter account executor details before sending an invite.");
+      setProfileError("Enter Account Steward details before sending an invite.");
       return;
     }
     await saveAccountExecutor({
       sendInvite: true,
       notice: firstSend
-        ? "Account executor invitation email sent."
-        : "Account executor invitation email resent.",
+        ? "Account Steward invitation email sent."
+        : "Account Steward invitation email resent.",
     });
   }
 
@@ -3683,7 +3683,7 @@ export default function App() {
     try {
       const parsed = await putProfile({ account_executor: null });
       applyProfilePayload(parsed);
-      setProfileNotice("Account executor removed.");
+      setProfileNotice("Account Steward removed.");
     } catch (e) {
       setProfileErrorFromException(e);
     } finally {

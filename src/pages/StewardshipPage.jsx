@@ -24,14 +24,32 @@ function parseApiPayload(text) {
 
 function statusLabel(status) {
   const map = {
-    designated: "Trusted contact (confirmed)",
-    handoff_pending: "Handoff waiting for you",
-    claim_pending: "Stewardship request pending",
-    active: "Legacy steward (active)",
-    declined: "Declined",
+    designated: "Account Steward confirmed — no access yet",
+    handoff_pending: "Handoff waiting for you to accept",
+    claim_pending: "Stewardship request pending (waiting period)",
+    active: "Stewardship active",
+    declined: "Role declined",
     resigned: "Resigned",
   };
   return map[status] || status || "Unknown";
+}
+
+function lifecycleLabel(state) {
+  const map = {
+    active_in_progress: "Active — interview in progress",
+    active_complete: "Active — marked complete",
+    outreach: "Quiet outreach in progress",
+    dormant: "Dormant hold",
+    stewarded: "Under Stewardship",
+    closed: "Closed",
+  };
+  return map[state] || state || "Active — interview in progress";
+}
+
+function billingLabel(plan) {
+  if (plan === "legacy") return "Legacy Stewardship ($4.99/mo)";
+  if (plan === "dormant") return "Dormant Archive ($0.99/mo)";
+  return plan || "";
 }
 
 export default function StewardshipPage({
@@ -67,7 +85,7 @@ export default function StewardshipPage({
       setOwn(parsed?.own_lifecycle || null);
     } catch (e) {
       if (isAuthExpiredError(e)) return;
-      setError(describeApiErrorMessage(e, "Could not load stewardship."));
+      setError(describeApiErrorMessage(e, "Could not load Stewardship."));
     } finally {
       setLoading(false);
     }
@@ -120,19 +138,20 @@ export default function StewardshipPage({
 
   if (!isAuthed) {
     return (
-      <Section eyebrow="Stewardship" title="Trusted contact role">
+      <Section eyebrow="Stewardship" title="Account Steward roles">
         <Banner tone="info">Sign in to see biographies you’re named to steward.</Banner>
       </Section>
     );
   }
 
   return (
-    <Section eyebrow="Stewardship" title="Trusted contact & legacy steward">
+    <Section eyebrow="Stewardship" title="Account Stewardship">
       <div className="km-prose" style={{ maxWidth: 640, marginBottom: 18 }}>
         <p>
-          When someone names you as their trusted contact, it appears here.
-          Designation alone does not open their biography. Stewardship begins
-          only after a voluntary handoff or a verified request.
+          When someone names you as their Account Steward, the role appears here.
+          Confirming the invite does not open their biography. Stewardship begins
+          only after a voluntary handoff from them, or after a verified stewardship
+          request with a protective waiting period.
         </p>
       </div>
 
@@ -154,15 +173,20 @@ export default function StewardshipPage({
           <div className="km-prose" style={{ maxWidth: 560 }}>
             <p>
               Status:{" "}
-              <strong>{own?.biography_lifecycle_state || "active_in_progress"}</strong>
-              {own?.interview_sealed ? " · interview sealed" : ""}
+              <strong>{lifecycleLabel(own?.biography_lifecycle_state)}</strong>
+              {own?.interview_sealed ? " · interview sealed (read-only)" : ""}
+            </p>
+            <p className="km-form-help" style={{ fontStyle: "normal", marginTop: 8 }}>
+              Name your Account Steward in My Account first. From here you can mark
+              your biography complete, hand it off when you’re ready, or confirm
+              you’re still here if a request was started.
             </p>
             <div className="km-row" style={{ marginTop: 12, flexWrap: "wrap", gap: 8 }}>
               <Button disabled={busy || own?.interview_sealed} onClick={() => post("/stewardship/complete", {})}>
                 Mark biography complete
               </Button>
               <Button disabled={busy || own?.interview_sealed} onClick={() => post("/stewardship/handoff", {})}>
-                Hand off to trusted contact
+                Hand off to Account Steward
               </Button>
               <Button disabled={busy} onClick={() => post("/stewardship/still-here", {})}>
                 I’m still here
@@ -173,12 +197,12 @@ export default function StewardshipPage({
       </Frame>
 
       <div style={{ marginTop: 20 }}>
-      <Frame label="Roles you’ve been given">
+      <Frame label="Biographies you steward">
         {loading ? (
           <Skeleton height={80} />
         ) : roles.length === 0 ? (
           <div className="km-prose">
-            <p>No one has named you as a trusted contact yet.</p>
+            <p>No one has named you as their Account Steward yet.</p>
           </div>
         ) : (
           <div style={{ display: "grid", gap: 16 }}>
@@ -190,8 +214,8 @@ export default function StewardshipPage({
                 </div>
                 <div className="km-form-help" style={{ fontStyle: "normal", marginTop: 4 }}>
                   {statusLabel(role.status)}
-                  {role.billing_plan ? ` · plan: ${role.billing_plan}` : ""}
-                  {role.claim_cooling_ends_at ? ` · cooling until ${role.claim_cooling_ends_at}` : ""}
+                  {role.billing_plan ? ` · ${billingLabel(role.billing_plan)}` : ""}
+                  {role.claim_cooling_ends_at ? ` · waiting period ends ${role.claim_cooling_ends_at}` : ""}
                 </div>
                 <div className="km-row" style={{ marginTop: 10, flexWrap: "wrap", gap: 8 }}>
                   {role.status === "handoff_pending" ? (
@@ -206,7 +230,7 @@ export default function StewardshipPage({
                           })
                         }
                       >
-                        Accept handoff ($4.99 Legacy)
+                        Accept — Legacy Stewardship ($4.99)
                       </Button>
                       <Button
                         disabled={busy}
@@ -217,7 +241,7 @@ export default function StewardshipPage({
                           })
                         }
                       >
-                        Accept as Dormant ($0.99)
+                        Accept — Dormant Archive ($0.99)
                       </Button>
                     </>
                   ) : null}
@@ -256,7 +280,7 @@ export default function StewardshipPage({
                           })
                         }
                       >
-                        Decline role
+                        Decline Account Steward role
                       </Button>
                     </>
                   ) : null}
@@ -281,7 +305,7 @@ export default function StewardshipPage({
                           })
                         }
                       >
-                        Switch to {role.billing_plan === "dormant" ? "Legacy $4.99" : "Dormant $0.99"}
+                        Switch to {role.billing_plan === "dormant" ? "Legacy Stewardship ($4.99)" : "Dormant Archive ($0.99)"}
                       </Button>
                       <Button
                         disabled={busy}
@@ -293,7 +317,7 @@ export default function StewardshipPage({
                           })
                         }
                       >
-                        Name successor
+                        Name successor steward
                       </Button>
                       <Button
                         disabled={busy}
@@ -316,7 +340,7 @@ export default function StewardshipPage({
                           })
                         }
                       >
-                        Resign
+                        Resign stewardship
                       </Button>
                     </>
                   ) : null}
@@ -335,9 +359,11 @@ export default function StewardshipPage({
             <p>
               By submitting, you attest that the account holder is no longer willing
               or able to maintain this Kinin account, and that you are their
-              designated trusted contact. False statements may result in account
+              designated Account Steward. False statements may result in account
               suspension. A protective waiting period applies unless a death
-              certificate key is provided for expedited review.
+              certificate reference is provided for expedited review. During the
+              waiting period, the account holder can cancel by signing in or choosing
+              “I’m still here.”
             </p>
           </div>
           <div className="km-form-grid">
@@ -361,12 +387,12 @@ export default function StewardshipPage({
                 rows={4}
               />
             </FormRow>
-            <FormRow label="Death certificate key (optional, expedites)">
+            <FormRow label="Death certificate reference (optional, expedites)">
               <TextInput
                 value={claimDraft.death_certificate_key}
                 onChange={(e) => setClaimDraft((p) => ({ ...p, death_certificate_key: e.target.value }))}
                 disabled={busy}
-                placeholder="s3 key or support reference"
+                placeholder="Support reference or document key"
               />
             </FormRow>
           </div>
@@ -379,7 +405,7 @@ export default function StewardshipPage({
                 setClaimDraft({ owner_user_id: "", reason: "death", attestation: "", death_certificate_key: "" });
               }}
             >
-              Submit request
+              Submit stewardship request
             </Button>
             <Button disabled={busy} onClick={() => setClaimDraft({ owner_user_id: "", reason: "death", attestation: "", death_certificate_key: "" })}>
               Cancel
@@ -391,7 +417,13 @@ export default function StewardshipPage({
 
       {successorDraft.owner_user_id ? (
         <div style={{ marginTop: 20 }}>
-        <Frame label="Successor trusted contact">
+        <Frame label="Successor Account Steward">
+          <div className="km-prose" style={{ maxWidth: 560, marginBottom: 12 }}>
+            <p>
+              Name someone who can take over Stewardship if you can no longer serve.
+              They will be invited to confirm, just as you were.
+            </p>
+          </div>
           <div className="km-form-grid">
             <FormRow label="Name">
               <TextInput
@@ -435,6 +467,13 @@ export default function StewardshipPage({
       {shareDraft.owner_user_id ? (
         <div style={{ marginTop: 20 }}>
         <Frame label="Invite family access">
+          <div className="km-prose" style={{ maxWidth: 560, marginBottom: 12 }}>
+            <p>
+              Invite a family member to explore this sealed biography. They can ask
+              questions grounded in the memories already shared — they cannot edit
+              the interview.
+            </p>
+          </div>
           <div className="km-form-grid">
             <FormRow label="Email">
               <TextInput

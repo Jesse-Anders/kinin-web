@@ -58,9 +58,9 @@ export default function ExecutorAcceptPage({ apiBase }) {
         }
         const out = parsed || {};
         if (out.status === "already_confirmed") {
-          setStatusText("This account executor request was already confirmed.");
+          setStatusText("This Account Steward invitation was already confirmed.");
         } else {
-          setStatusText("You have confirmed this account executor request.");
+          setStatusText("Thank you — you have confirmed this Account Steward invitation.");
         }
       } catch (e) {
         const raw = e?.message || String(e);
@@ -83,28 +83,31 @@ export default function ExecutorAcceptPage({ apiBase }) {
 
   return (
     <Section
-      eyebrow="Account executor"
+      eyebrow="Account Steward"
       title={
         <>
           A letter of<br /><em>confirmation.</em>
         </>
       }
     >
-      <Frame label="Trusted contact">
+      <Frame label="Account Steward invitation">
         <div className="km-prose" style={{ maxWidth: 640 }}>
           <p>
             {params.owner_name
-              ? <>Thank you for being <strong>{params.owner_name}'s</strong> trusted account executor in Kinin.</>
-              : "Thank you for being a trusted account executor in Kinin."}
+              ? <>Thank you for agreeing to be <strong>{params.owner_name}'s</strong> Account Steward on Kinin.</>
+              : "Thank you for agreeing to be an Account Steward on Kinin."}
           </p>
           <p>
             Kinin is an AI biographer where people share their stories,
-            memories, and life experiences over time. Being someone's
-            trusted contact means they trust you to steward the record of their
-            life if they can no longer do so themselves. Confirming this
-            invitation does not give you access to their biography yet —
-            stewardship activates only through a clear handoff or a verified
-            request when the time comes.
+            memories, and life experiences over time. An Account Steward is
+            someone trusted to look after the record of a life if the account
+            holder can no longer do so themselves.
+          </p>
+          <p>
+            Confirming this invitation does <strong>not</strong> give you access
+            to their biography yet. Stewardship activates only through a clear
+            handoff from them, or through a verified request when the time comes.
+            Until then, nothing changes on their account.
           </p>
         </div>
 
