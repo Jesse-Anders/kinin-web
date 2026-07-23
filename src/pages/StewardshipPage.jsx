@@ -472,6 +472,7 @@ export default function StewardshipPage({
                       </Button>
                     </>
                   ) : null}
+                  </div>
                 </div>
               </div>
             ))}
