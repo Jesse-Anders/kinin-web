@@ -71,7 +71,8 @@ const CODE_MESSAGES = {
   already_stewarded: "Stewardship is already active for this biography.",
   attestation_required: "Please write a short attestation before submitting.",
   invalid_claim_reason: "Please choose a valid reason for the Stewardship request.",
-  invalid_billing_plan: "Please choose Legacy Stewardship or Dormant Archive.",
+  invalid_billing_plan:
+    "Please choose Legacy Stewardship ($4.99/mo) or Dormant Archive (free).",
   role_not_active: "Stewardship isn't active for this biography yet.",
   cannot_decline_active: "You can't decline after Stewardship is already active. Resign instead.",
   cannot_remove_active_steward: "An active Account Steward can't be removed this way.",

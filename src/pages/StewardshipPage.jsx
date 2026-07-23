@@ -52,7 +52,7 @@ function lifecycleLabel(state) {
 
 function billingLabel(plan) {
   if (plan === "legacy") return "Legacy Stewardship ($4.99/mo)";
-  if (plan === "dormant") return "Dormant Archive ($0.99/mo)";
+  if (plan === "dormant") return "Dormant Archive (free)";
   return plan || "";
 }
 
@@ -401,8 +401,9 @@ export default function StewardshipPage({
                           help={
                             <>
                               <strong>Accept stewardship transfer</strong> — take over
-                              care, family invites, and the current Legacy or Dormant
-                              plan for this biography.
+                              care and family invites. You inherit the current plan
+                              (Legacy $4.99/mo or free Dormant Archive) and can switch
+                              later.
                             </>
                           }
                         >
@@ -453,8 +454,8 @@ export default function StewardshipPage({
                       <p>
                         <strong>They asked you to take over.</strong> Accepting
                         activates Stewardship and permanently seals their Interview,
-                        Journal, Pins, and Review. Billing comes later — pick the mode
-                        that fits for now.
+                        Journal, Pins, and Review. Choose how you’d like to keep the
+                        biography for now — you can change later.
                       </p>
                       <div style={{ display: "grid", gap: 16, marginTop: 12 }}>
                         <ActionBlock
@@ -485,8 +486,9 @@ export default function StewardshipPage({
                         <ActionBlock
                           help={
                             <>
-                              <strong>Accept handoff — Dormant ($0.99/mo)</strong> —
-                              keep the biography stored with limited chat.
+                              <strong>Accept handoff — Dormant Archive (free)</strong> —
+                              keep the biography stored with chat paused. No charge.
+                              Upgrade to Legacy later if you want explore chat.
                             </>
                           }
                         >
@@ -499,11 +501,11 @@ export default function StewardshipPage({
                                   owner_user_id: role.owner_user_id,
                                   billing_plan: "dormant",
                                 },
-                                "Stewardship accepted (Dormant Archive). Their biography is now completed.",
+                                "Stewardship accepted (Dormant Archive — free). Their biography is now completed.",
                               )
                             }
                           >
-                            Accept handoff — Dormant ($0.99/mo)
+                            Accept handoff — Dormant Archive (free)
                           </Button>
                         </ActionBlock>
                         <ActionBlock
@@ -625,21 +627,22 @@ export default function StewardshipPage({
                       const ownerName = role.owner_display_name || "this person";
                       const switchToDormant = role.billing_plan !== "dormant";
                       const switchLabel = switchToDormant
-                        ? "Switch to Dormant Archive ($0.99)"
-                        : "Switch to Legacy Stewardship ($4.99)";
+                        ? "Switch to Dormant Archive (free)"
+                        : "Switch to Legacy Stewardship ($4.99/mo)";
                       const switchHelp = switchToDormant
-                        ? "keep the biography stored with limited chat (lower ongoing care)."
-                        : "restore fuller explore/chat and family-invite tools for this biography.";
+                        ? "archive the biography for free with chat paused. No charge to you as steward."
+                        : "enable fuller explore/chat and family-invite tools for this biography ($4.99/mo).";
                       return (
                         <div style={{ display: "grid", gap: 16, maxWidth: 560 }}>
                           <p style={{ margin: 0 }}>
                             Stewardship is active for {ownerName}. Their biography is
                             completed — storytelling on that account is closed. Use the
-                            actions below to care for it. To pass this biography to
-                            someone else for safekeeping or payment, use Hand off
-                            Stewardship (they must already have a Kinin account).
-                            Biographies you steward also move with you if your own
-                            account later becomes stewarded.
+                            actions below to care for it. Dormant Archive is free;
+                            Legacy Stewardship is $4.99/mo when you want explore chat.
+                            To pass this biography to someone else for safekeeping, use
+                            Hand off Stewardship (they must already have a Kinin
+                            account). Biographies you steward also move with you if
+                            your own account later becomes stewarded.
                           </p>
                           {role.pending_transfer_to_email ? (
                             <Banner tone="info">
@@ -756,7 +759,8 @@ export default function StewardshipPage({
                                 <>
                                   <strong>Hand off Stewardship</strong> — transfer care
                                   of {ownerName}’s completed biography to another
-                                  person who already has a Kinin account. They get an
+                                  person who already has a Kinin account. They inherit
+                                  the current plan (Dormant stays free). They get an
                                   email and must accept in Settings → Stewardship. You
                                   keep explore access afterward unless access is
                                   removed later.
