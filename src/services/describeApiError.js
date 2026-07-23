@@ -81,7 +81,7 @@ const CODE_MESSAGES = {
   legacy_chat_disabled:
     "Archived Biography. Chat is paused on this plan. The Legacy Steward determines access for this biography.",
   steward_account_required:
-    "That person needs a Kinin account before you can hand off Stewardship to them.",
+    "That person needs a Kinin account before you can hand off Stewardship to them. Ask them to sign up (or confirm their Account Steward invite) first.",
   cannot_transfer_to_self: "You can't hand off Stewardship to yourself.",
   not_steward_transfer: "That isn't a stewardship transfer request.",
   use_transfer_accept: "Accept this as a stewardship transfer, not an owner handoff.",

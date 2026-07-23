@@ -167,7 +167,8 @@ export default function StewardshipPage({
     const who = stewardEmail ? `${stewardName} (${stewardEmail})` : stewardName;
     const ok = window.confirm(
       `Hand off your biography to ${who}?\n\n` +
-        "When they accept, Stewardship becomes active and your Interview, Journal, Pins, and Review are permanently sealed on this account. " +
+        "They must already have a Kinin account. When they accept, Stewardship becomes active on free Dormant Archive, " +
+        "and your Interview, Journal, Pins, and Review are permanently sealed on this account. " +
         "You can still explore the biography in Biographies, but you will no longer add new stories here.\n\n" +
         "Until they accept, your interview stays editable and you can keep using Kinin as usual.",
     );
@@ -175,7 +176,7 @@ export default function StewardshipPage({
     await post(
       "/stewardship/handoff",
       {},
-      `Handoff request sent to ${stewardName}. We've emailed them to accept. Your interview stays open until they accept.`,
+      `Handoff request sent to ${stewardName}. We've emailed them to accept — you’ll also get a confirmation email. Your interview stays open until they accept.`,
     );
   }
 
@@ -291,9 +292,11 @@ export default function StewardshipPage({
                 <ActionBlock
                   help={
                     <>
-                      <strong>Hand off to Account Steward</strong> — emails them to
-                      accept. When they accept, Interview, Journal, Pins, and Review
-                      seal permanently on this account.
+                      <strong>Hand off to Account Steward</strong> — they must already
+                      have a Kinin account. Emails them to accept (and confirms to
+                      you). When they accept, the biography starts on free Dormant
+                      Archive and Interview, Journal, Pins, and Review seal permanently
+                      on this account.
                     </>
                   }
                 >
@@ -394,16 +397,17 @@ export default function StewardshipPage({
                       <p>
                         <strong>An Account Steward asked you to take over.</strong>{" "}
                         Accepting transfers Stewardship of this completed biography to
-                        you. You inherit the current plan and can switch later.
+                        you on free Dormant Archive (chat paused). Switch to Legacy
+                        Stewardship ($4.99/mo) later if you want explore chat and family
+                        interaction.
                       </p>
                       <div style={{ display: "grid", gap: 16, marginTop: 12 }}>
                         <ActionBlock
                           help={
                             <>
-                              <strong>Accept stewardship transfer</strong> — take over
-                              care and family invites. You inherit the current plan
-                              (Legacy $4.99/mo or free Dormant Archive) and can switch
-                              later.
+                              <strong>Accept stewardship transfer — Dormant (free)</strong>{" "}
+                              — take over care with no charge. Chat stays paused until
+                              you upgrade to Legacy ($4.99/mo) for family explore access.
                             </>
                           }
                         >
@@ -414,11 +418,11 @@ export default function StewardshipPage({
                               post(
                                 "/stewardship/transfer/accept",
                                 { owner_user_id: role.owner_user_id },
-                                "Stewardship transfer accepted. You are now the Account Steward.",
+                                "Stewardship transfer accepted on free Dormant Archive. Switch to Legacy ($4.99/mo) in Stewardship when you want family explore chat.",
                               )
                             }
                           >
-                            Accept stewardship transfer
+                            Accept stewardship transfer — Dormant (free)
                           </Button>
                         </ActionBlock>
                         <ActionBlock
@@ -453,16 +457,19 @@ export default function StewardshipPage({
                     <div className="km-prose" style={{ maxWidth: 560 }}>
                       <p>
                         <strong>They asked you to take over.</strong> Accepting
-                        activates Stewardship and permanently seals their Interview,
-                        Journal, Pins, and Review. Choose how you’d like to keep the
-                        biography for now — you can change later.
+                        activates Stewardship on free Dormant Archive and permanently
+                        seals their Interview, Journal, Pins, and Review. Switch to
+                        Legacy Stewardship ($4.99/mo) later when you want explore chat
+                        and family interaction with this biography.
                       </p>
                       <div style={{ display: "grid", gap: 16, marginTop: 12 }}>
                         <ActionBlock
                           help={
                             <>
-                              <strong>Accept handoff — Legacy ($4.99/mo)</strong> —
-                              explore the biography with fuller chat and invite family.
+                              <strong>Accept handoff — Dormant Archive (free)</strong> —
+                              keep the biography stored with chat paused. No charge.
+                              After accepting, upgrade to Legacy ($4.99/mo) in Stewardship
+                              so family can explore and chat.
                             </>
                           }
                         >
@@ -474,34 +481,8 @@ export default function StewardshipPage({
                                 "/stewardship/handoff/accept",
                                 {
                                   owner_user_id: role.owner_user_id,
-                                  billing_plan: "legacy",
                                 },
-                                "Stewardship accepted (Legacy). Their biography is now completed.",
-                              )
-                            }
-                          >
-                            Accept handoff — Legacy ($4.99/mo)
-                          </Button>
-                        </ActionBlock>
-                        <ActionBlock
-                          help={
-                            <>
-                              <strong>Accept handoff — Dormant Archive (free)</strong> —
-                              keep the biography stored with chat paused. No charge.
-                              Upgrade to Legacy later if you want explore chat.
-                            </>
-                          }
-                        >
-                          <Button
-                            disabled={busy}
-                            onClick={() =>
-                              post(
-                                "/stewardship/handoff/accept",
-                                {
-                                  owner_user_id: role.owner_user_id,
-                                  billing_plan: "dormant",
-                                },
-                                "Stewardship accepted (Dormant Archive — free). Their biography is now completed.",
+                                "Stewardship accepted on free Dormant Archive. Their biography is completed. Switch to Legacy ($4.99/mo) when you want family explore chat.",
                               )
                             }
                           >
@@ -638,20 +619,32 @@ export default function StewardshipPage({
                             Stewardship is active for {ownerName}. Their biography is
                             completed — storytelling on that account is closed. Use the
                             actions below to care for it. Dormant Archive is free;
-                            Legacy Stewardship is $4.99/mo when you want explore chat.
-                            To pass this biography to someone else for safekeeping, use
-                            Hand off Stewardship (they must already have a Kinin
-                            account). Biographies you steward also move with you if
-                            your own account later becomes stewarded.
+                            Legacy Stewardship is $4.99/mo when you want explore chat
+                            and family interaction. To pass this biography to someone
+                            else for safekeeping, use Hand off Stewardship (they must
+                            already have a Kinin account). Biographies you steward also
+                            move with you if your own account later becomes stewarded.
                           </p>
+                          {role.billing_plan === "dormant" ? (
+                            <Banner tone="info">
+                              <span>
+                                <strong>Current plan: Dormant Archive (free).</strong>{" "}
+                                Chat is paused. Switch to Legacy Stewardship ($4.99/mo)
+                                so you and invited family can explore and interact with
+                                this biography.
+                              </span>
+                            </Banner>
+                          ) : null}
                           {role.pending_transfer_to_email ? (
                             <Banner tone="info">
                               <span>
-                                Transfer pending to {role.pending_transfer_to_email}
+                                <strong>Transfer request sent</strong> to{" "}
+                                {role.pending_transfer_to_email}
                                 {role.pending_transfer_to_name
                                   ? ` (${role.pending_transfer_to_name})`
                                   : ""}
-                                . They must accept in Settings → Stewardship.
+                                . We’ve emailed them to accept. You remain the Account
+                                Steward until they accept — you can cancel below.
                               </span>
                             </Banner>
                           ) : null}
@@ -713,6 +706,9 @@ export default function StewardshipPage({
                                 <strong>Invite family access</strong> — invite a
                                 family member to explore the completed biography for{" "}
                                 {ownerName}. They can ask questions; they cannot edit.
+                                Family explore chat requires Legacy Stewardship
+                                ($4.99/mo) — upgrade first if this biography is still on
+                                Dormant Archive.
                               </>
                             }
                           >
@@ -759,11 +755,10 @@ export default function StewardshipPage({
                                 <>
                                   <strong>Hand off Stewardship</strong> — transfer care
                                   of {ownerName}’s completed biography to another
-                                  person who already has a Kinin account. They inherit
-                                  the current plan (Dormant stays free). They get an
-                                  email and must accept in Settings → Stewardship. You
-                                  keep explore access afterward unless access is
-                                  removed later.
+                                  person who already has a Kinin account. They get an
+                                  email, accept in Settings → Stewardship, and start on
+                                  free Dormant Archive. You keep explore access afterward
+                                  unless access is removed later.
                                 </>
                               }
                             >
@@ -866,7 +861,8 @@ export default function StewardshipPage({
                 Transfer Stewardship of the completed biography for{" "}
                 {transferDraft.owner_display_name || "this person"} to someone who
                 already has a Kinin account. They will receive an email and must
-                accept in Settings → Stewardship. They inherit the current plan.
+                accept in Settings → Stewardship. Accepting starts free Dormant
+                Archive for them (no payment setup required).
               </p>
             </div>
             <div className="km-form-grid">
@@ -895,15 +891,28 @@ export default function StewardshipPage({
                 variant="primary"
                 disabled={busy || !(transferDraft.email || "").trim()}
                 onClick={async () => {
-                  await post(
+                  const toEmail = (transferDraft.email || "").trim();
+                  const toName = (transferDraft.name || "").trim();
+                  const who = toName ? `${toName} (${toEmail})` : toEmail;
+                  const ownerLabel =
+                    transferDraft.owner_display_name || "this person";
+                  const ok = window.confirm(
+                    `Hand off Stewardship of ${ownerLabel}’s biography to ${who}?\n\n` +
+                      "They must already have a Kinin account. We’ll email them to accept, " +
+                      "and you’ll get a confirmation. You remain the Account Steward until they accept. " +
+                      "When they accept, the biography starts on free Dormant Archive.",
+                  );
+                  if (!ok) return;
+                  const parsed = await post(
                     "/stewardship/transfer",
                     {
                       owner_user_id: transferDraft.owner_user_id,
-                      email: transferDraft.email,
-                      name: transferDraft.name,
+                      email: toEmail,
+                      name: toName,
                     },
-                    "Stewardship transfer sent. We've emailed them to accept.",
+                    `Transfer request sent to ${who}. We've emailed them to accept — you’ll also get a confirmation. Status shows as Transfer pending until they accept.`,
                   );
+                  if (!parsed) return;
                   setTransferDraft({
                     owner_user_id: "",
                     owner_display_name: "",
