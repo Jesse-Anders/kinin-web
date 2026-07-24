@@ -774,6 +774,9 @@ export default function App() {
   const isAuthedRef = useRef(false);
   const activePageRef = useRef("interview");
   const busyRef = useRef(false);
+  // Throttle profile/alert refreshes on tab/app foreground (claim + story alerts).
+  const lastAlertsRefreshAtRef = useRef(0);
+  const alertsRefreshInFlightRef = useRef(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -1968,8 +1971,14 @@ export default function App() {
   // conversation. Lazy by design — a stale session is only rotated when the
   // user actually returns to the chat, so we never churn sessions in the
   // background. The natural "Welcome back…" recap is the only signal shown.
+  //
+  // Also refresh /profile (throttled) so in-app alerts — stewardship claims,
+  // story-request pins, fulfilled story requests — update without a hard reload.
+  // Same pattern an always-logged-in iOS app should use on UIApplication active.
   useEffect(() => {
     if (!isAuthed) return undefined;
+    const ALERTS_REFRESH_MIN_MS = 60_000;
+
     function handleForeground() {
       if (
         typeof document !== "undefined" &&
@@ -1979,6 +1988,23 @@ export default function App() {
         return;
       }
       if (!isAuthedRef.current) return;
+
+      const now = Date.now();
+      if (
+        !alertsRefreshInFlightRef.current &&
+        now - lastAlertsRefreshAtRef.current >= ALERTS_REFRESH_MIN_MS
+      ) {
+        alertsRefreshInFlightRef.current = true;
+        lastAlertsRefreshAtRef.current = now;
+        void loadProfileState()
+          .catch(() => {
+            /* best-effort alert refresh */
+          })
+          .finally(() => {
+            alertsRefreshInFlightRef.current = false;
+          });
+      }
+
       if (activePageRef.current !== "interview") return;
       if (busyRef.current) return;
       if (!localStorage.getItem("session_id")) return;
