@@ -85,6 +85,7 @@ export default function StewardshipPage({
   saveAccountExecutor,
   resendAccountExecutorInvite,
   removeAccountExecutor,
+  onStewardshipChanged,
 }) {
   const [roles, setRoles] = useState([]);
   const [own, setOwn] = useState(ownLifecycle);
@@ -158,6 +159,13 @@ export default function StewardshipPage({
       }
       setNotice(successNotice);
       await load();
+      if (typeof onStewardshipChanged === "function") {
+        try {
+          onStewardshipChanged();
+        } catch {
+          /* parent refresh is best-effort */
+        }
+      }
       return parsed;
     } catch (e) {
       if (isAuthExpiredError(e)) return null;
@@ -268,6 +276,21 @@ export default function StewardshipPage({
                   . Waiting for them to accept. Your interview stays editable until
                   then — once they accept, Interview, Journal, Pins, and Review end
                   permanently on this account.
+                </span>
+              </Banner>
+            ) : null}
+            {own?.own_designation?.status === "claim_pending" ||
+            own?.pending_stewardship_claim?.active ? (
+              <Banner tone="info">
+                <span>
+                  <strong>A Stewardship request is waiting.</strong>{" "}
+                  {(own?.pending_stewardship_claim?.steward_name ||
+                    own?.own_designation?.steward_name ||
+                    "Your Account Steward") + " "}
+                  started a request to take care of this biography. Your interview
+                  stays open during the waiting period. If this was unexpected and you
+                  want to keep interviewing, choose <strong>I’m still here</strong>{" "}
+                  below to cancel the request.
                 </span>
               </Banner>
             ) : null}

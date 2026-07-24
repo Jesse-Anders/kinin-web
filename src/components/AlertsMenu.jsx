@@ -79,22 +79,26 @@ export default function AlertsMenu({ alerts = [], onCta, onSnooze, onDismiss }) 
                     {alert.cta.label}
                   </button>
                 ) : null}
-                <button
-                  type="button"
-                  className="km-alert-secondary"
-                  onClick={() => onSnooze?.(alert)}
-                >
-                  <Clock size={15} strokeWidth={1.8} />
-                  <span>Remind me later</span>
-                </button>
-                <button
-                  type="button"
-                  className="km-alert-secondary"
-                  onClick={() => onDismiss?.(alert)}
-                >
-                  <X size={15} strokeWidth={1.8} />
-                  <span>Dismiss</span>
-                </button>
+                {alert.allowSnooze === false ? null : (
+                  <button
+                    type="button"
+                    className="km-alert-secondary"
+                    onClick={() => onSnooze?.(alert)}
+                  >
+                    <Clock size={15} strokeWidth={1.8} />
+                    <span>Remind me later</span>
+                  </button>
+                )}
+                {alert.allowDismiss === false ? null : (
+                  <button
+                    type="button"
+                    className="km-alert-secondary"
+                    onClick={() => onDismiss?.(alert)}
+                  >
+                    <X size={15} strokeWidth={1.8} />
+                    <span>Dismiss</span>
+                  </button>
+                )}
               </div>
             </div>
           ))}

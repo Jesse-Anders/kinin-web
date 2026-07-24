@@ -23,14 +23,45 @@ function daysBetween(iso, nowMs) {
 // The alert catalog. `isEligible(ctx)` decides whether the alert's underlying
 // condition is currently true; snooze/dismiss state is applied separately in
 // App.jsx. ctx = { nowMs, signupAt, hasExecutor, pendingStoryRequests,
-// fulfilledStoryRequests }.
+// fulfilledStoryRequests, pendingStewardshipClaim }.
 //
 // An alert may also define `resurfaceValue(ctx)` returning a number (e.g. a
 // count of pending items). When present, a snoozed/dismissed alert reappears if
 // that value climbs above the baseline recorded when it was silenced — so
 // acknowledging today's items doesn't mute tomorrow's. `bodyFor(ctx)` lets an
 // alert render dynamic copy.
+//
+// Set `forceWhileEligible: true` for alerts that must stay visible while the
+// condition is true (no snooze/dismiss). Used for pending stewardship claims.
 export const ALERTS = [
+  {
+    id: "stewardship-claim-pending",
+    tone: "info",
+    forceWhileEligible: true,
+    allowSnooze: false,
+    allowDismiss: false,
+    title: "A Stewardship request was started on your account",
+    body:
+      "Your Account Steward started a Stewardship request. If this was done in error and you want to keep interviewing, open Stewardship and choose I’m still here.",
+    cta: { label: "I’m still here — open Stewardship", page: "settings-stewardship" },
+    isEligible(ctx) {
+      return Boolean(ctx.pendingStewardshipClaim?.active);
+    },
+    resurfaceValue(ctx) {
+      // New claim start time resurfaces even if older silencing state lingers.
+      const started = ctx.pendingStewardshipClaim?.claim_started_at;
+      const t = started ? Date.parse(started) : NaN;
+      return Number.isFinite(t) ? t : ctx.pendingStewardshipClaim?.active ? 1 : 0;
+    },
+    bodyFor(ctx) {
+      const claim = ctx.pendingStewardshipClaim || {};
+      const who =
+        (claim.steward_name || "").trim() ||
+        (claim.steward_email || "").trim() ||
+        "Your Account Steward";
+      return `${who} started a Stewardship request for your biography. During the waiting period you stay in control. If this was unexpected and you want to keep interviewing, open Stewardship and choose I’m still here.`;
+    },
+  },
   {
     id: "trusted-contact",
     tone: "info",
@@ -102,7 +133,8 @@ export function resolveActiveAlerts(ctx, alertsState) {
     const resurfaceValue =
       typeof alert.resurfaceValue === "function" ? alert.resurfaceValue(ctx) : null;
     const st = state[alert.id];
-    if (st && typeof st === "object") {
+    // Critical / force alerts stay visible for the whole eligible window.
+    if (!alert.forceWhileEligible && st && typeof st === "object") {
       // A higher current value than the silenced baseline means new activity —
       // let the alert resurface even if it was dismissed/snoozed.
       const baseline = typeof st.count === "number" ? st.count : null;
