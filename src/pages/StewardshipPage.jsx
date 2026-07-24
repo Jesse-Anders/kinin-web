@@ -281,24 +281,6 @@ export default function StewardshipPage({
                 <ActionBlock
                   help={
                     <>
-                      <strong>Mark biography complete</strong> — optional milestone;
-                      you can still keep interviewing. Does not hand off or close
-                      storytelling.
-                    </>
-                  }
-                >
-                  <Button
-                    disabled={busy}
-                    onClick={() =>
-                      post("/stewardship/complete", {}, "Biography marked complete.")
-                    }
-                  >
-                    Mark biography complete
-                  </Button>
-                </ActionBlock>
-                <ActionBlock
-                  help={
-                    <>
                       <strong>Hand off to Account Steward</strong> — they must already
                       have a Kinin account. Emails them to accept (and confirms to
                       you). When they accept, the biography starts on free Dormant
