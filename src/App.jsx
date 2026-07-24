@@ -1547,11 +1547,33 @@ export default function App() {
       blockedErr.name = "AccessBlockedError";
       throw blockedErr;
     }
+    if (res.status === 403 && parsed?.error === "interview_sealed") {
+      setInterviewSealed(true);
+      navigateToPage("biographies", { replace: true });
+      const sealedErr = new Error("interview_sealed");
+      sealedErr.name = "InterviewSealedError";
+      sealedErr.payload = parsed;
+      throw sealedErr;
+    }
     const detail = parsed ? JSON.stringify(parsed) : text;
     throw new Error(`API error ${res.status}: ${detail}`);
   }
 
+  function markInterviewSealedFromError(e) {
+    const code = String(e?.message || e?.payload?.error || "").trim();
+    if (code === "interview_sealed" || e?.name === "InterviewSealedError") {
+      setInterviewSealed(true);
+      return true;
+    }
+    return false;
+  }
+
   function setTopErrorFromException(e) {
+    if (markInterviewSealedFromError(e)) {
+      const message = describeApiErrorMessage(e);
+      if (message) setError(message);
+      return;
+    }
     const message = describeApiErrorMessage(e);
     if (!message) return;
     setError(message);
@@ -2835,10 +2857,17 @@ export default function App() {
           }
           setMessage("");
           completed = true;
-        } catch {
+        } catch (streamErr) {
           if (streamQueue) {
             try { streamQueue.abort(); } catch { /* noop */ }
             if (ttsQueueRef.current === streamQueue) ttsQueueRef.current = null;
+          }
+          // Sealed biographies must not fall back to HTTP /turn — close write UI now.
+          if (markInterviewSealedFromError(streamErr)) {
+            setChat((prev) =>
+              prev.filter((m) => m.id !== userMessageId && m.id !== assistantMessageId)
+            );
+            throw streamErr;
           }
           completed = false;
         }

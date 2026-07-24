@@ -60,7 +60,7 @@ function billingLabel(plan) {
 function ActionBlock({ help, children }) {
   return (
     <div style={{ display: "grid", gap: 8 }}>
-      <p className="km-form-help" style={{ fontStyle: "normal", margin: 0 }}>
+      <p className="km-prose" style={{ margin: 0 }}>
         {help}
       </p>
       <div>{children}</div>
@@ -273,7 +273,7 @@ export default function StewardshipPage({
             ) : null}
             {!(own?.interview_sealed || interviewSealed) ? (
               <div style={{ display: "grid", gap: 16, marginTop: 12 }}>
-                <p className="km-form-help" style={{ fontStyle: "normal", margin: 0 }}>
+                <p className="km-prose" style={{ margin: 0 }}>
                   Name your Account Steward above first. Handing off is an end-of-use
                   step for storytelling on this account: when they accept, you stop
                   adding new interview or journal material here.
@@ -376,7 +376,7 @@ export default function StewardshipPage({
                   </div>
                 )}
                 {role.claim_cooling_ends_at ? (
-                  <div className="km-form-help" style={{ fontStyle: "normal", marginTop: 4 }}>
+                  <div className="km-prose" style={{ marginTop: 4 }}>
                     Waiting period ends {role.claim_cooling_ends_at}
                   </div>
                 ) : null}
