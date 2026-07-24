@@ -1974,7 +1974,11 @@ export default function App() {
   //
   // Also refresh /profile (throttled) so in-app alerts — stewardship claims,
   // story-request pins, fulfilled story requests — update without a hard reload.
-  // Same pattern an always-logged-in iOS app should use on UIApplication active.
+  //
+  // iOS note: this uses browser focus/visibilitychange. It carries over only if
+  // the iOS app hosts this same React web client (e.g. WKWebView/Capacitor) and
+  // those events fire on resume. A native React Native / Swift shell needs an
+  // equivalent: on app-active, call the same /profile refresh (push is separate).
   useEffect(() => {
     if (!isAuthed) return undefined;
     const ALERTS_REFRESH_MIN_MS = 60_000;
