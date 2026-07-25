@@ -63,14 +63,16 @@ function formatDateTime(value) {
   }).format(dt);
 }
 
-function drawBrandHeader(doc, logoDataUrl) {
-  // Soft cream band behind the brand mark — echoes the site surface.
+function fillPageBackground(doc) {
+  // Full-page cream surface (site paper), drawn before any content on the page.
   doc.setFillColor(...CREAM);
-  doc.rect(0, 0, PAGE_WIDTH, 72, "F");
+  doc.rect(0, 0, PAGE_WIDTH, PAGE_HEIGHT, "F");
+}
 
+function drawBrandHeader(doc, logoDataUrl) {
   const logoSize = 28;
   const logoX = MARGIN;
-  const logoY = 22;
+  const logoY = 28;
   if (logoDataUrl) {
     try {
       doc.addImage(logoDataUrl, "PNG", logoX, logoY, logoSize, logoSize);
@@ -92,9 +94,9 @@ function drawBrandHeader(doc, logoDataUrl) {
 
   doc.setDrawColor(...CRIMSON);
   doc.setLineWidth(1.25);
-  doc.line(MARGIN, 64, PAGE_WIDTH - MARGIN, 64);
+  doc.line(MARGIN, 70, PAGE_WIDTH - MARGIN, 70);
 
-  return 88;
+  return 92;
 }
 
 function drawFooter(doc, pageNumber, pageCount) {
@@ -112,7 +114,8 @@ function drawFooter(doc, pageNumber, pageCount) {
 function ensureSpace(doc, y, needed, logoDataUrl) {
   if (y + needed <= CONTENT_BOTTOM) return y;
   doc.addPage();
-  // Continuation pages get a slim brand rule, not the full cream band.
+  fillPageBackground(doc);
+  // Continuation pages: slim brand mark on the same cream surface.
   if (logoDataUrl) {
     try {
       doc.addImage(logoDataUrl, "PNG", MARGIN, 28, 16, 16);
@@ -221,6 +224,7 @@ export function buildBiographyPdf(pkg, { logoDataUrl = "" } = {}) {
   const interview = Array.isArray(pkg?.interview) ? pkg.interview : [];
   const journal = Array.isArray(pkg?.journal) ? pkg.journal : [];
 
+  fillPageBackground(doc);
   let y = drawBrandHeader(doc, logoDataUrl);
 
   y = writeWrapped(doc, title, {
