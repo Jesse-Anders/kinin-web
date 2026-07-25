@@ -271,7 +271,7 @@ export default function SettingsPage({
         ) : null}
 
         {category === "biographies" ? (
-          <Frame label="Biographies">
+          <Frame label="Biography Share Settings">
             <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
               <p>
                 Sharing lets the family &amp; close friends you invite interact

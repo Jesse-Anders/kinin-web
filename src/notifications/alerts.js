@@ -1,4 +1,4 @@
-// In-app alerts / gentle nudges surfaced by the top-right notification widget
+// In-app alerts / nudges surfaced by the top-right notification widget
 // (see components/AlertsMenu.jsx). This is the client-owned catalog: each alert
 // defines its own trigger predicate and copy. The backend only persists the
 // per-user *state* the client can't recompute — whether an alert has been

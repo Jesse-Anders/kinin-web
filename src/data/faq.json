@@ -117,7 +117,7 @@
     },
     {
       "q": "How do I interact with someone's biography?",
-      "a": "If someone has invited you, open Biographies from the menu to have a conversation with their biography and hear their memories in their own words, with each answer linked back to what they actually shared. If they've paused access or haven't added memories yet, you'll see a gentle note letting you know.",
+      "a": "If someone has invited you, open Biographies from the menu to have a conversation with their biography and hear their memories in their own words, with each answer linked back to what they actually shared. If they've paused access or haven't added memories yet, you'll see a note letting you know.",
       "link": {
         "page": "biographies",
         "label": "Biographies"

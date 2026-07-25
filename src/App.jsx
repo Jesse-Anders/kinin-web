@@ -235,7 +235,7 @@ const PAGE_TO_PATH = {
 const SETTINGS_CATEGORIES = [
   { id: "voice", page: "settings-voice", label: "Voice", blurb: "Choose the voice Kinin speaks in." },
   { id: "reminders", page: "settings-reminders", label: "Reminders", blurb: "How often Kinin checks back in." },
-  { id: "biographies", page: "settings-biographies", label: "Biographies", blurb: "Turn sharing of your biography on or off." },
+  { id: "biographies", page: "settings-biographies", label: "Biography Sharing", blurb: "Turn sharing of your biography on or off." },
   { id: "interview", page: "settings-interview", label: "Interview details", blurb: "Behind-the-scenes session context." },
   { id: "help", page: "settings-help", label: "Help & tips", blurb: "Guided tours and helpful pop-up tips." },
   { id: "stewardship", page: "settings-stewardship", label: "Stewardship", blurb: "Name your Account Steward and manage stewardship roles." },
