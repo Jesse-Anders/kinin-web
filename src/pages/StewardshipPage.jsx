@@ -196,15 +196,17 @@ export default function StewardshipPage({
   }
 
   async function exportBio(ownerUserId) {
-    const parsed = await post("/stewardship/export", { owner_user_id: ownerUserId });
+    const parsed = await post("/stewardship/export", { owner_user_id: ownerUserId }, "");
     if (!parsed?.package) return;
-    const blob = new Blob([JSON.stringify(parsed.package, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = parsed.filename || "kinin-biography.json";
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      const { downloadBiographyPdf } = await import("../services/biographyExportPdf");
+      await downloadBiographyPdf(parsed.package, {
+        filename: parsed.filename || "kinin-biography.pdf",
+      });
+      setNotice("Biography PDF downloaded.");
+    } catch (e) {
+      setError(describeApiErrorMessage(e, "Could not build the PDF export."));
+    }
   }
 
   const body = !isAuthed ? (
@@ -680,9 +682,9 @@ export default function StewardshipPage({
                           <ActionBlock
                             help={
                               <>
-                                <strong>Export copy</strong> — download a portable
-                                JSON package of the biography for backup or offline
-                                use.
+                                <strong>Export copy</strong> — download a readable
+                                PDF of the interview and journal for backup or
+                                sharing offline.
                               </>
                             }
                           >

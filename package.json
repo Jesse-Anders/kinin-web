@@ -13,6 +13,7 @@
     "aws-amplify": "^6.15.9",
     "heic2any": "^0.0.4",
     "html-to-image": "^1.11.13",
+    "jspdf": "^4.2.1",
     "lucide-react": "^0.563.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
