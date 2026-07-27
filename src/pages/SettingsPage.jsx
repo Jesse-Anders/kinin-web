@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Banner, Button, Frame, Section } from "../theme";
 import InterviewDetailsPanel from "../components/InterviewDetailsPanel";
 import VoicePickerSection from "../components/VoicePickerSection";
 import StewardshipPage from "./StewardshipPage";
+import { describeApiErrorMessage } from "../services/describeApiError";
 
 // Audio features (mic dictation + Kinin's spoken voice) are currently on for
 // every user, so the per-account enable/disable toggle is hidden. Flip this to
@@ -42,6 +43,10 @@ export default function SettingsPage({
   replayWalkthroughs,
   // interview
   interviewDetails,
+  // billing
+  apiBase = "",
+  getAccessToken = null,
+  planState = "",
   // stewardship
   stewardshipProps = null,
 }) {
@@ -51,8 +56,109 @@ export default function SettingsPage({
   const cadenceValue = String(continuitySettings?.reminder_cadence_weeks ?? 2);
 
   const [replayNotice, setReplayNotice] = useState("");
+  const [billingStatus, setBillingStatus] = useState(null);
+  const [billingBusy, setBillingBusy] = useState(false);
+  const [billingError, setBillingError] = useState("");
+  const [billingNotice, setBillingNotice] = useState("");
 
   const activeCategory = categories.find((c) => c.id === category) || null;
+
+  useEffect(() => {
+    if (category !== "billing" || !apiBase || typeof getAccessToken !== "function") return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await getAccessToken();
+        if (!token || cancelled) return;
+        const res = await fetch(`${apiBase}/billing/status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json().catch(() => ({}));
+        const parsed = typeof data?.body === "string" ? JSON.parse(data.body) : data;
+        if (!res.ok) {
+          if (!cancelled) setBillingError(describeApiErrorMessage(parsed) || `HTTP ${res.status}`);
+          return;
+        }
+        if (!cancelled) {
+          setBillingStatus(parsed);
+          setBillingError("");
+        }
+      } catch (e) {
+        if (!cancelled) setBillingError(e?.message || "Could not load billing status");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [category, apiBase, getAccessToken]);
+
+  async function openCheckout(interval) {
+    setBillingBusy(true);
+    setBillingError("");
+    setBillingNotice("");
+    try {
+      const token = await getAccessToken();
+      const origin = window.location.origin;
+      const res = await fetch(`${apiBase}/billing/checkout`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          interval,
+          success_url: `${origin}/settings/billing?checkout=success`,
+          cancel_url: `${origin}/settings/billing?checkout=cancel`,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      const parsed = typeof data?.body === "string" ? JSON.parse(data.body) : data;
+      if (!res.ok) throw new Error(describeApiErrorMessage(parsed) || parsed?.error || `HTTP ${res.status}`);
+      if (!parsed?.url) throw new Error("Checkout URL missing");
+      window.location.href = parsed.url;
+    } catch (e) {
+      setBillingError(e?.message || "Checkout failed");
+      setBillingBusy(false);
+    }
+  }
+
+  async function openPortal() {
+    setBillingBusy(true);
+    setBillingError("");
+    setBillingNotice("");
+    try {
+      const token = await getAccessToken();
+      const res = await fetch(`${apiBase}/billing/portal`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          return_url: `${window.location.origin}/settings/billing`,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      const parsed = typeof data?.body === "string" ? JSON.parse(data.body) : data;
+      if (!res.ok) throw new Error(describeApiErrorMessage(parsed) || parsed?.error || `HTTP ${res.status}`);
+      if (!parsed?.url) throw new Error("Portal URL missing");
+      window.location.href = parsed.url;
+    } catch (e) {
+      setBillingError(e?.message || "Could not open billing portal");
+      setBillingBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    if (category !== "billing") return;
+    const params = new URLSearchParams(window.location.search);
+    const checkout = params.get("checkout");
+    if (checkout === "success") {
+      setBillingNotice("Thanks — if payment succeeded, access updates within a few seconds. You can refresh this page.");
+    } else if (checkout === "cancel") {
+      setBillingNotice("Checkout canceled. You can subscribe anytime.");
+    }
+  }, [category]);
 
   return (
     <Section
@@ -343,6 +449,62 @@ export default function SettingsPage({
               </p>
             </div>
           )
+        ) : null}
+
+        {category === "billing" ? (
+          <Frame label="Interviewer plan">
+            <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
+              <p>
+                Your interviewer subscription covers interviewing and interactive
+                chat on your live biography. Beta-invited accounts stay free.
+                Manage payment method or cancel in the Stripe customer portal.
+              </p>
+            </div>
+            {billingError ? (
+              <div style={{ marginBottom: 16 }}>
+                <Banner tone="danger">{billingError}</Banner>
+              </div>
+            ) : null}
+            {billingNotice ? (
+              <div style={{ marginBottom: 16 }}>
+                <Banner tone="info">{billingNotice}</Banner>
+              </div>
+            ) : null}
+            <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
+              <p>
+                <strong>Current plan:</strong>{" "}
+                {(billingStatus?.plan_state || planState || "unknown").replace(/_/g, " ")}
+              </p>
+              {!billingStatus?.stripe_configured ? (
+                <p className="km-muted">
+                  Billing is not fully configured on this environment yet (Stripe
+                  prices / keys). Subscribe buttons will return an error until
+                  ops finishes Tester setup.
+                </p>
+              ) : null}
+            </div>
+            <div className="km-form-actions" style={{ justifyContent: "flex-start", flexWrap: "wrap", gap: 12 }}>
+              <Button
+                variant="primary"
+                disabled={billingBusy || profileBusy || !billingStatus?.stripe_configured}
+                onClick={() => openCheckout("monthly")}
+              >
+                Subscribe monthly
+              </Button>
+              <Button
+                disabled={billingBusy || profileBusy || !billingStatus?.stripe_configured}
+                onClick={() => openCheckout("annual")}
+              >
+                Subscribe annually
+              </Button>
+              <Button
+                disabled={billingBusy || profileBusy || !billingStatus?.has_customer}
+                onClick={() => openPortal()}
+              >
+                Manage billing
+              </Button>
+            </div>
+          </Frame>
         ) : null}
 
         {category === "stewardship" && stewardshipProps ? (

@@ -228,6 +228,7 @@ const PAGE_TO_PATH = {
   "settings-biographies": "/settings/biographies",
   "settings-interview": "/settings/interview",
   "settings-help": "/settings/help",
+  "settings-billing": "/settings/billing",
   "settings-stewardship": "/settings/stewardship",
 };
 // Settings category pages, in menu order. Kept as data so the breakout menu
@@ -238,6 +239,7 @@ const SETTINGS_CATEGORIES = [
   { id: "biographies", page: "settings-biographies", label: "Biography Sharing", blurb: "Turn sharing of your biography on or off." },
   { id: "interview", page: "settings-interview", label: "Interview details", blurb: "Behind-the-scenes session context." },
   { id: "help", page: "settings-help", label: "Help & tips", blurb: "Guided tours and helpful pop-up tips." },
+  { id: "billing", page: "settings-billing", label: "Billing", blurb: "Subscribe or manage your interviewer plan." },
   { id: "stewardship", page: "settings-stewardship", label: "Stewardship", blurb: "Name your Account Steward and manage stewardship roles." },
 ];
 const SETTINGS_PAGE_TO_CATEGORY = Object.fromEntries(
@@ -4525,6 +4527,7 @@ export default function App() {
           replayWalkthroughs={replayWalkthroughs}
           apiBase={API_BASE}
           getAccessToken={getAccessToken}
+          planState={planState}
           interviewDetails={{
             isAuthed,
             busy,

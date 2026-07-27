@@ -16,9 +16,13 @@ const CODE_MESSAGES = {
   unauthorized: "Please sign in again to continue.",
   access_blocked: "Kinin is invite-only right now. Email Jesse@kinin.ai if you need access.",
   payment_required:
-    "Your free trial has ended, or a subscription is needed to continue interviewing and biography chat. Manage billing in Settings when available.",
+    "Your free trial has ended, or a subscription is needed to continue interviewing and biography chat. Open Settings → Billing to subscribe.",
   past_due:
-    "There's a billing problem on this account. Interview and interactive biography chat are paused until payment is updated.",
+    "There's a billing problem on this account. Interview and interactive biography chat are paused until payment is updated. Open Settings → Billing to manage your payment method.",
+  stripe_not_configured:
+    "Billing isn't available in this environment yet. Try again later or contact support.",
+  no_stripe_customer:
+    "No billing profile yet — subscribe first, then you can manage payment details.",
   onboarding_required: "Finish getting started, then you can continue.",
   account_close_failed: "We couldn't close the account. Please try again.",
   confirmation_mismatch: "Confirmation text didn't match. Please try again.",
