@@ -228,18 +228,16 @@ const PAGE_TO_PATH = {
   "settings-biographies": "/settings/biographies",
   "settings-interview": "/settings/interview",
   "settings-help": "/settings/help",
-  "settings-billing": "/settings/billing",
   "settings-stewardship": "/settings/stewardship",
 };
 // Settings category pages, in menu order. Kept as data so the breakout menu
-// and the routing/render switch stay in sync.
+// and the routing/render switch stay in sync. Plan & billing lives on My Account.
 const SETTINGS_CATEGORIES = [
   { id: "voice", page: "settings-voice", label: "Voice", blurb: "Choose the voice Kinin speaks in." },
   { id: "reminders", page: "settings-reminders", label: "Reminders", blurb: "How often Kinin checks back in." },
   { id: "biographies", page: "settings-biographies", label: "Biography Sharing", blurb: "Turn sharing of your biography on or off." },
   { id: "interview", page: "settings-interview", label: "Interview details", blurb: "Behind-the-scenes session context." },
   { id: "help", page: "settings-help", label: "Help & tips", blurb: "Guided tours and helpful pop-up tips." },
-  { id: "billing", page: "settings-billing", label: "Billing", blurb: "Subscribe or manage your interviewer plan." },
   { id: "stewardship", page: "settings-stewardship", label: "Stewardship", blurb: "Name your Account Steward and manage stewardship roles." },
 ];
 const SETTINGS_PAGE_TO_CATEGORY = Object.fromEntries(
@@ -249,6 +247,8 @@ const PATH_TO_PAGE = {
   ...Object.fromEntries(Object.entries(PAGE_TO_PATH).map(([page, path]) => [path, page])),
   // Legacy alias: the old profile/bio route now lives under My Account.
   "/bio": "account",
+  // Billing moved from Settings → My Account (keep old URLs working).
+  "/settings/billing": "account",
   // Legacy top-level Stewardship URL → Settings → Stewardship.
   "/stewardship": "settings-stewardship",
 };
@@ -1410,9 +1410,13 @@ export default function App() {
     if (currentPage && currentPage !== activePage) return;
     const targetPath = PAGE_TO_PATH[activePage] || "/";
     if (currentPath !== targetPath) {
-      navigate(targetPath);
+      // Keep query string (e.g. /settings/billing?checkout=success → /account?checkout=success).
+      const search = location.search || "";
+      navigate(`${targetPath}${search}`, {
+        replace: currentPath === "/settings/billing",
+      });
     }
-  }, [activePage, location.pathname, location.hash, navigate]);
+  }, [activePage, location.pathname, location.hash, location.search, navigate]);
 
   // Errors are page-scoped: never let a banner from one page linger onto the
   // next. Profile/settings errors already use `profileError` (rendered only on
@@ -4485,6 +4489,9 @@ export default function App() {
           profileBusy={profileBusy}
           profileNotice={profileNotice}
           profileError={profileError}
+          apiBase={API_BASE}
+          getAccessToken={getAccessToken}
+          planState={planState}
           security={{
             email: cognitoEmail,
             isFederatedUser,
@@ -4536,9 +4543,6 @@ export default function App() {
           helpTipsEnabled={helpPrefs.tips_enabled !== false}
           saveHelpTipsEnabled={saveHelpTipsEnabled}
           replayWalkthroughs={replayWalkthroughs}
-          apiBase={API_BASE}
-          getAccessToken={getAccessToken}
-          planState={planState}
           interviewDetails={{
             isAuthed,
             busy,

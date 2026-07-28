@@ -1,4 +1,5 @@
 import { Banner, Button, FormRow, Frame, Section, Skeleton, TextInput } from "../theme";
+import PlanBillingSection from "../components/PlanBillingSection";
 import AccountSecuritySection from "./AccountSecuritySection";
 
 function deriveAgeFromDateOfBirth(dateOfBirth) {
@@ -24,9 +25,9 @@ function formatDateLong(dateOfBirth) {
   return new Intl.DateTimeFormat(undefined, { dateStyle: "long" }).format(dt);
 }
 
-// "My Account" — identity, sign-in/security, and the danger zone. Account
-// Steward designation lives under Settings → Stewardship. Category settings
-// (voice, reminders, biographies, interview) live on the Settings pages.
+// "My Account" — identity, plan/billing, sign-in/security, and the danger zone.
+// Account Steward designation lives under Settings → Stewardship. Category
+// settings (voice, reminders, biographies, interview) live on Settings pages.
 export default function MyAccountPage({
   profileSchema,
   bioProfile,
@@ -38,6 +39,9 @@ export default function MyAccountPage({
   saveBioProfile,
   onOpenDangerZone,
   onClose,
+  apiBase = "",
+  getAccessToken = null,
+  planState = "",
 }) {
   const showInitialLoader = profileBusy && !profileSchema;
   const selectedDobText = formatDateLong(bioProfile.date_of_birth);
@@ -117,6 +121,15 @@ export default function MyAccountPage({
         </Frame>
 
         {security ? <AccountSecuritySection {...security} /> : null}
+
+        {apiBase && typeof getAccessToken === "function" ? (
+          <PlanBillingSection
+            apiBase={apiBase}
+            getAccessToken={getAccessToken}
+            planState={planState}
+            disabled={profileBusy}
+          />
+        ) : null}
 
         <Frame label="Danger zone / Delete account">
           <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>

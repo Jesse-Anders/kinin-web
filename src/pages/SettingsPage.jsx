@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Banner, Button, Frame, Section } from "../theme";
 import InterviewDetailsPanel from "../components/InterviewDetailsPanel";
 import VoicePickerSection from "../components/VoicePickerSection";
 import StewardshipPage from "./StewardshipPage";
-import { describeApiErrorMessage } from "../services/describeApiError";
 
 // Audio features (mic dictation + Kinin's spoken voice) are currently on for
 // every user, so the per-account enable/disable toggle is hidden. Flip this to
@@ -12,10 +11,11 @@ const SHOW_VOICE_FEATURES_TOGGLE = false;
 
 // Settings, split by category. `category` is one of the ids in
 // SETTINGS_CATEGORIES (voice | reminders | biographies | interview) or null for
-// the index landing. A persistent breakout menu switches between them; each
-// section persists on its own (optimistic saves in App.jsx). Managing who can
-// interact with your biography now lives on the Family Circle page — this
-// section keeps only the on/off switch plus a link there.
+// the index landing. Plan & billing lives on My Account. A persistent breakout
+// menu switches between categories; each section persists on its own
+// (optimistic saves in App.jsx). Managing who can interact with your biography
+// now lives on the Family Circle page — this section keeps only the on/off
+// switch plus a link there.
 export default function SettingsPage({
   category,
   categories,
@@ -43,10 +43,6 @@ export default function SettingsPage({
   replayWalkthroughs,
   // interview
   interviewDetails,
-  // billing
-  apiBase = "",
-  getAccessToken = null,
-  planState = "",
   // stewardship
   stewardshipProps = null,
 }) {
@@ -56,159 +52,8 @@ export default function SettingsPage({
   const cadenceValue = String(continuitySettings?.reminder_cadence_weeks ?? 2);
 
   const [replayNotice, setReplayNotice] = useState("");
-  const [billingStatus, setBillingStatus] = useState(null);
-  const [billingBusy, setBillingBusy] = useState(false);
-  const [billingError, setBillingError] = useState("");
-  const [billingNotice, setBillingNotice] = useState("");
 
   const activeCategory = categories.find((c) => c.id === category) || null;
-
-  function planLabel(raw) {
-    const p = String(raw || "").trim().toLowerCase();
-    if (p === "active") return "Interviewer (paid)";
-    if (p === "trialing") return "Full trial";
-    if (p === "beta_invited") return "Beta (full access, free)";
-    if (p === "biography_only") return "Free listener (read-only)";
-    if (p === "past_due") return "Past due — update payment";
-    if (p === "canceled") return "Free listener (subscription ended)";
-    if (p === "none") return "No plan yet";
-    return p ? p.replace(/_/g, " ") : "Unknown";
-  }
-
-  async function refreshBillingStatus() {
-    if (!apiBase || typeof getAccessToken !== "function") return null;
-    const token = await getAccessToken();
-    if (!token) return null;
-    const res = await fetch(`${apiBase}/billing/status`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json().catch(() => ({}));
-    const parsed = typeof data?.body === "string" ? JSON.parse(data.body) : data;
-    if (!res.ok) {
-      throw new Error(describeApiErrorMessage(parsed) || `HTTP ${res.status}`);
-    }
-    setBillingStatus(parsed);
-    setBillingError("");
-    return parsed;
-  }
-
-  useEffect(() => {
-    if (category !== "billing" || !apiBase || typeof getAccessToken !== "function") return;
-    let cancelled = false;
-    (async () => {
-      try {
-        await refreshBillingStatus();
-      } catch (e) {
-        if (!cancelled) setBillingError(e?.message || "Could not load billing status");
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [category, apiBase, getAccessToken]);
-
-  async function openCheckout(interval) {
-    setBillingBusy(true);
-    setBillingError("");
-    setBillingNotice("");
-    try {
-      const token = await getAccessToken();
-      const origin = window.location.origin;
-      const res = await fetch(`${apiBase}/billing/checkout`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          interval,
-          success_url: `${origin}/settings/billing?checkout=success`,
-          cancel_url: `${origin}/settings/billing?checkout=cancel`,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      const parsed = typeof data?.body === "string" ? JSON.parse(data.body) : data;
-      if (!res.ok) throw new Error(describeApiErrorMessage(parsed) || parsed?.error || `HTTP ${res.status}`);
-      if (!parsed?.url) throw new Error("Checkout URL missing");
-      window.location.href = parsed.url;
-    } catch (e) {
-      setBillingError(e?.message || "Checkout failed");
-      setBillingBusy(false);
-    }
-  }
-
-  async function openPortal() {
-    setBillingBusy(true);
-    setBillingError("");
-    setBillingNotice("");
-    try {
-      const token = await getAccessToken();
-      const res = await fetch(`${apiBase}/billing/portal`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          return_url: `${window.location.origin}/settings/billing`,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      const parsed = typeof data?.body === "string" ? JSON.parse(data.body) : data;
-      if (!res.ok) throw new Error(describeApiErrorMessage(parsed) || parsed?.error || `HTTP ${res.status}`);
-      if (!parsed?.url) throw new Error("Portal URL missing");
-      window.location.href = parsed.url;
-    } catch (e) {
-      setBillingError(e?.message || "Could not open billing portal");
-      setBillingBusy(false);
-    }
-  }
-
-  useEffect(() => {
-    if (category !== "billing") return;
-    const params = new URLSearchParams(window.location.search);
-    const checkout = params.get("checkout");
-    if (!checkout) return;
-
-    const cleanUrl = () => {
-      params.delete("checkout");
-      const qs = params.toString();
-      const next = `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash || ""}`;
-      window.history.replaceState({}, "", next);
-    };
-
-    (async () => {
-      if (checkout === "cancel") {
-        setBillingNotice("Checkout canceled. You can subscribe anytime.");
-        cleanUrl();
-        return;
-      }
-      if (checkout !== "success") return;
-      setBillingNotice("Checking your subscription…");
-      try {
-        // Webhook can lag a moment behind Checkout return.
-        let status = null;
-        for (let i = 0; i < 5; i += 1) {
-          status = await refreshBillingStatus();
-          if (status?.plan_state === "active" || status?.plan_state === "beta_invited") break;
-          await new Promise((r) => setTimeout(r, 1500));
-        }
-        if (status?.plan_state === "active") {
-          setBillingNotice("You're subscribed. Interviewer access is active.");
-        } else if (status?.plan_state === "beta_invited") {
-          setBillingNotice("You're on beta full access. A Stripe customer may be linked, but beta stays free.");
-        } else {
-          setBillingNotice(
-            "Payment received in Stripe, but access hasn't updated yet. Wait a few seconds and refresh, or contact support if it stays stuck."
-          );
-        }
-      } catch (e) {
-        setBillingNotice(e?.message || "Could not confirm subscription status.");
-      } finally {
-        cleanUrl();
-      }
-    })();
-  }, [category, apiBase, getAccessToken]);
 
   return (
     <Section
@@ -499,62 +344,6 @@ export default function SettingsPage({
               </p>
             </div>
           )
-        ) : null}
-
-        {category === "billing" ? (
-          <Frame label="Interviewer plan">
-            <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
-              <p>
-                Your interviewer subscription covers interviewing and interactive
-                chat on your live biography. Beta-invited accounts stay free.
-                Manage payment method or cancel in the Stripe customer portal.
-              </p>
-            </div>
-            {billingError ? (
-              <div style={{ marginBottom: 16 }}>
-                <Banner tone="danger">{billingError}</Banner>
-              </div>
-            ) : null}
-            {billingNotice ? (
-              <div style={{ marginBottom: 16 }}>
-                <Banner tone="info">{billingNotice}</Banner>
-              </div>
-            ) : null}
-            <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
-              <p>
-                <strong>Current plan:</strong>{" "}
-                {planLabel(billingStatus?.plan_state || planState)}
-              </p>
-              {!billingStatus?.stripe_configured ? (
-                <p className="km-muted">
-                  Billing is not fully configured on this environment yet (Stripe
-                  prices / keys). Subscribe buttons will return an error until
-                  ops finishes Tester setup.
-                </p>
-              ) : null}
-            </div>
-            <div className="km-form-actions" style={{ justifyContent: "flex-start", flexWrap: "wrap", gap: 12 }}>
-              <Button
-                variant="primary"
-                disabled={billingBusy || profileBusy || !billingStatus?.stripe_configured}
-                onClick={() => openCheckout("monthly")}
-              >
-                Subscribe monthly
-              </Button>
-              <Button
-                disabled={billingBusy || profileBusy || !billingStatus?.stripe_configured}
-                onClick={() => openCheckout("annual")}
-              >
-                Subscribe annually
-              </Button>
-              <Button
-                disabled={billingBusy || profileBusy || !billingStatus?.has_customer}
-                onClick={() => openPortal()}
-              >
-                Manage billing
-              </Button>
-            </div>
-          </Frame>
         ) : null}
 
         {category === "stewardship" && stewardshipProps ? (

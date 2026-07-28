@@ -16,17 +16,21 @@ const CODE_MESSAGES = {
   unauthorized: "Please sign in again to continue.",
   access_blocked: "Kinin is invite-only right now. Email Jesse@kinin.ai if you need access.",
   payment_required:
-    "An interviewer subscription is needed to continue interviewing and chatting with your own biography. Open Settings → Billing to subscribe.",
+    "An interviewer subscription is needed to continue interviewing and chatting with your own biography. Open My Account to subscribe.",
   biography_only:
-    "This account is on the free listener plan. You can explore biographies shared with you. Subscribe under Settings → Billing to interview and chat with your own biography.",
+    "This account is on the free listener plan. You can explore biographies shared with you. Subscribe under My Account to interview and chat with your own biography.",
   own_biography_requires_plan:
-    "Interactive chat with your own biography needs an active interviewer plan. Open Settings → Billing to subscribe.",
+    "Interactive chat with your own biography needs an active interviewer plan. Open My Account to subscribe.",
   past_due:
-    "There's a billing problem on this account. Interview and interactive biography chat are paused until payment is updated. Open Settings → Billing to manage your payment method.",
+    "There's a billing problem on this account. Interview and interactive biography chat are paused until payment is updated. Open My Account to manage your payment method.",
   stripe_not_configured:
     "Billing isn't available in this environment yet. Try again later or contact support.",
   no_stripe_customer:
     "No billing profile yet — subscribe first, then you can manage payment details.",
+  subscription_already_active:
+    "You already have an active interviewer subscription. Use Switch plan or Manage billing on My Account instead of starting a new checkout.",
+  already_on_interval: "You're already on that plan.",
+  no_active_subscription: "No active subscription to change — subscribe first under My Account.",
   onboarding_required: "Finish getting started, then you can continue.",
   account_close_failed: "We couldn't close the account. Please try again.",
   confirmation_mismatch: "Confirmation text didn't match. Please try again.",
