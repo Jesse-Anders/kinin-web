@@ -4372,6 +4372,7 @@ export default function App() {
           biographyEnabled={biographySettings?.enabled !== false}
           isReader={isReader}
           onManageSharing={() => navigateToPage("settings-biographies")}
+          onSubscribe={() => navigateToPage("account")}
           onStoryRequestsSeen={() => setFulfilledStoryRequests(0)}
           onOpenBiography={(ownerId) => {
             const id = String(ownerId || "").trim();

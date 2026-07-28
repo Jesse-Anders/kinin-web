@@ -173,6 +173,7 @@ export default function FamilyCirclePage({
   onManageSharing,
   onStoryRequestsSeen,
   onOpenBiography,
+  onSubscribe,
 }) {
   const canLoad = !!apiBase && typeof getAccessToken === "function" && isAuthed;
   // Readers (biography_only) have no biography of their own to share, so they
@@ -719,6 +720,27 @@ export default function FamilyCirclePage({
                   ))}
                 </ul>
               </div>
+            ) : null}
+          </Frame>
+        </div>
+      ) : isReader ? (
+        <div data-help-anchor="family-circle-invite">
+          <Frame label="Invite family & close friends">
+            <div className="km-prose" style={{ maxWidth: 560, marginBottom: 16 }}>
+              <p>
+                Free listener accounts can explore biographies others share with
+                you, but you can&apos;t invite family and close friends to your own
+                biography until you have an Interviewer plan.
+              </p>
+              <p>
+                Subscribe to activate interviewing and share your live biography
+                with the people who matter.
+              </p>
+            </div>
+            {typeof onSubscribe === "function" ? (
+              <Button variant="primary" onClick={onSubscribe}>
+                Subscribe on My Account →
+              </Button>
             ) : null}
           </Frame>
         </div>

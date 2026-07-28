@@ -18,7 +18,7 @@ const CODE_MESSAGES = {
   payment_required:
     "An interviewer subscription is needed to continue interviewing and chatting with your own biography. Open My Account to subscribe.",
   biography_only:
-    "This account is on the free listener plan. You can explore biographies shared with you. Subscribe under My Account to interview and chat with your own biography.",
+    "This account is on the free listener plan. You can explore biographies shared with you. Subscribe under My Account to interview, journal, and create your own biography.",
   own_biography_requires_plan:
     "Interactive chat with your own biography needs an active interviewer plan. Open My Account to subscribe.",
   past_due:
