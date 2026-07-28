@@ -39,7 +39,7 @@ import {
   registerAuthFailureHandler,
   reportAuthFailure,
 } from "./services/authSession";
-import { describeApiErrorMessage } from "./services/describeApiError";
+import { describeApiError, describeApiErrorMessage } from "./services/describeApiError";
 import FaqPage from "./pages/FaqPage";
 import FeedbackPage from "./pages/FeedbackPage";
 import ContactPage from "./pages/ContactPage";
@@ -518,6 +518,7 @@ export default function App() {
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [biographyInvite, setBiographyInvite] = useState(null);
   const [error, setError] = useState("");
+  const [errorTone, setErrorTone] = useState("danger");
   // Errors from the profile-editing surfaces (account/settings + onboarding).
   // Kept separate from the global `error` so they render ONLY on those pages
   // and can never bleed onto chat/other pages. saveProfile, the optimistic
@@ -1577,13 +1578,17 @@ export default function App() {
 
   function setTopErrorFromException(e) {
     if (markInterviewSealedFromError(e)) {
-      const message = describeApiErrorMessage(e);
-      if (message) setError(message);
+      const described = describeApiError(e);
+      if (described?.message) {
+        setError(described.message);
+        setErrorTone(described.tone || "info");
+      }
       return;
     }
-    const message = describeApiErrorMessage(e);
-    if (!message) return;
-    setError(message);
+    const described = describeApiError(e);
+    if (!described?.message) return;
+    setError(described.message);
+    setErrorTone(described.tone || "danger");
   }
 
   // Profile/settings-scoped counterpart of setTopErrorFromException. Writes to
@@ -4216,9 +4221,15 @@ export default function App() {
       ) : null}
 
       {error && (
-        <Banner tone="danger">
+        <Banner tone={errorTone === "info" ? "info" : "danger"}>
           <span>
-            <strong>Something went wrong.</strong> {error}
+            {errorTone === "info" ? (
+              error
+            ) : (
+              <>
+                <strong>Something went wrong.</strong> {error}
+              </>
+            )}
           </span>
         </Banner>
       )}

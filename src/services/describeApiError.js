@@ -16,7 +16,11 @@ const CODE_MESSAGES = {
   unauthorized: "Please sign in again to continue.",
   access_blocked: "Kinin is invite-only right now. Email Jesse@kinin.ai if you need access.",
   payment_required:
-    "Your free trial has ended, or a subscription is needed to continue interviewing and biography chat. Open Settings → Billing to subscribe.",
+    "An interviewer subscription is needed to continue interviewing and chatting with your own biography. Open Settings → Billing to subscribe.",
+  biography_only:
+    "This account is on the free listener plan. You can explore biographies shared with you. Subscribe under Settings → Billing to interview and chat with your own biography.",
+  own_biography_requires_plan:
+    "Interactive chat with your own biography needs an active interviewer plan. Open Settings → Billing to subscribe.",
   past_due:
     "There's a billing problem on this account. Interview and interactive biography chat are paused until payment is updated. Open Settings → Billing to manage your payment method.",
   stripe_not_configured:
@@ -214,13 +218,17 @@ export function describeApiError(err, opts = {}) {
     return { message, tone: "danger" };
   }
 
-  // Soft / expected product states
+  // Soft / expected product states (not failures)
   if (
     code === "biography_disabled_by_owner" ||
     code === "no_memories_available" ||
     code === "onboarding_required" ||
     code === "interview_sealed" ||
-    code === "legacy_chat_disabled"
+    code === "legacy_chat_disabled" ||
+    code === "payment_required" ||
+    code === "biography_only" ||
+    code === "own_biography_requires_plan" ||
+    code === "past_due"
   ) {
     return { message: CODE_MESSAGES[code], tone: "info" };
   }

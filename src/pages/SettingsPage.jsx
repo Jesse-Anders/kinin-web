@@ -63,26 +63,41 @@ export default function SettingsPage({
 
   const activeCategory = categories.find((c) => c.id === category) || null;
 
+  function planLabel(raw) {
+    const p = String(raw || "").trim().toLowerCase();
+    if (p === "active") return "Interviewer (paid)";
+    if (p === "trialing") return "Full trial";
+    if (p === "beta_invited") return "Beta (full access, free)";
+    if (p === "biography_only") return "Free listener (read-only)";
+    if (p === "past_due") return "Past due — update payment";
+    if (p === "canceled") return "Free listener (subscription ended)";
+    if (p === "none") return "No plan yet";
+    return p ? p.replace(/_/g, " ") : "Unknown";
+  }
+
+  async function refreshBillingStatus() {
+    if (!apiBase || typeof getAccessToken !== "function") return null;
+    const token = await getAccessToken();
+    if (!token) return null;
+    const res = await fetch(`${apiBase}/billing/status`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json().catch(() => ({}));
+    const parsed = typeof data?.body === "string" ? JSON.parse(data.body) : data;
+    if (!res.ok) {
+      throw new Error(describeApiErrorMessage(parsed) || `HTTP ${res.status}`);
+    }
+    setBillingStatus(parsed);
+    setBillingError("");
+    return parsed;
+  }
+
   useEffect(() => {
     if (category !== "billing" || !apiBase || typeof getAccessToken !== "function") return;
     let cancelled = false;
     (async () => {
       try {
-        const token = await getAccessToken();
-        if (!token || cancelled) return;
-        const res = await fetch(`${apiBase}/billing/status`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json().catch(() => ({}));
-        const parsed = typeof data?.body === "string" ? JSON.parse(data.body) : data;
-        if (!res.ok) {
-          if (!cancelled) setBillingError(describeApiErrorMessage(parsed) || `HTTP ${res.status}`);
-          return;
-        }
-        if (!cancelled) {
-          setBillingStatus(parsed);
-          setBillingError("");
-        }
+        await refreshBillingStatus();
       } catch (e) {
         if (!cancelled) setBillingError(e?.message || "Could not load billing status");
       }
@@ -153,12 +168,47 @@ export default function SettingsPage({
     if (category !== "billing") return;
     const params = new URLSearchParams(window.location.search);
     const checkout = params.get("checkout");
-    if (checkout === "success") {
-      setBillingNotice("Thanks — if payment succeeded, access updates within a few seconds. You can refresh this page.");
-    } else if (checkout === "cancel") {
-      setBillingNotice("Checkout canceled. You can subscribe anytime.");
-    }
-  }, [category]);
+    if (!checkout) return;
+
+    const cleanUrl = () => {
+      params.delete("checkout");
+      const qs = params.toString();
+      const next = `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash || ""}`;
+      window.history.replaceState({}, "", next);
+    };
+
+    (async () => {
+      if (checkout === "cancel") {
+        setBillingNotice("Checkout canceled. You can subscribe anytime.");
+        cleanUrl();
+        return;
+      }
+      if (checkout !== "success") return;
+      setBillingNotice("Checking your subscription…");
+      try {
+        // Webhook can lag a moment behind Checkout return.
+        let status = null;
+        for (let i = 0; i < 5; i += 1) {
+          status = await refreshBillingStatus();
+          if (status?.plan_state === "active" || status?.plan_state === "beta_invited") break;
+          await new Promise((r) => setTimeout(r, 1500));
+        }
+        if (status?.plan_state === "active") {
+          setBillingNotice("You're subscribed. Interviewer access is active.");
+        } else if (status?.plan_state === "beta_invited") {
+          setBillingNotice("You're on beta full access. A Stripe customer may be linked, but beta stays free.");
+        } else {
+          setBillingNotice(
+            "Payment received in Stripe, but access hasn't updated yet. Wait a few seconds and refresh, or contact support if it stays stuck."
+          );
+        }
+      } catch (e) {
+        setBillingNotice(e?.message || "Could not confirm subscription status.");
+      } finally {
+        cleanUrl();
+      }
+    })();
+  }, [category, apiBase, getAccessToken]);
 
   return (
     <Section
@@ -473,7 +523,7 @@ export default function SettingsPage({
             <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
               <p>
                 <strong>Current plan:</strong>{" "}
-                {(billingStatus?.plan_state || planState || "unknown").replace(/_/g, " ")}
+                {planLabel(billingStatus?.plan_state || planState)}
               </p>
               {!billingStatus?.stripe_configured ? (
                 <p className="km-muted">
