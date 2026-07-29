@@ -32,8 +32,7 @@ export default function MyBiographyPage({ onSubscribe }) {
       <Frame label="Interview & share your story">
         <div className="km-prose" style={{ maxWidth: 620, marginBottom: 16 }}>
           <p style={{ margin: 0 }}>
-            Interviewer plans are $11.99/month or $99/year. Complimentary full
-            access is only for personally invited beta accounts.
+            Interviewer plans are $11.99/month or $99/year.
           </p>
         </div>
         {typeof onSubscribe === "function" ? (
