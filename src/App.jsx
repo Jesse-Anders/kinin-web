@@ -3,6 +3,7 @@ import {
   AudioLines,
   BookMarked,
   BookOpen,
+  BookUser,
   CircleUserRound,
   CirclePlus,
   Compass,
@@ -68,6 +69,7 @@ import {
 } from "./services/journalClient";
 import { updatePin } from "./services/pinsClient";
 import BiographiesPage from "./pages/BiographiesPage";
+import MyBiographyPage from "./pages/MyBiographyPage";
 import FamilyCirclePage from "./pages/FamilyCirclePage";
 import UnsubscribePage from "./pages/UnsubscribePage";
 import OnboardingPage from "./pages/OnboardingPage";
@@ -200,6 +202,7 @@ const PAGE_TO_PATH = {
   pins: "/pins",
   journal: "/journal",
   biographies: "/biographies",
+  "my-biography": "/my-biography",
   "family-circle": "/family-circle",
   contact: "/contact",
   privacy: "/privacy",
@@ -1169,6 +1172,15 @@ export default function App() {
       onClick: () => navigateToPage("review-chats"),
     },
     {
+      id: "my-biography",
+      label: "My Biography",
+      icon: BookUser,
+      requiresAuth: true,
+      // Listener / future steward-only & share-only plans — not Interviewer.
+      readerOnly: true,
+      onClick: () => navigateToPage("my-biography"),
+    },
+    {
       id: "biographies",
       label: "Biographies",
       icon: BookMarked,
@@ -1238,10 +1250,20 @@ export default function App() {
   const [passwordNotice, setPasswordNotice] = useState("");
 
   function navigateToPage(page, options = {}) {
+    const { search = "", ...navOptions } = options;
     const targetPath = PAGE_TO_PATH[page] || "/";
+    const searchStr = typeof search === "string" ? search : "";
+    const normalizedSearch =
+      !searchStr || searchStr.startsWith("?") ? searchStr : `?${searchStr}`;
+    const fullTarget = `${targetPath}${normalizedSearch}`;
     const currentPath = normalizePath(location.pathname || "/", location.hash || "");
-    if (targetPath === currentPath) return;
-    navigate(targetPath, options);
+    const currentFull = `${currentPath}${location.search || ""}`;
+    if (fullTarget === currentFull) return;
+    navigate(fullTarget, navOptions);
+  }
+
+  function navigateToBilling() {
+    navigateToPage("account", { search: "?section=billing" });
   }
 
   const isAuthed = useMemo(() => !!user, [user]);
@@ -1341,14 +1363,24 @@ export default function App() {
   // A "Reader" (biography_only) account has no interview of their own, so the
   // interviewer-only sections (Interview, Journal, Pins, Review) are hidden.
   // Sealed (stewarded) accounts use the same gates: write surfaces end permanently.
+  // Future steward-only / biography_share_only plans share the My Biography nav.
   const isReader = planState === "biography_only";
+  const showMyBiographyNav =
+    planState === "biography_only" ||
+    planState === "biography_share_only" ||
+    planState === "steward_only";
   const hideWriteSurfaces = isReader || interviewSealed;
+  const accountBillingFocus = useMemo(() => {
+    const params = new URLSearchParams(location.search || "");
+    return params.get("section") === "billing";
+  }, [location.search]);
   const visibleTopItems = menuItems.filter(
     (item) =>
       item.section !== "bottom" &&
       (isAuthed || !item.requiresAuth) &&
       !(item.hideForBetaLite && IS_BETA_LITE) &&
       !(item.hideForReader && hideWriteSurfaces) &&
+      !(item.readerOnly && !showMyBiographyNav) &&
       !(isAuthed && NESTED_WHEN_AUTHED_IDS.has(item.id))
   );
   const nestedTopItems = isAuthed
@@ -1436,6 +1468,7 @@ export default function App() {
       activePage === "pins" ||
       activePage === "journal" ||
       activePage === "biographies" ||
+      activePage === "my-biography" ||
       activePage === "family-circle" ||
       activePage === "help" ||
       activePage.startsWith("settings");
@@ -1483,9 +1516,26 @@ export default function App() {
   useEffect(() => {
     if (!isAuthed || !onboardingChecked) return;
     if (hideWriteSurfaces && WRITE_FORBIDDEN_PAGES.has(activePage)) {
+      navigateToPage(showMyBiographyNav ? "my-biography" : "biographies", {
+        replace: true,
+      });
+    }
+  }, [
+    activePage,
+    isAuthed,
+    onboardingChecked,
+    hideWriteSurfaces,
+    showMyBiographyNav,
+    WRITE_FORBIDDEN_PAGES,
+  ]);
+
+  // My Biography is only for listener / share-only / steward-only plans.
+  useEffect(() => {
+    if (!isAuthed || !onboardingChecked) return;
+    if (activePage === "my-biography" && !showMyBiographyNav) {
       navigateToPage("biographies", { replace: true });
     }
-  }, [activePage, isAuthed, onboardingChecked, hideWriteSurfaces, WRITE_FORBIDDEN_PAGES]);
+  }, [activePage, isAuthed, onboardingChecked, showMyBiographyNav]);
 
   useEffect(() => {
     if (activePage !== "admin-onboarding-preview") return;
@@ -4353,6 +4403,8 @@ export default function App() {
           tourNonce={journalTourNonce}
           onReadyForTour={() => startTour("journal")}
         />
+      ) : activePage === "my-biography" ? (
+        <MyBiographyPage onSubscribe={navigateToBilling} />
       ) : activePage === "biographies" ? (
         <BiographiesPage
           isAuthed={isAuthed}
@@ -4361,7 +4413,7 @@ export default function App() {
           streamWsUrl={BIOGRAPHY_STREAMING_ENABLED ? STREAM_WS_URL : ""}
           openOwnerId={biographyOpenOwnerId}
           onOwnerOpened={() => setBiographyOpenOwnerId("")}
-          onUpgraded={() => navigateToPage("interview")}
+          onOpenMyBiography={() => navigateToPage("my-biography")}
           onPersonaOpen={handleBiographyPersonaOpen}
         />
       ) : activePage === "family-circle" ? (
@@ -4372,7 +4424,7 @@ export default function App() {
           biographyEnabled={biographySettings?.enabled !== false}
           isReader={isReader}
           onManageSharing={() => navigateToPage("settings-biographies")}
-          onSubscribe={() => navigateToPage("account")}
+          onSubscribe={navigateToBilling}
           onStoryRequestsSeen={() => setFulfilledStoryRequests(0)}
           onOpenBiography={(ownerId) => {
             const id = String(ownerId || "").trim();
@@ -4515,9 +4567,13 @@ export default function App() {
           }}
           saveBioProfile={saveBioProfile}
           onOpenDangerZone={() => navigateToPage("danger-zone")}
+          focusBilling={accountBillingFocus}
+          onClearBillingFocus={() => {
+            navigateToPage("account", { replace: true });
+          }}
           onClose={() => {
             setShowProfile(false);
-            navigateToPage("interview");
+            navigateToPage(showMyBiographyNav ? "my-biography" : "interview");
           }}
         />
       ) : activePage.startsWith("settings") ? (

@@ -213,7 +213,7 @@ export default function BiographiesPage({
   streamWsUrl = "",
   openOwnerId = "",
   onOwnerOpened,
-  onUpgraded,
+  onOpenMyBiography,
   onPersonaOpen,
 }) {
   const [bios, setBios] = useState([]);
@@ -221,8 +221,6 @@ export default function BiographiesPage({
   const [biosError, setBiosError] = useState("");
   const [selectedOwnerId, setSelectedOwnerId] = useState("");
   const [viewer, setViewer] = useState(null);
-  const [upgrading, setUpgrading] = useState(false);
-  const [upgradeError, setUpgradeError] = useState("");
 
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState("");
@@ -406,31 +404,6 @@ export default function BiographiesPage({
     setDraft("");
     setActiveSource(null);
     requestAnimationFrame(() => inputRef.current?.focus());
-  }
-
-  async function upgradeAccount() {
-    if (upgrading) return;
-    setUpgrading(true);
-    setUpgradeError("");
-    try {
-      const token = await getAccessToken();
-      const res = await fetch(`${apiBase}/biographies/upgrade`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      await throwIfUnauthorized(res);
-      const text = await res.text();
-      const parsed = parseApiPayload(text);
-      if (!res.ok) {
-        throw new Error(parsed?.detail || parsed?.error || `Request failed (${res.status})`);
-      }
-      setViewer((v) => ({ ...(v || {}), plan_state: parsed?.plan_state || "beta_invited", can_upgrade: false }));
-      if (typeof onUpgraded === "function") onUpgraded();
-    } catch (e) {
-      if (!isAuthExpiredError(e)) setUpgradeError(describeApiErrorMessage(e));
-    } finally {
-      setUpgrading(false);
-    }
   }
 
   // Map a known backend error code to a friendly, tone-appropriate message.
@@ -700,34 +673,33 @@ export default function BiographiesPage({
         </Banner>
       ) : null}
 
-      {isAuthed && viewer?.can_upgrade ? (
+      {isAuthed && (viewer?.needs_subscribe || viewer?.can_upgrade) ? (
         <div style={{ marginBottom: 24 }}>
-          <Frame label="Start your own Kinin">
-            <div className="km-prose" style={{ maxWidth: 620, marginBottom: 16 }}>
-              <p style={{ margin: 0 }}>
-                You&apos;re here to explore someone&apos;s biography — but you
-                have a story too. Start your own Kinin interview and let your
-                family talk with your memories one day. You&apos;ll keep access
-                to everyone who&apos;s shared their biography with you.
-              </p>
-            </div>
-            {upgradeError ? (
-              <div style={{ marginBottom: 12 }}>
-                <Banner tone="danger">
-                  <span>
-                    <strong>Something went wrong.</strong> {upgradeError}
-                  </span>
-                </Banner>
-              </div>
-            ) : null}
-            <Button variant="primary" onClick={upgradeAccount} disabled={upgrading}>
-              {upgrading ? (
-                <><Spinner /> Setting up...</>
+          <Banner tone="info">
+            <span>
+              Looking for your own story? Open{" "}
+              {typeof onOpenMyBiography === "function" ? (
+                <button
+                  type="button"
+                  onClick={onOpenMyBiography}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    color: "inherit",
+                    textDecoration: "underline",
+                    cursor: "pointer",
+                    font: "inherit",
+                  }}
+                >
+                  My Biography
+                </button>
               ) : (
-                "Start telling my story"
-              )}
-            </Button>
-          </Frame>
+                "My Biography"
+              )}{" "}
+              to upgrade and interview with Kinin.
+            </span>
+          </Banner>
         </div>
       ) : null}
 

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Banner, Button, FormRow, Frame, Section, Skeleton, TextInput } from "../theme";
 import PlanBillingSection from "../components/PlanBillingSection";
 import AccountSecuritySection from "./AccountSecuritySection";
@@ -42,10 +43,23 @@ export default function MyAccountPage({
   apiBase = "",
   getAccessToken = null,
   planState = "",
+  focusBilling = false,
+  onClearBillingFocus = null,
 }) {
   const showInitialLoader = profileBusy && !profileSchema;
   const selectedDobText = formatDateLong(bioProfile.date_of_birth);
   const derivedAge = deriveAgeFromDateOfBirth(bioProfile.date_of_birth);
+  const billingRef = useRef(null);
+
+  useEffect(() => {
+    if (!focusBilling) return;
+    const el = billingRef.current;
+    if (!el) return;
+    const t = window.setTimeout(() => {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+    return () => window.clearTimeout(t);
+  }, [focusBilling]);
 
   return (
     <Section
@@ -71,6 +85,33 @@ export default function MyAccountPage({
         </div>
       ) : null}
 
+      {focusBilling ? (
+        <div style={{ marginBottom: 20 }}>
+          <Banner tone="info">
+            <span>
+              Showing Plan &amp; billing.{" "}
+              {typeof onClearBillingFocus === "function" ? (
+                <button
+                  type="button"
+                  onClick={onClearBillingFocus}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    color: "inherit",
+                    textDecoration: "underline",
+                    cursor: "pointer",
+                    font: "inherit",
+                  }}
+                >
+                  Show all account settings
+                </button>
+              ) : null}
+            </span>
+          </Banner>
+        </div>
+      ) : null}
+
       {showInitialLoader ? (
         <div style={{ display: "grid", gap: 10, maxWidth: 480, marginBottom: 24 }}>
           <Skeleton />
@@ -80,71 +121,77 @@ export default function MyAccountPage({
       ) : null}
 
       <div className="km-stack" style={{ gap: 32 }}>
-        <Frame label="Profile">
-          <div className="km-form-grid">
-            <FormRow label="Preferred name" required>
-              <TextInput
-                value={bioProfile.preferred_name}
-                onChange={(e) => setBioProfile((p) => ({ ...p, preferred_name: e.target.value }))}
-                disabled={profileBusy}
-              />
-            </FormRow>
-            <FormRow
-              label="Date of birth"
-              required
-              help="Use the calendar picker to avoid day/month ordering mistakes. Kinin derives your current age from this date."
-            >
-              <TextInput
-                type="date"
-                value={bioProfile.date_of_birth}
-                onChange={(e) => setBioProfile((p) => ({ ...p, date_of_birth: e.target.value }))}
-                disabled={profileBusy}
-                max={new Date().toISOString().slice(0, 10)}
-              />
-              {selectedDobText ? (
-                <div className="km-form-help" style={{ fontStyle: "normal" }}>
-                  Selected date: <strong>{selectedDobText}</strong>
-                  {derivedAge !== null ? (
-                    <>
-                      {" "}· Current age: <strong>{derivedAge}</strong>
-                    </>
-                  ) : null}
-                </div>
-              ) : null}
-            </FormRow>
-          </div>
-          <div style={{ marginTop: 20 }}>
-            <Button variant="primary" onClick={() => saveBioProfile()} disabled={profileBusy}>
-              {profileBusy ? "Saving…" : "Save profile"}
-            </Button>
-          </div>
-        </Frame>
-
-        {security ? <AccountSecuritySection {...security} /> : null}
-
-        {apiBase && typeof getAccessToken === "function" ? (
-          <PlanBillingSection
-            apiBase={apiBase}
-            getAccessToken={getAccessToken}
-            planState={planState}
-            disabled={profileBusy}
-          />
+        {!focusBilling ? (
+          <Frame label="Profile">
+            <div className="km-form-grid">
+              <FormRow label="Preferred name" required>
+                <TextInput
+                  value={bioProfile.preferred_name}
+                  onChange={(e) => setBioProfile((p) => ({ ...p, preferred_name: e.target.value }))}
+                  disabled={profileBusy}
+                />
+              </FormRow>
+              <FormRow
+                label="Date of birth"
+                required
+                help="Use the calendar picker to avoid day/month ordering mistakes. Kinin derives your current age from this date."
+              >
+                <TextInput
+                  type="date"
+                  value={bioProfile.date_of_birth}
+                  onChange={(e) => setBioProfile((p) => ({ ...p, date_of_birth: e.target.value }))}
+                  disabled={profileBusy}
+                  max={new Date().toISOString().slice(0, 10)}
+                />
+                {selectedDobText ? (
+                  <div className="km-form-help" style={{ fontStyle: "normal" }}>
+                    Selected date: <strong>{selectedDobText}</strong>
+                    {derivedAge !== null ? (
+                      <>
+                        {" "}· Current age: <strong>{derivedAge}</strong>
+                      </>
+                    ) : null}
+                  </div>
+                ) : null}
+              </FormRow>
+            </div>
+            <div style={{ marginTop: 20 }}>
+              <Button variant="primary" onClick={() => saveBioProfile()} disabled={profileBusy}>
+                {profileBusy ? "Saving…" : "Save profile"}
+              </Button>
+            </div>
+          </Frame>
         ) : null}
 
-        <Frame label="Danger zone / Delete account">
-          <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
-            <p>
-              Need to walk away? You can permanently delete your account and
-              all associated data — conversations, profile, archive, the lot.
-              This action cannot be undone.
-            </p>
+        {!focusBilling && security ? <AccountSecuritySection {...security} /> : null}
+
+        {apiBase && typeof getAccessToken === "function" ? (
+          <div id="plan-billing" ref={billingRef}>
+            <PlanBillingSection
+              apiBase={apiBase}
+              getAccessToken={getAccessToken}
+              planState={planState}
+              disabled={profileBusy}
+            />
           </div>
-          {onOpenDangerZone ? (
-            <Button onClick={onOpenDangerZone}>
-              Go to the danger zone →
-            </Button>
-          ) : null}
-        </Frame>
+        ) : null}
+
+        {!focusBilling ? (
+          <Frame label="Danger zone / Delete account">
+            <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
+              <p>
+                Need to walk away? You can permanently delete your account and
+                all associated data — conversations, profile, archive, the lot.
+                This action cannot be undone.
+              </p>
+            </div>
+            {onOpenDangerZone ? (
+              <Button onClick={onOpenDangerZone}>
+                Go to the danger zone →
+              </Button>
+            ) : null}
+          </Frame>
+        ) : null}
       </div>
 
       <div className="km-form-actions">

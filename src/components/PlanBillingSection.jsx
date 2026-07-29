@@ -267,8 +267,8 @@ export default function PlanBillingSection({
         },
         body: JSON.stringify({
           interval,
-          success_url: `${origin}/account?checkout=success`,
-          cancel_url: `${origin}/account?checkout=cancel`,
+          success_url: `${origin}/account?section=billing&checkout=success`,
+          cancel_url: `${origin}/account?section=billing&checkout=cancel`,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -352,7 +352,7 @@ export default function PlanBillingSection({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          return_url: `${window.location.origin}/account`,
+          return_url: `${window.location.origin}/account?section=billing`,
         }),
       });
       const data = await res.json().catch(() => ({}));
