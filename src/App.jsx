@@ -4413,7 +4413,7 @@ export default function App() {
           streamWsUrl={BIOGRAPHY_STREAMING_ENABLED ? STREAM_WS_URL : ""}
           openOwnerId={biographyOpenOwnerId}
           onOwnerOpened={() => setBiographyOpenOwnerId("")}
-          onOpenMyBiography={() => navigateToPage("my-biography")}
+          onSubscribe={navigateToBilling}
           onPersonaOpen={handleBiographyPersonaOpen}
         />
       ) : activePage === "family-circle" ? (

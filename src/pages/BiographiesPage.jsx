@@ -213,7 +213,7 @@ export default function BiographiesPage({
   streamWsUrl = "",
   openOwnerId = "",
   onOwnerOpened,
-  onOpenMyBiography,
+  onSubscribe,
   onPersonaOpen,
 }) {
   const [bios, setBios] = useState([]);
@@ -678,10 +678,10 @@ export default function BiographiesPage({
           <Banner tone="info">
             <span>
               Looking for your own story? Open{" "}
-              {typeof onOpenMyBiography === "function" ? (
+              {typeof onSubscribe === "function" ? (
                 <button
                   type="button"
-                  onClick={onOpenMyBiography}
+                  onClick={onSubscribe}
                   style={{
                     background: "none",
                     border: "none",
@@ -692,10 +692,10 @@ export default function BiographiesPage({
                     font: "inherit",
                   }}
                 >
-                  My Biography
+                  My Account
                 </button>
               ) : (
-                "My Biography"
+                "My Account"
               )}{" "}
               to upgrade and interview with Kinin.
             </span>
