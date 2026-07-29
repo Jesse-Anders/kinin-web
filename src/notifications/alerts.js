@@ -23,7 +23,7 @@ function daysBetween(iso, nowMs) {
 // The alert catalog. `isEligible(ctx)` decides whether the alert's underlying
 // condition is currently true; snooze/dismiss state is applied separately in
 // App.jsx. ctx = { nowMs, signupAt, hasExecutor, pendingStoryRequests,
-// fulfilledStoryRequests, pendingStewardshipClaim }.
+// fulfilledStoryRequests, pendingStewardshipClaim, planState }.
 //
 // An alert may also define `resurfaceValue(ctx)` returning a number (e.g. a
 // count of pending items). When present, a snoozed/dismissed alert reappears if
@@ -32,8 +32,27 @@ function daysBetween(iso, nowMs) {
 // alert render dynamic copy.
 //
 // Set `forceWhileEligible: true` for alerts that must stay visible while the
-// condition is true (no snooze/dismiss). Used for pending stewardship claims.
+// condition is true (no snooze/dismiss). Used for pending stewardship claims
+// and past-due billing.
 export const ALERTS = [
+  {
+    id: "billing-past-due",
+    tone: "info",
+    forceWhileEligible: true,
+    allowSnooze: false,
+    allowDismiss: false,
+    title: "Update your payment method",
+    body:
+      "There's a billing problem on this account. Interviewing and chat with your own biography are paused until payment is updated.",
+    cta: {
+      label: "Update payment on My Account",
+      page: "account",
+      search: "?section=billing",
+    },
+    isEligible(ctx) {
+      return String(ctx.planState || "").trim().toLowerCase() === "past_due";
+    },
+  },
   {
     id: "stewardship-claim-pending",
     tone: "info",

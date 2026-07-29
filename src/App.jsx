@@ -3531,6 +3531,7 @@ export default function App() {
         pendingStoryRequests,
         fulfilledStoryRequests,
         pendingStewardshipClaim,
+        planState,
       },
       alertsState,
     );
@@ -3543,6 +3544,7 @@ export default function App() {
     pendingStoryRequests,
     fulfilledStoryRequests,
     pendingStewardshipClaim,
+    planState,
     alertsState,
   ]);
 
@@ -3949,7 +3951,9 @@ export default function App() {
           <AlertsMenu
             alerts={activeAlerts}
             onCta={(alert) => {
-              if (alert?.cta?.page) navigateToPage(alert.cta.page);
+              if (!alert?.cta?.page) return;
+              const search = typeof alert.cta.search === "string" ? alert.cta.search : "";
+              navigateToPage(alert.cta.page, search ? { search } : {});
             }}
             onSnooze={(alert) => {
               void saveAlertAction(alert.id, "snooze", alert.resurfaceValue);
