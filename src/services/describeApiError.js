@@ -33,6 +33,8 @@ const CODE_MESSAGES = {
   no_active_subscription: "No active subscription to change — subscribe first under My Account.",
   onboarding_required: "Finish getting started, then you can continue.",
   account_close_failed: "We couldn't close the account. Please try again.",
+  stripe_cancel_failed:
+    "We couldn't stop billing for this account, so it wasn't deleted. Please try again or contact support so you aren't charged after leaving.",
   confirmation_mismatch: "Confirmation text didn't match. Please try again.",
   username_mismatch: "That username doesn't match this account.",
   username_and_password_required: "Username and password are required to continue.",
