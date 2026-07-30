@@ -5,7 +5,18 @@ import { describeApiErrorMessage } from "../services/describeApiError";
 const PRICE_MONTHLY = "$11.99/month";
 const PRICE_ANNUAL = "$99/year";
 
-function planLabel(raw, interval) {
+function formatIsoDate(iso) {
+  if (!iso) return "";
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return "";
+  try {
+    return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(t));
+  } catch {
+    return "";
+  }
+}
+
+function planLabel(raw, interval, trialEndsAt) {
   const p = String(raw || "").trim().toLowerCase();
   const iv = String(interval || "").trim().toLowerCase();
   if (p === "active") {
@@ -13,7 +24,12 @@ function planLabel(raw, interval) {
     if (iv === "annual") return `Interviewer · annual (${PRICE_ANNUAL})`;
     return "Interviewer (paid)";
   }
-  if (p === "trialing") return "Full trial — interview and your live biography";
+  if (p === "trialing") {
+    const ends = formatIsoDate(trialEndsAt);
+    return ends
+      ? `7-day full trial — ends ${ends}`
+      : "7-day full trial — interview and your live biography";
+  }
   if (p === "beta_invited") return "Full access (complimentary)";
   if (p === "biography_only") return "Free listener — shared biographies only";
   if (p === "past_due") return "Past due — update payment to keep interviewing";
@@ -34,7 +50,15 @@ function formatPeriodEnd(unixSeconds) {
   }
 }
 
-function planExplainer({ effectivePlan, interval, canCheckout, canChange, cancelAtPeriodEnd, periodEndLabel }) {
+function planExplainer({
+  effectivePlan,
+  interval,
+  canCheckout,
+  canChange,
+  cancelAtPeriodEnd,
+  periodEndLabel,
+  trialEndsLabel,
+}) {
   const p = String(effectivePlan || "").trim().toLowerCase();
 
   if (p === "biography_only" || p === "canceled" || p === "none") {
@@ -59,9 +83,15 @@ function planExplainer({ effectivePlan, interval, canCheckout, canChange, cancel
     return (
       <>
         <p>
-          You&apos;re on a <strong>full trial</strong> — interviewing and your own
-          live biography are unlocked for a limited time. When the trial ends you
-          become a free listener unless you subscribe.
+          You&apos;re on a <strong>7-day full trial</strong> — interviewing,
+          journaling, and your own live biography are unlocked
+          {trialEndsLabel ? (
+            <>
+              {" "}
+              through <strong>{trialEndsLabel}</strong>
+            </>
+          ) : null}
+          . When the trial ends you become a free listener unless you subscribe.
         </p>
         <p>
           Subscribe anytime: <strong>{PRICE_MONTHLY}</strong> or{" "}
@@ -374,6 +404,8 @@ export default function PlanBillingSection({
   const busy = billingBusy || disabled;
   const periodEndLabel = formatPeriodEnd(status?.current_period_end);
   const cancelAtPeriodEnd = Boolean(status?.cancel_at_period_end);
+  const trialEndsAt = status?.trial_ends_at || "";
+  const trialEndsLabel = formatIsoDate(trialEndsAt);
 
   return (
     <Frame label="Plan & billing">
@@ -385,6 +417,7 @@ export default function PlanBillingSection({
           canChange,
           cancelAtPeriodEnd,
           periodEndLabel,
+          trialEndsLabel,
         })}
       </div>
       {billingError ? (
@@ -399,8 +432,15 @@ export default function PlanBillingSection({
       ) : null}
       <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
         <p>
-          <strong>Current plan:</strong> {planLabel(effectivePlan, interval)}
+          <strong>Current plan:</strong>{" "}
+          {planLabel(effectivePlan, interval, trialEndsAt)}
         </p>
+        {String(effectivePlan || "").toLowerCase() === "trialing" && trialEndsLabel ? (
+          <p className="km-muted">
+            Full trial ends on <strong>{trialEndsLabel}</strong>. After that you
+            keep free listener access; subscribe here to continue interviewing.
+          </p>
+        ) : null}
         {cancelAtPeriodEnd && periodEndLabel ? (
           <p className="km-muted">Access continues through {periodEndLabel}, then free listener.</p>
         ) : null}

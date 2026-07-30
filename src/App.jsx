@@ -489,6 +489,8 @@ export default function App() {
   // interview of their own); everything else is treated as a full "Storyteller".
   // Sealed stewarded biographies reuse the same write-surface gates as Readers.
   const [planState, setPlanState] = useState("");
+  // ISO trial end from entitlement — Plan & billing + trial-ending-soon alert.
+  const [trialEndsAt, setTrialEndsAt] = useState(null);
   const [interviewSealed, setInterviewSealed] = useState(false);
   // Count of live story-request pins waiting on this user — powers the
   // "a family member would love a story" alert. Derived server-side from pins.
@@ -1802,6 +1804,9 @@ export default function App() {
     }
     if (parsed && typeof parsed === "object" && "plan_state" in parsed) {
       setPlanState(typeof parsed.plan_state === "string" ? parsed.plan_state : "");
+    }
+    if (parsed && typeof parsed === "object" && "trial_ends_at" in parsed) {
+      setTrialEndsAt(typeof parsed.trial_ends_at === "string" ? parsed.trial_ends_at : null);
     }
     if (parsed && typeof parsed === "object" && "interview_sealed" in parsed) {
       setInterviewSealed(parsed.interview_sealed === true);
@@ -3532,6 +3537,7 @@ export default function App() {
         fulfilledStoryRequests,
         pendingStewardshipClaim,
         planState,
+        trialEndsAt,
       },
       alertsState,
     );
@@ -3545,6 +3551,7 @@ export default function App() {
     fulfilledStoryRequests,
     pendingStewardshipClaim,
     planState,
+    trialEndsAt,
     alertsState,
   ]);
 

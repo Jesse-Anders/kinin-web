@@ -11,6 +11,9 @@
 // How long "Remind me later" pushes an alert out before it can resurface.
 export const ALERT_SNOOZE_DAYS = 7;
 
+/** Match backend KININ_TRIAL_ENDING_SOON_DAYS (default 2). */
+export const TRIAL_ENDING_SOON_DAYS = 2;
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function daysBetween(iso, nowMs) {
@@ -20,10 +23,29 @@ function daysBetween(iso, nowMs) {
   return (nowMs - t) / DAY_MS;
 }
 
+/** Days remaining until trial_ends_at (positive = still in trial). */
+function trialDaysRemaining(trialEndsAt, nowMs) {
+  if (!trialEndsAt) return null;
+  const t = Date.parse(trialEndsAt);
+  if (Number.isNaN(t)) return null;
+  return (t - nowMs) / DAY_MS;
+}
+
+function formatTrialEndDate(iso) {
+  if (!iso) return "";
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return "";
+  try {
+    return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(t));
+  } catch {
+    return "";
+  }
+}
+
 // The alert catalog. `isEligible(ctx)` decides whether the alert's underlying
 // condition is currently true; snooze/dismiss state is applied separately in
 // App.jsx. ctx = { nowMs, signupAt, hasExecutor, pendingStoryRequests,
-// fulfilledStoryRequests, pendingStewardshipClaim, planState }.
+// fulfilledStoryRequests, pendingStewardshipClaim, planState, trialEndsAt }.
 //
 // An alert may also define `resurfaceValue(ctx)` returning a number (e.g. a
 // count of pending items). When present, a snoozed/dismissed alert reappears if
@@ -51,6 +73,33 @@ export const ALERTS = [
     },
     isEligible(ctx) {
       return String(ctx.planState || "").trim().toLowerCase() === "past_due";
+    },
+  },
+  {
+    id: "trial-ending-soon",
+    tone: "info",
+    forceWhileEligible: true,
+    allowSnooze: false,
+    allowDismiss: false,
+    title: "Your full trial ends in 2 days",
+    body:
+      "Your 7-day Kinin full trial is almost over. Subscribe under My Account to keep interviewing and chatting with your own biography.",
+    cta: {
+      label: "Choose a plan on My Account",
+      page: "account",
+      search: "?section=billing",
+    },
+    isEligible(ctx) {
+      if (String(ctx.planState || "").trim().toLowerCase() !== "trialing") return false;
+      const left = trialDaysRemaining(ctx.trialEndsAt, ctx.nowMs ?? Date.now());
+      return left !== null && left > 0 && left <= TRIAL_ENDING_SOON_DAYS;
+    },
+    bodyFor(ctx) {
+      const ends = formatTrialEndDate(ctx.trialEndsAt);
+      if (ends) {
+        return `Your 7-day Kinin full trial ends on ${ends}. Subscribe under My Account to keep interviewing, journaling, and chatting with your own biography — or continue as a free listener after the trial.`;
+      }
+      return "Your 7-day Kinin full trial is almost over. Subscribe under My Account to keep interviewing and chatting with your own biography.";
     },
   },
   {
