@@ -29,7 +29,11 @@ const CODE_MESSAGES = {
   no_stripe_customer:
     "No billing profile yet — subscribe first, then you can manage payment details.",
   subscription_already_active:
-    "You already have an active interviewer subscription. Use Switch plan or Manage billing on My Account instead of starting a new checkout.",
+    "You already have an active subscription in that category. Use Switch plan or Manage billing on My Account instead of starting a new checkout.",
+  owner_plan_xor_conflict:
+    "Interviewer and Share Biography can't both be active. Switch plans on My Account, or cancel the current owner plan in Manage billing first.",
+  legacy_seat_cap_reached:
+    "You're at your Legacy seat limit. Buy or upgrade a Legacy Pack under My Account → Plan & billing, or set another biography to Dormant Archive.",
   already_on_interval: "You're already on that plan.",
   no_active_subscription: "No active subscription to change — subscribe first under My Account.",
   onboarding_required: "Finish getting started, then you can continue.",

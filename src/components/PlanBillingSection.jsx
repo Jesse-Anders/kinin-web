@@ -2,8 +2,14 @@ import { useEffect, useState } from "react";
 import { Banner, Button, Frame } from "../theme";
 import { describeApiErrorMessage } from "../services/describeApiError";
 
-const PRICE_MONTHLY = "$11.99/month";
-const PRICE_ANNUAL = "$99/year";
+const PRICE_INTERVIEWER_MONTHLY = "$11.99/month";
+const PRICE_INTERVIEWER_ANNUAL = "$99/year";
+const PRICE_SHARE_MONTHLY = "$4.99/month";
+const PRICE_SHARE_ANNUAL = "$49/year";
+const PRICE_PACK2_MONTHLY = "$4.99/month";
+const PRICE_PACK2_ANNUAL = "$49/year";
+const PRICE_PACK5_MONTHLY = "$9.99/month";
+const PRICE_PACK5_ANNUAL = "$99/year";
 
 function formatIsoDate(iso) {
   if (!iso) return "";
@@ -16,12 +22,23 @@ function formatIsoDate(iso) {
   }
 }
 
-function planLabel(raw, interval, trialEndsAt) {
+function planLabel(raw, interval, trialEndsAt, product) {
   const p = String(raw || "").trim().toLowerCase();
   const iv = String(interval || "").trim().toLowerCase();
+  const prod = String(product || "").trim().toLowerCase();
+  if (p === "share_bio") {
+    if (iv === "monthly") return `Share Biography · monthly (${PRICE_SHARE_MONTHLY})`;
+    if (iv === "annual") return `Share Biography · annual (${PRICE_SHARE_ANNUAL})`;
+    return "Share Biography";
+  }
   if (p === "active") {
-    if (iv === "monthly") return `Interviewer · monthly (${PRICE_MONTHLY})`;
-    if (iv === "annual") return `Interviewer · annual (${PRICE_ANNUAL})`;
+    if (prod === "share_bio") {
+      if (iv === "monthly") return `Share Biography · monthly (${PRICE_SHARE_MONTHLY})`;
+      if (iv === "annual") return `Share Biography · annual (${PRICE_SHARE_ANNUAL})`;
+      return "Share Biography";
+    }
+    if (iv === "monthly") return `Interviewer · monthly (${PRICE_INTERVIEWER_MONTHLY})`;
+    if (iv === "annual") return `Interviewer · annual (${PRICE_INTERVIEWER_ANNUAL})`;
     return "Interviewer (paid)";
   }
   if (p === "trialing") {
@@ -32,10 +49,26 @@ function planLabel(raw, interval, trialEndsAt) {
   }
   if (p === "beta_invited") return "Full access (complimentary)";
   if (p === "biography_only") return "Free listener — shared biographies only";
-  if (p === "past_due") return "Past due — update payment to keep interviewing";
+  if (p === "past_due") return "Past due — update payment to keep access";
   if (p === "canceled") return "Free listener (subscription ended)";
-  if (p === "none") return "No interviewer plan yet";
+  if (p === "none") return "No owner plan yet";
   return p ? p.replace(/_/g, " ") : "Unknown";
+}
+
+function packLabel(pack, interval) {
+  const p = String(pack || "none").trim().toLowerCase();
+  const iv = String(interval || "").trim().toLowerCase();
+  if (p === "pack_2") {
+    return iv === "annual"
+      ? `Legacy Pack — 2 seats · annual (${PRICE_PACK2_ANNUAL})`
+      : `Legacy Pack — 2 seats · monthly (${PRICE_PACK2_MONTHLY})`;
+  }
+  if (p === "pack_5") {
+    return iv === "annual"
+      ? `Legacy Pack — 5 seats · annual (${PRICE_PACK5_ANNUAL})`
+      : `Legacy Pack — 5 seats · monthly (${PRICE_PACK5_MONTHLY})`;
+  }
+  return "No Legacy Pack";
 }
 
 function formatPeriodEnd(unixSeconds) {
@@ -50,150 +83,9 @@ function formatPeriodEnd(unixSeconds) {
   }
 }
 
-function planExplainer({
-  effectivePlan,
-  interval,
-  canCheckout,
-  canChange,
-  cancelAtPeriodEnd,
-  periodEndLabel,
-  trialEndsLabel,
-}) {
-  const p = String(effectivePlan || "").trim().toLowerCase();
-
-  if (p === "biography_only" || p === "canceled" || p === "none") {
-    return (
-      <>
-        <p>
-          You&apos;re on the <strong>free listener</strong> plan. You can explore
-          biographies that paying storytellers (or Legacy stewards) share with you.
-          You can&apos;t run your own interview or chat with your own live biography
-          until you subscribe.
-        </p>
-        <p>
-          <strong>Interviewer plans:</strong> {PRICE_MONTHLY}, or {PRICE_ANNUAL}{" "}
-          (best value). Either unlocks interviewing, journaling, and an interactive
-          biography you can share with family and close friends.
-        </p>
-      </>
-    );
-  }
-
-  if (p === "trialing") {
-    return (
-      <>
-        <p>
-          You&apos;re on a <strong>7-day full trial</strong> — interviewing,
-          journaling, and your own live biography are unlocked
-          {trialEndsLabel ? (
-            <>
-              {" "}
-              through <strong>{trialEndsLabel}</strong>
-            </>
-          ) : null}
-          . When the trial ends you become a free listener unless you subscribe.
-        </p>
-        <p>
-          Subscribe anytime: <strong>{PRICE_MONTHLY}</strong> or{" "}
-          <strong>{PRICE_ANNUAL}</strong>.
-        </p>
-      </>
-    );
-  }
-
-  if (p === "past_due") {
-    return (
-      <>
-        <p>
-          There&apos;s a <strong>billing problem</strong> on this account. Interview
-          and interactive chat on your own biography are paused until payment is
-          updated. Use <strong>Manage billing</strong> to fix your card.
-        </p>
-        <p>
-          Plans: {PRICE_MONTHLY} or {PRICE_ANNUAL}.
-        </p>
-      </>
-    );
-  }
-
-  if (p === "active") {
-    const intervalLine =
-      interval === "monthly"
-        ? `You're on the monthly Interviewer plan (${PRICE_MONTHLY}).`
-        : interval === "annual"
-          ? `You're on the annual Interviewer plan (${PRICE_ANNUAL}).`
-          : "You're on a paid Interviewer plan.";
-    return (
-      <>
-        <p>
-          {intervalLine} That covers interviewing, journaling, and interactive chat
-          on your live biography — including sharing it with people in your Family
-          Circle.
-        </p>
-        {cancelAtPeriodEnd && periodEndLabel ? (
-          <p>
-            Cancellation is scheduled: you keep full access through{" "}
-            <strong>{periodEndLabel}</strong>, then you become a free listener. You
-            can reverse the cancel or switch plans before then via the buttons below
-            or Manage billing.
-          </p>
-        ) : null}
-        {canChange && interval === "monthly" && !cancelAtPeriodEnd ? (
-          <p>
-            Switch to annual ({PRICE_ANNUAL}) anytime — Stripe prorates so you
-            aren&apos;t double-billed. Or open Manage billing to update your card or
-            cancel at period end.
-          </p>
-        ) : null}
-        {canChange && interval === "annual" ? (
-          <p>
-            Prefer monthly ({PRICE_MONTHLY})? You can schedule that for the end of
-            your annual term so the year completes first. Manage billing also lets
-            you update your card or cancel.
-          </p>
-        ) : null}
-        {canChange && interval === "monthly" && cancelAtPeriodEnd ? (
-          <p>
-            You can still switch to annual ({PRICE_ANNUAL}) before the cancel date,
-            or use Manage billing to resume monthly / update payment.
-          </p>
-        ) : null}
-      </>
-    );
-  }
-
-  if (p === "beta_invited") {
-    return (
-      <>
-        <p>
-          You have <strong>full complimentary access</strong> to interview and your
-          live biography. Paid plans ({PRICE_MONTHLY} / {PRICE_ANNUAL}) are optional
-          if you want a Stripe billing profile for later.
-        </p>
-      </>
-    );
-  }
-
-  if (canCheckout) {
-    return (
-      <p>
-        Choose an Interviewer plan to unlock interviewing and your own shareable
-        biography: {PRICE_MONTHLY} or {PRICE_ANNUAL}.
-      </p>
-    );
-  }
-
-  return (
-    <p>
-      Manage your interviewer subscription below. Plans: {PRICE_MONTHLY} or{" "}
-      {PRICE_ANNUAL}.
-    </p>
-  );
-}
-
 /**
- * Interviewer plan subscribe / change / portal controls.
- * Lives on My Account (Phase 2.3c); return URLs use /account.
+ * Interviewer / Share Biography / Legacy Pack subscribe controls.
+ * Lives on My Account (Phase 2.6); return URLs use /account.
  */
 export default function PlanBillingSection({
   apiBase = "",
@@ -262,12 +154,27 @@ export default function PlanBillingSection({
         let status = null;
         for (let i = 0; i < 5; i += 1) {
           status = await refreshBillingStatus();
-          if (status?.plan_state === "active" || status?.plan_state === "beta_invited") break;
+          const plan = String(status?.plan_state || "").toLowerCase();
+          const pack = String(status?.steward_pack || "none").toLowerCase();
+          if (
+            plan === "active" ||
+            plan === "share_bio" ||
+            plan === "beta_invited" ||
+            pack === "pack_2" ||
+            pack === "pack_5"
+          ) {
+            break;
+          }
           await new Promise((r) => setTimeout(r, 1500));
         }
-        if (status?.plan_state === "active") {
+        const plan = String(status?.plan_state || "").toLowerCase();
+        if (plan === "active") {
           setBillingNotice("You're subscribed. Interviewer access is active.");
-        } else if (status?.plan_state === "beta_invited") {
+        } else if (plan === "share_bio") {
+          setBillingNotice("Share Biography is active.");
+        } else if (status?.steward_pack && status.steward_pack !== "none") {
+          setBillingNotice("Legacy Pack is active. Seat capacity updated.");
+        } else if (plan === "beta_invited") {
           setBillingNotice("You're subscribed in Stripe; complimentary full access is unchanged.");
         } else {
           setBillingNotice(
@@ -282,7 +189,7 @@ export default function PlanBillingSection({
     })();
   }, [apiBase, getAccessToken]);
 
-  async function openCheckout(interval) {
+  async function openCheckout(interval, product = "interviewer") {
     setBillingBusy(true);
     setBillingError("");
     setBillingNotice("");
@@ -297,6 +204,7 @@ export default function PlanBillingSection({
         },
         body: JSON.stringify({
           interval,
+          product,
           success_url: `${origin}/account?section=billing&checkout=success`,
           cancel_url: `${origin}/account?section=billing&checkout=cancel`,
         }),
@@ -305,7 +213,15 @@ export default function PlanBillingSection({
       const parsed = typeof data?.body === "string" ? JSON.parse(data.body) : data;
       if (res.status === 409 || parsed?.error === "subscription_already_active") {
         setBillingNotice(
-          "You already have an active interviewer subscription. Use Switch plan or Manage billing instead of starting a new checkout."
+          "You already have an active subscription in that category. Use Switch plan or Manage billing instead of starting a new checkout."
+        );
+        await refreshBillingStatus().catch(() => null);
+        setBillingBusy(false);
+        return;
+      }
+      if (parsed?.error === "owner_plan_xor_conflict") {
+        setBillingNotice(
+          "Interviewer and Share Biography can't both be active. Switch plans below, or cancel the current owner plan in Manage billing first."
         );
         await refreshBillingStatus().catch(() => null);
         setBillingBusy(false);
@@ -320,19 +236,21 @@ export default function PlanBillingSection({
     }
   }
 
-  async function changePlan(interval) {
+  async function changePlan(interval, product) {
     setBillingBusy(true);
     setBillingError("");
     setBillingNotice("");
     try {
       const token = await getAccessToken();
+      const body = { interval };
+      if (product) body.product = product;
       const res = await fetch(`${apiBase}/billing/change-plan`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ interval }),
+        body: JSON.stringify(body),
       });
       const data = await res.json().catch(() => ({}));
       const parsed = typeof data?.body === "string" ? JSON.parse(data.body) : data;
@@ -345,16 +263,14 @@ export default function PlanBillingSection({
             : `HTTP ${res.status}`);
         throw new Error(msg);
       }
-      if (parsed?.action === "upgraded") {
-        setBillingNotice(
-          `Switched to annual (${PRICE_ANNUAL}). Your monthly plan ended; Stripe prorates the difference so you aren't charged twice.`
-        );
+      if (parsed?.action === "upgraded" || parsed?.action === "changed") {
+        setBillingNotice("Plan updated. Stripe prorates so you aren't double-billed.");
       } else if (parsed?.action === "scheduled_downgrade") {
         const when = formatPeriodEnd(parsed?.period_end);
         setBillingNotice(
           when
-            ? `Annual plan continues until ${when}. Monthly (${PRICE_MONTHLY}) starts after that — you won't be charged twice.`
-            : `Annual plan continues until the end of the current year term, then monthly (${PRICE_MONTHLY}) begins.`
+            ? `Current term continues until ${when}, then the new interval begins.`
+            : "Current term completes first, then the new interval begins."
         );
       } else if (parsed?.error === "already_on_interval") {
         setBillingNotice("You're already on that plan.");
@@ -399,26 +315,35 @@ export default function PlanBillingSection({
   const status = billingStatus;
   const effectivePlan = status?.plan_state || planState;
   const interval = status?.interval || "";
-  const canCheckout = Boolean(status?.can_checkout);
+  const product = status?.product || "";
+  const canCheckoutOwner = Boolean(status?.can_checkout_owner ?? status?.can_checkout);
+  const canCheckoutPack = Boolean(status?.can_checkout_pack);
   const canChange = Boolean(status?.can_change_plan);
+  const canChangePack = Boolean(status?.can_change_pack);
   const busy = billingBusy || disabled;
   const periodEndLabel = formatPeriodEnd(status?.current_period_end);
   const cancelAtPeriodEnd = Boolean(status?.cancel_at_period_end);
   const trialEndsAt = status?.trial_ends_at || "";
   const trialEndsLabel = formatIsoDate(trialEndsAt);
+  const plan = String(effectivePlan || "").toLowerCase();
+  const isInterviewer = plan === "active" && product !== "share_bio";
+  const isShareBio = plan === "share_bio" || (plan === "active" && product === "share_bio");
+  const seatCap = Number(status?.steward_seat_cap || 0);
+  const seatsUsed = Number(status?.steward_seats_used || 0);
+  const freeSeat = Number(status?.steward_free_seat || 0);
+  const packSeats = Number(status?.steward_pack_seats || 0);
+  const stewardPack = status?.steward_pack || "none";
+  const packInterval = status?.steward_pack_interval || "";
 
   return (
     <Frame label="Plan & billing">
       <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
-        {planExplainer({
-          effectivePlan,
-          interval,
-          canCheckout,
-          canChange,
-          cancelAtPeriodEnd,
-          periodEndLabel,
-          trialEndsLabel,
-        })}
+        <p>
+          Choose an <strong>owner plan</strong> (Interviewer or Share Biography — not
+          both) and optionally a <strong>Legacy Pack</strong> for interactive seats on
+          sealed biographies you steward. Interviewer includes one free Legacy seat
+          while active.
+        </p>
       </div>
       {billingError ? (
         <div style={{ marginBottom: 16 }}>
@@ -432,10 +357,27 @@ export default function PlanBillingSection({
       ) : null}
       <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
         <p>
-          <strong>Current plan:</strong>{" "}
-          {planLabel(effectivePlan, interval, trialEndsAt)}
+          <strong>Owner plan:</strong>{" "}
+          {planLabel(effectivePlan, interval, trialEndsAt, product)}
         </p>
-        {String(effectivePlan || "").toLowerCase() === "trialing" && trialEndsLabel ? (
+        <p>
+          <strong>Legacy capacity:</strong> {seatsUsed} / {seatCap} seats used
+          {freeSeat || packSeats ? (
+            <>
+              {" "}
+              <span className="km-muted">
+                ({freeSeat ? `${freeSeat} free from Interviewer` : "no free seat"}
+                {packSeats ? ` + ${packSeats} from pack` : ""})
+              </span>
+            </>
+          ) : (
+            <span className="km-muted"> — subscribe Interviewer or a Legacy Pack to unlock seats</span>
+          )}
+        </p>
+        <p>
+          <strong>Legacy Pack:</strong> {packLabel(stewardPack, packInterval)}
+        </p>
+        {plan === "trialing" && trialEndsLabel ? (
           <p className="km-muted">
             Full trial ends on <strong>{trialEndsLabel}</strong>. After that you
             keep free listener access; subscribe here to continue interviewing.
@@ -444,11 +386,6 @@ export default function PlanBillingSection({
         {cancelAtPeriodEnd && periodEndLabel ? (
           <p className="km-muted">Access continues through {periodEndLabel}, then free listener.</p>
         ) : null}
-        {status?.scheduled_interval === "monthly" && periodEndLabel ? (
-          <p className="km-muted">
-            Scheduled: switch to monthly ({PRICE_MONTHLY}) after {periodEndLabel}.
-          </p>
-        ) : null}
         {!status?.stripe_configured ? (
           <p className="km-muted">
             Billing is not fully configured on this environment yet. Subscribe
@@ -456,48 +393,152 @@ export default function PlanBillingSection({
           </p>
         ) : null}
       </div>
+
+      <div className="km-prose" style={{ maxWidth: 560, marginBottom: 10 }}>
+        <p>
+          <strong>Owner plans</strong>
+        </p>
+      </div>
       <div
         className="km-form-actions"
-        style={{ justifyContent: "flex-start", flexWrap: "wrap", gap: 12 }}
+        style={{ justifyContent: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 20 }}
       >
-        {canCheckout ? (
+        {canCheckoutOwner ? (
           <>
             <Button
               variant="primary"
               disabled={busy || !status?.stripe_configured}
-              onClick={() => openCheckout("monthly")}
+              onClick={() => openCheckout("monthly", "interviewer")}
             >
-              Subscribe monthly · {PRICE_MONTHLY}
+              Interviewer monthly · {PRICE_INTERVIEWER_MONTHLY}
             </Button>
             <Button
               disabled={busy || !status?.stripe_configured}
-              onClick={() => openCheckout("annual")}
+              onClick={() => openCheckout("annual", "interviewer")}
             >
-              Subscribe annually · {PRICE_ANNUAL}
+              Interviewer annual · {PRICE_INTERVIEWER_ANNUAL}
+            </Button>
+            <Button
+              disabled={busy || !status?.stripe_configured}
+              onClick={() => openCheckout("monthly", "share_bio")}
+            >
+              Share Biography monthly · {PRICE_SHARE_MONTHLY}
+            </Button>
+            <Button
+              disabled={busy || !status?.stripe_configured}
+              onClick={() => openCheckout("annual", "share_bio")}
+            >
+              Share Biography annual · {PRICE_SHARE_ANNUAL}
             </Button>
           </>
         ) : null}
-        {canChange && interval !== "annual" ? (
+        {canChange && isInterviewer && interval !== "annual" ? (
           <Button
             variant="primary"
             disabled={busy || !status?.stripe_configured}
-            onClick={() => changePlan("annual")}
+            onClick={() => changePlan("annual", "interviewer")}
           >
-            Switch to annual · {PRICE_ANNUAL}
+            Switch Interviewer to annual · {PRICE_INTERVIEWER_ANNUAL}
           </Button>
         ) : null}
-        {canChange && interval !== "monthly" ? (
+        {canChange && isInterviewer && interval !== "monthly" ? (
           <Button
             disabled={busy || !status?.stripe_configured}
-            onClick={() => changePlan("monthly")}
+            onClick={() => changePlan("monthly", "interviewer")}
           >
-            Switch to monthly at period end · {PRICE_MONTHLY}
+            Switch Interviewer to monthly at period end · {PRICE_INTERVIEWER_MONTHLY}
           </Button>
         ) : null}
-        <Button
-          disabled={busy || !status?.has_customer}
-          onClick={() => openPortal()}
-        >
+        {canChange && isInterviewer ? (
+          <Button
+            disabled={busy || !status?.stripe_configured}
+            onClick={() => changePlan(interval || "monthly", "share_bio")}
+          >
+            Switch to Share Biography
+          </Button>
+        ) : null}
+        {canChange && isShareBio ? (
+          <Button
+            variant="primary"
+            disabled={busy || !status?.stripe_configured}
+            onClick={() => changePlan(interval || "monthly", "interviewer")}
+          >
+            Switch to Interviewer
+          </Button>
+        ) : null}
+        {canChange && isShareBio && interval !== "annual" ? (
+          <Button
+            disabled={busy || !status?.stripe_configured}
+            onClick={() => changePlan("annual", "share_bio")}
+          >
+            Switch Share Biography to annual · {PRICE_SHARE_ANNUAL}
+          </Button>
+        ) : null}
+        {canChange && isShareBio && interval !== "monthly" ? (
+          <Button
+            disabled={busy || !status?.stripe_configured}
+            onClick={() => changePlan("monthly", "share_bio")}
+          >
+            Switch Share Biography to monthly at period end · {PRICE_SHARE_MONTHLY}
+          </Button>
+        ) : null}
+      </div>
+
+      <div className="km-prose" style={{ maxWidth: 560, marginBottom: 10 }}>
+        <p>
+          <strong>Legacy Packs</strong> — stack on Interviewer&apos;s free seat
+        </p>
+      </div>
+      <div
+        className="km-form-actions"
+        style={{ justifyContent: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 20 }}
+      >
+        {canCheckoutPack ? (
+          <>
+            <Button
+              disabled={busy || !status?.stripe_configured}
+              onClick={() => openCheckout("monthly", "steward_pack_2")}
+            >
+              Pack 2 monthly · {PRICE_PACK2_MONTHLY}
+            </Button>
+            <Button
+              disabled={busy || !status?.stripe_configured}
+              onClick={() => openCheckout("annual", "steward_pack_2")}
+            >
+              Pack 2 annual · {PRICE_PACK2_ANNUAL}
+            </Button>
+            <Button
+              disabled={busy || !status?.stripe_configured}
+              onClick={() => openCheckout("monthly", "steward_pack_5")}
+            >
+              Pack 5 monthly · {PRICE_PACK5_MONTHLY}
+            </Button>
+            <Button
+              disabled={busy || !status?.stripe_configured}
+              onClick={() => openCheckout("annual", "steward_pack_5")}
+            >
+              Pack 5 annual · {PRICE_PACK5_ANNUAL}
+            </Button>
+          </>
+        ) : null}
+        {canChangePack && stewardPack === "pack_2" ? (
+          <Button
+            variant="primary"
+            disabled={busy || !status?.stripe_configured}
+            onClick={() => changePlan(packInterval || "monthly", "steward_pack_5")}
+          >
+            Upgrade to Pack 5
+          </Button>
+        ) : null}
+        {canChangePack && stewardPack === "pack_5" ? (
+          <Button
+            disabled={busy || !status?.stripe_configured}
+            onClick={() => changePlan(packInterval || "monthly", "steward_pack_2")}
+          >
+            Switch to Pack 2
+          </Button>
+        ) : null}
+        <Button disabled={busy || !status?.has_customer} onClick={() => openPortal()}>
           Manage billing
         </Button>
       </div>
