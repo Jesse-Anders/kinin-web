@@ -4329,10 +4329,26 @@ export default function App() {
       {accessBlocked ? (
         <Banner tone="info">
           <div>
-            <div><strong>Sorry, Kinin app use is by invite only at this time.</strong></div>
+            <div>
+              <strong>
+                {accessBlocked.reason === "entitlement_missing"
+                  ? "We're still finishing account setup."
+                  : "This account can't use Kinin right now."}
+              </strong>
+            </div>
             <div style={{ marginTop: 6 }}>
-              If you believe you are receiving this message in error, or you would like to be considered for
-              early access, please email <a href="mailto:Jesse@kinin.ai">Jesse@kinin.ai</a>.
+              {accessBlocked.reason === "entitlement_missing" ? (
+                <>
+                  Try refreshing or signing out and back in. Free Listener accounts can explore shared
+                  biographies; subscribe under My Account for interviewing. If this continues, email{" "}
+                  <a href="mailto:Jesse@kinin.ai">Jesse@kinin.ai</a>.
+                </>
+              ) : (
+                <>
+                  Try signing out and back in. If you need help, email{" "}
+                  <a href="mailto:Jesse@kinin.ai">Jesse@kinin.ai</a>.
+                </>
+              )}
             </div>
           </div>
         </Banner>

@@ -14,7 +14,8 @@ const REQUEST_FAILED_RE = /^Request failed\s*\((\d+)\)/i;
 const CODE_MESSAGES = {
   // Access / account
   unauthorized: "Please sign in again to continue.",
-  access_blocked: "Kinin is invite-only right now. Email Jesse@kinin.ai if you need access.",
+  access_blocked:
+    "This account can't use Kinin right now. Try signing out and back in. If it continues, email Jesse@kinin.ai.",
   payment_required:
     "An interviewer subscription is needed to continue interviewing and chatting with your own biography. Open My Account to subscribe.",
   biography_only:
