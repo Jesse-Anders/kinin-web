@@ -441,7 +441,7 @@ export default function BiographiesPage({
         "for this account";
       return {
         tone: "info",
-        message: `Archived Biography. Chat is paused on this plan. Legacy Steward ${stewardLabel} determines access for this biography.`,
+        message: `Archived Biography. Chat is paused on this plan. Account Steward ${stewardLabel} determines access for this biography.`,
       };
     }
     return null;
@@ -820,7 +820,7 @@ export default function BiographiesPage({
               <Banner tone="info">
                 <span>
                   <strong>Archived Biography.</strong> Chat is paused on this plan.
-                  Legacy Steward{" "}
+                  Account Steward{" "}
                   {selectedBio.account_steward_name ||
                     selectedBio.account_steward_email ||
                     "for this account"}{" "}
@@ -834,7 +834,7 @@ export default function BiographiesPage({
             {messages.length === 0 ? (
               <div className="km-chat-empty">
                 {selectedIsDormant
-                  ? `Archived Biography. Chat is paused. Legacy Steward ${
+                  ? `Archived Biography. Chat is paused. Account Steward ${
                       selectedBio.account_steward_name ||
                       selectedBio.account_steward_email ||
                       "for this account"

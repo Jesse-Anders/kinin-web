@@ -489,9 +489,6 @@ export default function App() {
   // interview of their own); everything else is treated as a full "Storyteller".
   // Sealed stewarded biographies reuse the same write-surface gates as Readers.
   const [planState, setPlanState] = useState("");
-  const [stewardPackPastDue, setStewardPackPastDue] = useState(false);
-  const [stewardSeatCap, setStewardSeatCap] = useState(0);
-  const [stewardSeatsUsed, setStewardSeatsUsed] = useState(0);
   // ISO trial end from entitlement — Plan & billing + trial-ending-soon alert.
   const [trialEndsAt, setTrialEndsAt] = useState(null);
   const [interviewSealed, setInterviewSealed] = useState(false);
@@ -1181,7 +1178,7 @@ export default function App() {
       label: "My Biography",
       icon: BookUser,
       requiresAuth: true,
-      // Listener / future steward-only & share-only plans — not Interviewer.
+      // Listener / future steward-only & share-only plans — not Build Biography.
       readerOnly: true,
       onClick: () => navigateToPage("my-biography"),
     },
@@ -1807,17 +1804,6 @@ export default function App() {
     }
     if (parsed && typeof parsed === "object" && "plan_state" in parsed) {
       setPlanState(typeof parsed.plan_state === "string" ? parsed.plan_state : "");
-    }
-    if (parsed && typeof parsed === "object" && "steward_pack_past_due" in parsed) {
-      setStewardPackPastDue(parsed.steward_pack_past_due === true);
-    }
-    if (parsed && typeof parsed === "object" && "steward_seat_cap" in parsed) {
-      const n = Number(parsed.steward_seat_cap);
-      setStewardSeatCap(Number.isFinite(n) && n > 0 ? n : 0);
-    }
-    if (parsed && typeof parsed === "object" && "steward_seats_used" in parsed) {
-      const n = Number(parsed.steward_seats_used);
-      setStewardSeatsUsed(Number.isFinite(n) && n > 0 ? n : 0);
     }
     if (parsed && typeof parsed === "object" && "trial_ends_at" in parsed) {
       setTrialEndsAt(typeof parsed.trial_ends_at === "string" ? parsed.trial_ends_at : null);
@@ -3552,9 +3538,6 @@ export default function App() {
         pendingStewardshipClaim,
         planState,
         trialEndsAt,
-        stewardPackPastDue,
-        stewardSeatCap,
-        stewardSeatsUsed,
       },
       alertsState,
     );
@@ -3569,9 +3552,6 @@ export default function App() {
     pendingStewardshipClaim,
     planState,
     trialEndsAt,
-    stewardPackPastDue,
-    stewardSeatCap,
-    stewardSeatsUsed,
     alertsState,
   ]);
 

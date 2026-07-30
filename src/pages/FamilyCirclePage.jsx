@@ -730,7 +730,7 @@ export default function FamilyCirclePage({
               <p>
                 Free listener accounts can explore biographies others share with
                 you, but you can&apos;t invite family and close friends to your own
-                biography until you have an Interviewer plan.
+                biography until you have a Build Biography plan.
               </p>
               <p>
                 Subscribe to activate interviewing and share your live biography

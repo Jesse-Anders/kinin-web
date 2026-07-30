@@ -20,7 +20,7 @@ export default function MyBiographyPage({ onSubscribe }) {
         <p>
           On the free listener plan you can explore biographies others share
           with you. Your own living biography — interviewing with Kinin,
-          journaling, and sharing with family — needs an Interviewer plan.
+          journaling, and sharing with family — needs a Build Biography plan.
         </p>
         <p>
           If you already started during a trial or an earlier subscription,
@@ -32,7 +32,7 @@ export default function MyBiographyPage({ onSubscribe }) {
       <Frame label="Interview & share your story">
         <div className="km-prose" style={{ maxWidth: 620, marginBottom: 16 }}>
           <p style={{ margin: 0 }}>
-            Interviewer plans are $11.99/month or $99/year.
+            Build Biography plans are $11.99/month or $99/year.
           </p>
         </div>
         {typeof onSubscribe === "function" ? (

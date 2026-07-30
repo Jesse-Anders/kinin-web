@@ -76,41 +76,6 @@ export const ALERTS = [
     },
   },
   {
-    id: "legacy-pack-past-due",
-    tone: "info",
-    forceWhileEligible: true,
-    allowSnooze: false,
-    allowDismiss: false,
-    title: "Update your Legacy Pack payment",
-    body:
-      "There's a billing problem on your Legacy Pack. Update payment under My Account so interactive steward seats stay available.",
-    cta: {
-      label: "Update payment on My Account",
-      page: "account",
-      search: "?section=billing",
-    },
-    isEligible(ctx) {
-      return Boolean(ctx.stewardPackPastDue);
-    },
-  },
-  {
-    id: "legacy-seats-at-cap",
-    tone: "info",
-    title: "Upgrade Legacy Pack for more seats",
-    body:
-      "You're using all interactive Legacy seats. Buy or upgrade a Legacy Pack under My Account to activate another biography, or set one to Dormant Archive.",
-    cta: {
-      label: "Open Plan & billing",
-      page: "account",
-      search: "?section=billing",
-    },
-    isEligible(ctx) {
-      const cap = Number(ctx.stewardSeatCap || 0);
-      const used = Number(ctx.stewardSeatsUsed || 0);
-      return cap > 0 && used >= cap;
-    },
-  },
-  {
     id: "trial-ending-soon",
     tone: "info",
     forceWhileEligible: true,

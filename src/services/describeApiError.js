@@ -17,11 +17,11 @@ const CODE_MESSAGES = {
   access_blocked:
     "This account can't use Kinin right now. Try signing out and back in. If it continues, email Jesse@kinin.ai.",
   payment_required:
-    "An interviewer subscription is needed to continue interviewing and chatting with your own biography. Open My Account to subscribe.",
+    "A Build Biography subscription is needed to continue interviewing and chatting with your own biography. Open My Account to subscribe.",
   biography_only:
     "This account is on the free listener plan. You can explore biographies shared with you. Subscribe under My Account to interview, journal, and create your own biography.",
   own_biography_requires_plan:
-    "Interactive chat with your own biography needs an active interviewer plan. Open My Account to subscribe.",
+    "Interactive chat with your own biography needs an active Build Biography plan. Open My Account to subscribe.",
   past_due:
     "There's a billing problem on this account. Interview and interactive biography chat are paused until payment is updated. Open My Account to manage your payment method.",
   stripe_not_configured:
@@ -31,9 +31,11 @@ const CODE_MESSAGES = {
   subscription_already_active:
     "You already have an active subscription in that category. Use Switch plan or Manage billing on My Account instead of starting a new checkout.",
   owner_plan_xor_conflict:
-    "Interviewer and Share Biography can't both be active. Switch plans on My Account, or cancel the current owner plan in Manage billing first.",
+    "Build Biography and Share Biography can't both be active. Switch plans on My Account, or cancel the current owner plan in Manage billing first.",
+  checkout_required:
+    "This biography needs a Keep interactive plan. Complete Checkout, or use your free seat included with Build Biography if it's still available.",
   legacy_seat_cap_reached:
-    "You're at your Legacy seat limit. Buy or upgrade a Legacy Pack under My Account → Plan & billing, or set another biography to Dormant Archive.",
+    "This biography needs a Keep interactive plan. Open Stewardship to turn it on (Checkout if your free seat is already in use).",
   already_on_interval: "You're already on that plan.",
   no_active_subscription: "No active subscription to change — subscribe first under My Account.",
   onboarding_required: "Finish getting started, then you can continue.",
@@ -95,14 +97,14 @@ const CODE_MESSAGES = {
   attestation_required: "Please write a short attestation before submitting.",
   invalid_claim_reason: "Please choose a valid reason for the Stewardship request.",
   invalid_billing_plan:
-    "Please choose Legacy Stewardship ($4.99/mo) or Dormant Archive (free).",
+    "Please choose Keep interactive ($4.99/mo) or Archive (free).",
   role_not_active: "Stewardship isn't active for this biography yet.",
   cannot_decline_active: "You can't decline after Stewardship is already active. Resign instead.",
   cannot_remove_active_steward: "An active Account Steward can't be removed this way.",
   interview_sealed:
     "This biography is under Stewardship and completed. Interview, journal, pins, and review are permanently closed on this account.",
   legacy_chat_disabled:
-    "Archived Biography. Chat is paused on this plan. The Legacy Steward determines access for this biography.",
+    "Archived biography. Chat is paused on this plan. The Account Steward determines access for this biography.",
   steward_account_required:
     "That person needs a Kinin account before you can hand off Stewardship to them. Ask them to sign up (or confirm their Account Steward invite) first.",
   cannot_transfer_to_self: "You can't hand off Stewardship to yourself.",

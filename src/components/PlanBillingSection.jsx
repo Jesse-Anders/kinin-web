@@ -2,14 +2,12 @@ import { useEffect, useState } from "react";
 import { Banner, Button, Frame } from "../theme";
 import { describeApiErrorMessage } from "../services/describeApiError";
 
-const PRICE_INTERVIEWER_MONTHLY = "$11.99/month";
-const PRICE_INTERVIEWER_ANNUAL = "$99/year";
+const PRICE_BUILD_MONTHLY = "$11.99/month";
+const PRICE_BUILD_ANNUAL = "$99/year";
 const PRICE_SHARE_MONTHLY = "$4.99/month";
 const PRICE_SHARE_ANNUAL = "$49/year";
-const PRICE_PACK2_MONTHLY = "$4.99/month";
-const PRICE_PACK2_ANNUAL = "$49/year";
-const PRICE_PACK5_MONTHLY = "$9.99/month";
-const PRICE_PACK5_ANNUAL = "$99/year";
+const PRICE_KEEP_MONTHLY = "$4.99/month";
+const PRICE_KEEP_ANNUAL = "$49/year";
 
 function formatIsoDate(iso) {
   if (!iso) return "";
@@ -22,24 +20,31 @@ function formatIsoDate(iso) {
   }
 }
 
+function formatPeriodEnd(unixSeconds) {
+  const n = Number(unixSeconds);
+  if (!Number.isFinite(n) || n <= 0) return "";
+  try {
+    return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
+      new Date(n * 1000)
+    );
+  } catch {
+    return "";
+  }
+}
+
 function planLabel(raw, interval, trialEndsAt, product) {
   const p = String(raw || "").trim().toLowerCase();
   const iv = String(interval || "").trim().toLowerCase();
   const prod = String(product || "").trim().toLowerCase();
-  if (p === "share_bio") {
+  if (p === "share_bio" || (p === "active" && prod === "share_bio")) {
     if (iv === "monthly") return `Share Biography · monthly (${PRICE_SHARE_MONTHLY})`;
     if (iv === "annual") return `Share Biography · annual (${PRICE_SHARE_ANNUAL})`;
     return "Share Biography";
   }
   if (p === "active") {
-    if (prod === "share_bio") {
-      if (iv === "monthly") return `Share Biography · monthly (${PRICE_SHARE_MONTHLY})`;
-      if (iv === "annual") return `Share Biography · annual (${PRICE_SHARE_ANNUAL})`;
-      return "Share Biography";
-    }
-    if (iv === "monthly") return `Interviewer · monthly (${PRICE_INTERVIEWER_MONTHLY})`;
-    if (iv === "annual") return `Interviewer · annual (${PRICE_INTERVIEWER_ANNUAL})`;
-    return "Interviewer (paid)";
+    if (iv === "monthly") return `Build Biography · monthly (${PRICE_BUILD_MONTHLY})`;
+    if (iv === "annual") return `Build Biography · annual (${PRICE_BUILD_ANNUAL})`;
+    return "Build Biography (paid)";
   }
   if (p === "trialing") {
     const ends = formatIsoDate(trialEndsAt);
@@ -55,37 +60,28 @@ function planLabel(raw, interval, trialEndsAt, product) {
   return p ? p.replace(/_/g, " ") : "Unknown";
 }
 
-function packLabel(pack, interval) {
-  const p = String(pack || "none").trim().toLowerCase();
-  const iv = String(interval || "").trim().toLowerCase();
-  if (p === "pack_2") {
-    return iv === "annual"
-      ? `Legacy Pack — 2 seats · annual (${PRICE_PACK2_ANNUAL})`
-      : `Legacy Pack — 2 seats · monthly (${PRICE_PACK2_MONTHLY})`;
+function bioPlanLabel(bio) {
+  const plan = String(bio?.billing_plan || "").toLowerCase();
+  if (plan === "keep_interactive" || plan === "legacy") {
+    if (bio?.cancel_at_period_end) {
+      const when = formatPeriodEnd(bio.current_period_end);
+      return when
+        ? `Keep interactive — ends ${when}`
+        : "Keep interactive — ending at period end";
+    }
+    if (bio?.is_free_seat) return "Keep interactive (included with Build Biography)";
+    if (bio?.is_paid) {
+      const iv = String(bio.interval || "").toLowerCase();
+      if (iv === "annual") return `Keep interactive · annual (${PRICE_KEEP_ANNUAL})`;
+      return `Keep interactive · monthly (${PRICE_KEEP_MONTHLY})`;
+    }
+    return "Keep interactive";
   }
-  if (p === "pack_5") {
-    return iv === "annual"
-      ? `Legacy Pack — 5 seats · annual (${PRICE_PACK5_ANNUAL})`
-      : `Legacy Pack — 5 seats · monthly (${PRICE_PACK5_MONTHLY})`;
-  }
-  return "No Legacy Pack";
-}
-
-function formatPeriodEnd(unixSeconds) {
-  const n = Number(unixSeconds);
-  if (!Number.isFinite(n) || n <= 0) return "";
-  try {
-    return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
-      new Date(n * 1000)
-    );
-  } catch {
-    return "";
-  }
+  return "Archive";
 }
 
 /**
- * Interviewer / Share Biography / Legacy Pack subscribe controls.
- * Lives on My Account (Phase 2.6); return URLs use /account.
+ * Build Biography / Share Biography / stewarded bio status.
  */
 export default function PlanBillingSection({
   apiBase = "",
@@ -97,6 +93,7 @@ export default function PlanBillingSection({
   const [billingBusy, setBillingBusy] = useState(false);
   const [billingError, setBillingError] = useState("");
   const [billingNotice, setBillingNotice] = useState("");
+  const [shareOpen, setShareOpen] = useState(false);
 
   async function refreshBillingStatus() {
     if (!apiBase || typeof getAccessToken !== "function") return null;
@@ -155,30 +152,19 @@ export default function PlanBillingSection({
         for (let i = 0; i < 5; i += 1) {
           status = await refreshBillingStatus();
           const plan = String(status?.plan_state || "").toLowerCase();
-          const pack = String(status?.steward_pack || "none").toLowerCase();
-          if (
-            plan === "active" ||
-            plan === "share_bio" ||
-            plan === "beta_invited" ||
-            pack === "pack_2" ||
-            pack === "pack_5"
-          ) {
-            break;
-          }
+          if (plan === "active" || plan === "share_bio" || plan === "beta_invited") break;
           await new Promise((r) => setTimeout(r, 1500));
         }
         const plan = String(status?.plan_state || "").toLowerCase();
         if (plan === "active") {
-          setBillingNotice("You're subscribed. Interviewer access is active.");
+          setBillingNotice("Build Biography is active.");
         } else if (plan === "share_bio") {
           setBillingNotice("Share Biography is active.");
-        } else if (status?.steward_pack && status.steward_pack !== "none") {
-          setBillingNotice("Legacy Pack is active. Seat capacity updated.");
         } else if (plan === "beta_invited") {
           setBillingNotice("You're subscribed in Stripe; complimentary full access is unchanged.");
         } else {
           setBillingNotice(
-            "Payment received in Stripe, but access hasn't updated yet. Wait a few seconds and refresh, or contact support if it stays stuck."
+            "Payment received in Stripe, but access hasn't updated yet. Wait a few seconds and refresh."
           );
         }
       } catch (e) {
@@ -213,7 +199,7 @@ export default function PlanBillingSection({
       const parsed = typeof data?.body === "string" ? JSON.parse(data.body) : data;
       if (res.status === 409 || parsed?.error === "subscription_already_active") {
         setBillingNotice(
-          "You already have an active subscription in that category. Use Switch plan or Manage billing instead of starting a new checkout."
+          "You already have an active owner plan. Use Switch plan or Manage billing instead."
         );
         await refreshBillingStatus().catch(() => null);
         setBillingBusy(false);
@@ -221,7 +207,7 @@ export default function PlanBillingSection({
       }
       if (parsed?.error === "owner_plan_xor_conflict") {
         setBillingNotice(
-          "Interviewer and Share Biography can't both be active. Switch plans below, or cancel the current owner plan in Manage billing first."
+          "Build Biography and Share Biography can't both be active. Switch plans below, or cancel the current plan in Manage billing first."
         );
         await refreshBillingStatus().catch(() => null);
         setBillingBusy(false);
@@ -255,13 +241,13 @@ export default function PlanBillingSection({
       const data = await res.json().catch(() => ({}));
       const parsed = typeof data?.body === "string" ? JSON.parse(data.body) : data;
       if (!res.ok) {
-        const msg =
+        throw new Error(
           describeApiErrorMessage(parsed) ||
-          parsed?.error ||
-          (res.status >= 500
-            ? "Could not change plan right now. Try again in a moment, or use Manage billing."
-            : `HTTP ${res.status}`);
-        throw new Error(msg);
+            parsed?.error ||
+            (res.status >= 500
+              ? "Could not change plan right now. Try Manage billing."
+              : `HTTP ${res.status}`)
+        );
       }
       if (parsed?.action === "upgraded" || parsed?.action === "changed") {
         setBillingNotice("Plan updated. Stripe prorates so you aren't double-billed.");
@@ -272,8 +258,6 @@ export default function PlanBillingSection({
             ? `Current term continues until ${when}, then the new interval begins.`
             : "Current term completes first, then the new interval begins."
         );
-      } else if (parsed?.error === "already_on_interval") {
-        setBillingNotice("You're already on that plan.");
       } else {
         setBillingNotice("Plan update requested.");
       }
@@ -317,32 +301,25 @@ export default function PlanBillingSection({
   const interval = status?.interval || "";
   const product = status?.product || "";
   const canCheckoutOwner = Boolean(status?.can_checkout_owner ?? status?.can_checkout);
-  const canCheckoutPack = Boolean(status?.can_checkout_pack);
   const canChange = Boolean(status?.can_change_plan);
-  const canChangePack = Boolean(status?.can_change_pack);
   const busy = billingBusy || disabled;
   const periodEndLabel = formatPeriodEnd(status?.current_period_end);
   const cancelAtPeriodEnd = Boolean(status?.cancel_at_period_end);
   const trialEndsAt = status?.trial_ends_at || "";
   const trialEndsLabel = formatIsoDate(trialEndsAt);
   const plan = String(effectivePlan || "").toLowerCase();
-  const isInterviewer = plan === "active" && product !== "share_bio";
+  const isBuild = plan === "active" && product !== "share_bio";
   const isShareBio = plan === "share_bio" || (plan === "active" && product === "share_bio");
-  const seatCap = Number(status?.steward_seat_cap || 0);
-  const seatsUsed = Number(status?.steward_seats_used || 0);
-  const freeSeat = Number(status?.steward_free_seat || 0);
-  const packSeats = Number(status?.steward_pack_seats || 0);
-  const stewardPack = status?.steward_pack || "none";
-  const packInterval = status?.steward_pack_interval || "";
+  const stewardedBios = Array.isArray(status?.stewarded_bios) ? status.stewarded_bios : [];
 
   return (
     <Frame label="Plan & billing">
       <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
         <p>
-          Choose an <strong>owner plan</strong> (Interviewer or Share Biography — not
-          both) and optionally a <strong>Legacy Pack</strong> for interactive seats on
-          sealed biographies you steward. Interviewer includes one free Legacy seat
-          while active.
+          <strong>Build Biography</strong> unlocks interviewing and journaling, and includes
+          one free Keep interactive seat for a sealed biography you steward.{" "}
+          <strong>Share Biography</strong> is a lighter owner plan (no interview) — you can
+          have one or the other, not both.
         </p>
       </div>
       {billingError ? (
@@ -355,48 +332,27 @@ export default function PlanBillingSection({
           <Banner tone="info">{billingNotice}</Banner>
         </div>
       ) : null}
+
       <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
         <p>
-          <strong>Owner plan:</strong>{" "}
-          {planLabel(effectivePlan, interval, trialEndsAt, product)}
-        </p>
-        <p>
-          <strong>Legacy capacity:</strong> {seatsUsed} / {seatCap} seats used
-          {freeSeat || packSeats ? (
-            <>
-              {" "}
-              <span className="km-muted">
-                ({freeSeat ? `${freeSeat} free from Interviewer` : "no free seat"}
-                {packSeats ? ` + ${packSeats} from pack` : ""})
-              </span>
-            </>
-          ) : (
-            <span className="km-muted"> — subscribe Interviewer or a Legacy Pack to unlock seats</span>
-          )}
-        </p>
-        <p>
-          <strong>Legacy Pack:</strong> {packLabel(stewardPack, packInterval)}
+          <strong>Owner plan:</strong> {planLabel(effectivePlan, interval, trialEndsAt, product)}
         </p>
         {plan === "trialing" && trialEndsLabel ? (
           <p className="km-muted">
-            Full trial ends on <strong>{trialEndsLabel}</strong>. After that you
-            keep free listener access; subscribe here to continue interviewing.
+            Full trial ends on <strong>{trialEndsLabel}</strong>.
           </p>
         ) : null}
         {cancelAtPeriodEnd && periodEndLabel ? (
           <p className="km-muted">Access continues through {periodEndLabel}, then free listener.</p>
         ) : null}
         {!status?.stripe_configured ? (
-          <p className="km-muted">
-            Billing is not fully configured on this environment yet. Subscribe
-            buttons will return an error until setup finishes.
-          </p>
+          <p className="km-muted">Billing is not fully configured on this environment yet.</p>
         ) : null}
       </div>
 
       <div className="km-prose" style={{ maxWidth: 560, marginBottom: 10 }}>
         <p>
-          <strong>Owner plans</strong>
+          <strong>Build Biography</strong>
         </p>
       </div>
       <div
@@ -410,46 +366,34 @@ export default function PlanBillingSection({
               disabled={busy || !status?.stripe_configured}
               onClick={() => openCheckout("monthly", "interviewer")}
             >
-              Interviewer monthly · {PRICE_INTERVIEWER_MONTHLY}
+              Monthly · {PRICE_BUILD_MONTHLY}
             </Button>
             <Button
               disabled={busy || !status?.stripe_configured}
               onClick={() => openCheckout("annual", "interviewer")}
             >
-              Interviewer annual · {PRICE_INTERVIEWER_ANNUAL}
-            </Button>
-            <Button
-              disabled={busy || !status?.stripe_configured}
-              onClick={() => openCheckout("monthly", "share_bio")}
-            >
-              Share Biography monthly · {PRICE_SHARE_MONTHLY}
-            </Button>
-            <Button
-              disabled={busy || !status?.stripe_configured}
-              onClick={() => openCheckout("annual", "share_bio")}
-            >
-              Share Biography annual · {PRICE_SHARE_ANNUAL}
+              Annual · {PRICE_BUILD_ANNUAL}
             </Button>
           </>
         ) : null}
-        {canChange && isInterviewer && interval !== "annual" ? (
+        {canChange && isBuild && interval !== "annual" ? (
           <Button
             variant="primary"
             disabled={busy || !status?.stripe_configured}
             onClick={() => changePlan("annual", "interviewer")}
           >
-            Switch Interviewer to annual · {PRICE_INTERVIEWER_ANNUAL}
+            Switch to annual · {PRICE_BUILD_ANNUAL}
           </Button>
         ) : null}
-        {canChange && isInterviewer && interval !== "monthly" ? (
+        {canChange && isBuild && interval !== "monthly" ? (
           <Button
             disabled={busy || !status?.stripe_configured}
             onClick={() => changePlan("monthly", "interviewer")}
           >
-            Switch Interviewer to monthly at period end · {PRICE_INTERVIEWER_MONTHLY}
+            Switch to monthly at period end · {PRICE_BUILD_MONTHLY}
           </Button>
         ) : null}
-        {canChange && isInterviewer ? (
+        {canChange && isBuild ? (
           <Button
             disabled={busy || !status?.stripe_configured}
             onClick={() => changePlan(interval || "monthly", "share_bio")}
@@ -463,7 +407,7 @@ export default function PlanBillingSection({
             disabled={busy || !status?.stripe_configured}
             onClick={() => changePlan(interval || "monthly", "interviewer")}
           >
-            Switch to Interviewer
+            Switch to Build Biography
           </Button>
         ) : null}
         {canChange && isShareBio && interval !== "annual" ? (
@@ -471,7 +415,7 @@ export default function PlanBillingSection({
             disabled={busy || !status?.stripe_configured}
             onClick={() => changePlan("annual", "share_bio")}
           >
-            Switch Share Biography to annual · {PRICE_SHARE_ANNUAL}
+            Share Biography annual · {PRICE_SHARE_ANNUAL}
           </Button>
         ) : null}
         {canChange && isShareBio && interval !== "monthly" ? (
@@ -479,68 +423,82 @@ export default function PlanBillingSection({
             disabled={busy || !status?.stripe_configured}
             onClick={() => changePlan("monthly", "share_bio")}
           >
-            Switch Share Biography to monthly at period end · {PRICE_SHARE_MONTHLY}
-          </Button>
-        ) : null}
-      </div>
-
-      <div className="km-prose" style={{ maxWidth: 560, marginBottom: 10 }}>
-        <p>
-          <strong>Legacy Packs</strong> — stack on Interviewer&apos;s free seat
-        </p>
-      </div>
-      <div
-        className="km-form-actions"
-        style={{ justifyContent: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 20 }}
-      >
-        {canCheckoutPack ? (
-          <>
-            <Button
-              disabled={busy || !status?.stripe_configured}
-              onClick={() => openCheckout("monthly", "steward_pack_2")}
-            >
-              Pack 2 monthly · {PRICE_PACK2_MONTHLY}
-            </Button>
-            <Button
-              disabled={busy || !status?.stripe_configured}
-              onClick={() => openCheckout("annual", "steward_pack_2")}
-            >
-              Pack 2 annual · {PRICE_PACK2_ANNUAL}
-            </Button>
-            <Button
-              disabled={busy || !status?.stripe_configured}
-              onClick={() => openCheckout("monthly", "steward_pack_5")}
-            >
-              Pack 5 monthly · {PRICE_PACK5_MONTHLY}
-            </Button>
-            <Button
-              disabled={busy || !status?.stripe_configured}
-              onClick={() => openCheckout("annual", "steward_pack_5")}
-            >
-              Pack 5 annual · {PRICE_PACK5_ANNUAL}
-            </Button>
-          </>
-        ) : null}
-        {canChangePack && stewardPack === "pack_2" ? (
-          <Button
-            variant="primary"
-            disabled={busy || !status?.stripe_configured}
-            onClick={() => changePlan(packInterval || "monthly", "steward_pack_5")}
-          >
-            Upgrade to Pack 5
-          </Button>
-        ) : null}
-        {canChangePack && stewardPack === "pack_5" ? (
-          <Button
-            disabled={busy || !status?.stripe_configured}
-            onClick={() => changePlan(packInterval || "monthly", "steward_pack_2")}
-          >
-            Switch to Pack 2
+            Share Biography monthly at period end · {PRICE_SHARE_MONTHLY}
           </Button>
         ) : null}
         <Button disabled={busy || !status?.has_customer} onClick={() => openPortal()}>
           Manage billing
         </Button>
+      </div>
+
+      {canCheckoutOwner ? (
+        <div className="km-prose" style={{ maxWidth: 560, marginBottom: 20 }}>
+          <button
+            type="button"
+            className="km-linkish"
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              textAlign: "left",
+              cursor: "pointer",
+              font: "inherit",
+              color: "inherit",
+              textDecoration: "underline",
+            }}
+            onClick={() => setShareOpen((v) => !v)}
+          >
+            Don&apos;t want to continue interviewing or journaling right now, but want to make
+            sure family and friends can still interact with your biography?
+          </button>
+          {shareOpen ? (
+            <div style={{ marginTop: 12 }}>
+              <p className="km-muted" style={{ marginBottom: 12 }}>
+                Share Biography ({PRICE_SHARE_MONTHLY} or {PRICE_SHARE_ANNUAL}) keeps your own
+                biography interactive for family — without interview or journal. It can&apos;t
+                run alongside Build Biography.
+              </p>
+              <div className="km-form-actions" style={{ justifyContent: "flex-start", gap: 12 }}>
+                <Button
+                  disabled={busy || !status?.stripe_configured}
+                  onClick={() => openCheckout("monthly", "share_bio")}
+                >
+                  Share Biography monthly · {PRICE_SHARE_MONTHLY}
+                </Button>
+                <Button
+                  disabled={busy || !status?.stripe_configured}
+                  onClick={() => openCheckout("annual", "share_bio")}
+                >
+                  Share Biography annual · {PRICE_SHARE_ANNUAL}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="km-prose" style={{ maxWidth: 560, marginBottom: 10 }}>
+        <p>
+          <strong>Stewarded biographies</strong>
+        </p>
+      </div>
+      <div className="km-prose" style={{ maxWidth: 560, marginBottom: 12 }}>
+        {stewardedBios.length === 0 ? (
+          <p className="km-muted">
+            When you steward a family member&apos;s sealed biography, you can turn on{" "}
+            <strong>Keep interactive</strong> ({PRICE_KEEP_MONTHLY} or {PRICE_KEEP_ANNUAL} per
+            biography) so family can chat with it. Build Biography includes one free Keep
+            interactive seat. Manage each biography under Settings → Stewardship.
+          </p>
+        ) : (
+          <ul style={{ paddingLeft: 18, margin: 0 }}>
+            {stewardedBios.map((bio) => (
+              <li key={bio.owner_user_id || bio.display_name} style={{ marginBottom: 8 }}>
+                <strong>{bio.display_name || "Biography"}</strong> — {bioPlanLabel(bio)}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </Frame>
   );
