@@ -66,8 +66,8 @@ function bioPlanLabel(bio) {
     if (bio?.cancel_at_period_end) {
       const when = formatPeriodEnd(bio.current_period_end);
       return when
-        ? `Shared — ends ${when}`
-        : "Shared — ending at period end";
+        ? `Shared — active until ${when}, then Archive`
+        : "Shared — cancellation scheduled, then Archive";
     }
     if (bio?.is_free_seat) return "Shared (free with Build Biography)";
     if (bio?.is_paid) {
@@ -415,9 +415,12 @@ export default function PlanBillingSection({
   async function archiveStewardBio(bio) {
     const name = bio.display_name || "this biography";
     const paid = Boolean(bio?.is_paid);
+    const until = formatPeriodEnd(bio?.current_period_end);
     const ok = window.confirm(
       paid
-        ? `Archive ${name}? Shared access continues until the end of the billing period, then chat pauses.`
+        ? until
+          ? `Cancel the Share Stewarded subscription for ${name}?\n\nIt will remain Shared until ${until}, then return to Archive.`
+          : `Cancel the Share Stewarded subscription for ${name}?\n\nIt will remain Shared until the end of the billing period, then return to Archive.`
         : `Archive ${name}? Chat will pause immediately. You can assign your free seat or subscribe again later.`
     );
     if (!ok) return;
@@ -429,11 +432,13 @@ export default function PlanBillingSection({
         ownerUserId: bio.owner_user_id,
         billingPlan: "archive",
         notice: paid
-          ? `Archive scheduled for ${name} at period end.`
+          ? until
+            ? `Cancellation scheduled. ${name} stays Shared until ${until}, then returns to Archive.`
+            : `Cancellation scheduled. ${name} stays Shared until the billing period ends, then returns to Archive.`
           : `${name} is now Archived.`,
       });
     } catch (e) {
-      setBillingError(e?.message || "Could not archive biography");
+      setBillingError(e?.message || "Could not update biography billing");
     } finally {
       setBillingBusy(false);
     }
@@ -721,6 +726,7 @@ export default function PlanBillingSection({
                   {stewardedBios.map((bio) => {
                     const archived = isArchiveBio(bio);
                     const interactive = !archived;
+                    const cancelUntil = formatPeriodEnd(bio?.current_period_end);
                     return (
                       <li
                         key={bio.owner_user_id || bio.display_name}
@@ -791,21 +797,22 @@ export default function PlanBillingSection({
                                 onClick={() => archiveStewardBio(bio)}
                               >
                                 {bio?.cancel_at_period_end
-                                  ? "Archive already scheduled"
+                                  ? "Cancellation scheduled"
                                   : bio?.is_paid
-                                    ? "Archive at period end"
+                                    ? "Cancel subscription"
                                     : "Archive"}
                               </Button>
                               {bio?.is_paid && !bio?.cancel_at_period_end ? (
                                 <p className="km-muted" style={{ margin: 0, fontSize: 13 }}>
-                                  Paid Share Stewarded renews until you archive. This
-                                  schedules cancel at period end — chat stays Shared until
-                                  then, then Archives automatically.
+                                  Cancels renewal. This biography stays Shared until the
+                                  end of the paid period, then returns to Archive.
                                 </p>
                               ) : null}
                               {bio?.cancel_at_period_end ? (
                                 <p className="km-muted" style={{ margin: 0, fontSize: 13 }}>
-                                  Stays Shared until the paid period ends, then Archives.
+                                  {cancelUntil
+                                    ? `Stays Shared until ${cancelUntil}, then returns to Archive.`
+                                    : "Stays Shared until the paid period ends, then returns to Archive."}
                                 </p>
                               ) : null}
                             </div>

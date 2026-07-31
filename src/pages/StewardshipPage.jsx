@@ -70,7 +70,9 @@ function billingLabel(role) {
   if (plan === "keep_interactive" || plan === "legacy") {
     if (role?.cancel_at_period_end) {
       const when = formatPeriodEnd(role.current_period_end);
-      return when ? `Shared — ends ${when}` : "Shared — ending at period end";
+      return when
+        ? `Shared — active until ${when}, then Archive`
+        : "Shared — cancellation scheduled, then Archive";
     }
     if (role?.is_free_seat) return "Shared (free with Build Biography)";
     if (role?.is_paid) {
@@ -339,9 +341,12 @@ export default function StewardshipPage({
   async function archiveRole(role) {
     const name = role.owner_display_name || "this biography";
     const paid = Boolean(role?.is_paid);
+    const until = formatPeriodEnd(role?.current_period_end);
     const ok = window.confirm(
       paid
-        ? `Archive ${name}? Shared access continues until the end of the billing period, then chat pauses.`
+        ? until
+          ? `Cancel the Share Stewarded subscription for ${name}?\n\nIt will remain Shared until ${until}, then return to Archive.`
+          : `Cancel the Share Stewarded subscription for ${name}?\n\nIt will remain Shared until the end of the billing period, then return to Archive.`
         : `Archive ${name}? Chat will pause immediately. You can assign your free seat or subscribe again later.`,
     );
     if (!ok) return;
@@ -349,7 +354,11 @@ export default function StewardshipPage({
       role,
       "archive",
       "monthly",
-      paid ? `Archive scheduled for ${name} at period end.` : `${name} is now Archived.`,
+      paid
+        ? until
+          ? `Cancellation scheduled. ${name} stays Shared until ${until}, then returns to Archive.`
+          : `Cancellation scheduled. ${name} stays Shared until the billing period ends, then returns to Archive.`
+        : `${name} is now Archived.`,
     );
   }
 
@@ -937,18 +946,26 @@ export default function StewardshipPage({
                           ) : (
                             <ActionBlock
                               help={
-                                <>
-                                  <strong>
-                                    {role?.is_paid && !role?.cancel_at_period_end
-                                      ? "Archive at period end"
-                                      : "Archive"}
-                                  </strong>{" "}
-                                  — pause chat for this biography. Paid Share Stewarded
-                                  does <em>not</em> archive on its own; it renews until
-                                  you archive (or payment fails). Archiving a paid seat
-                                  schedules cancel at period end — Shared until then,
-                                  then Archive. Free seats archive immediately.
-                                </>
+                                role?.is_paid ? (
+                                  <>
+                                    <strong>
+                                      {role?.cancel_at_period_end
+                                        ? "Cancellation scheduled"
+                                        : "Cancel subscription"}
+                                    </strong>{" "}
+                                    — stops renewal. This biography stays Shared
+                                    until{" "}
+                                    {formatPeriodEnd(role?.current_period_end) ||
+                                      "the end of the paid period"}
+                                    , then returns to Archive.
+                                  </>
+                                ) : (
+                                  <>
+                                    <strong>Archive</strong> — pause chat for this
+                                    biography immediately. You can assign your free seat
+                                    or subscribe again later.
+                                  </>
+                                )
                               }
                             >
                               <Button
@@ -956,9 +973,9 @@ export default function StewardshipPage({
                                 onClick={() => archiveRole(role)}
                               >
                                 {role?.cancel_at_period_end
-                                  ? "Archive already scheduled"
+                                  ? "Cancellation scheduled"
                                   : role?.is_paid
-                                    ? "Archive at period end"
+                                    ? "Cancel subscription"
                                     : "Archive"}
                               </Button>
                             </ActionBlock>
