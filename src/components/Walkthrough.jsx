@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Joyride, ACTIONS, EVENTS, ORIGIN, STATUS } from "react-joyride";
 
 // Senior-friendly coach-mark tour built on react-joyride (v3). Deliberately
@@ -12,6 +12,16 @@ export default function Walkthrough({ steps = [], run = false, onDone }) {
     typeof window !== "undefined" &&
     typeof window.matchMedia === "function" &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // Joyride can emit FINISHED/SKIPPED and TOUR_END for the same dismissal.
+  const doneOnceRef = useRef(false);
+  useEffect(() => {
+    if (run) doneOnceRef.current = false;
+  }, [run]);
+  const finish = (status) => {
+    if (doneOnceRef.current) return;
+    doneOnceRef.current = true;
+    onDone?.(status);
+  };
 
   const options = useMemo(
     () => ({
@@ -101,7 +111,7 @@ export default function Walkthrough({ steps = [], run = false, onDone }) {
       status === STATUS.FINISHED ||
       status === STATUS.SKIPPED
     ) {
-      onDone?.(status);
+      finish(status);
       return;
     }
     // Clicking the overlay or pressing Escape fires a CLOSE action. In
@@ -112,7 +122,7 @@ export default function Walkthrough({ steps = [], run = false, onDone }) {
       action === ACTIONS.CLOSE &&
       (origin === ORIGIN.OVERLAY || origin === ORIGIN.KEYBOARD)
     ) {
-      onDone?.(STATUS.SKIPPED);
+      finish(STATUS.SKIPPED);
     }
   }
 

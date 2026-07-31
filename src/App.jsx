@@ -480,6 +480,9 @@ export default function App() {
   const [tourPage, setTourPage] = useState("");
   const [tourSteps, setTourSteps] = useState([]);
   const [clipPage, setClipPage] = useState("");
+  // Joyride can call onDone with a stale handler closure; always read the
+  // active tour page from a ref when marking walkthroughs_seen.
+  const tourPageRef = useRef("");
   // In-app alerts (top-right notification widget). `alertsState` is the backend
   // snooze/dismiss map keyed by alert id; `signupAt` powers time-based triggers.
   const [alertsState, setAlertsState] = useState({});
@@ -1728,11 +1731,20 @@ export default function App() {
       hp.walkthroughs_seen && typeof hp.walkthroughs_seen === "object"
         ? hp.walkthroughs_seen
         : {};
-    setHelpPrefs({
-      // Default ON: only an explicit false disables tips.
-      tips_enabled: hp.tips_enabled !== false,
-      walkthroughs_seen: { ...seen },
-      journal_seeded: hp.journal_seeded === true,
+    setHelpPrefs((prev) => {
+      // Merge: keys omitted from a payload keep prior local values so a stale
+      // /profile GET or a Journal-seed PUT can't wipe a tour we just marked.
+      // Explicit true/false from the payload still wins (incl. Replay).
+      const mergedSeen = { ...(prev.walkthroughs_seen || {}) };
+      for (const [key, flag] of Object.entries(seen)) {
+        if (typeof flag === "boolean") mergedSeen[key] = flag;
+      }
+      return {
+        // Default ON: only an explicit false disables tips.
+        tips_enabled: hp.tips_enabled !== false,
+        walkthroughs_seen: mergedSeen,
+        journal_seeded: hp.journal_seeded === true || prev.journal_seeded === true,
+      };
     });
   }
 
@@ -2692,9 +2704,16 @@ export default function App() {
   function startTour(pageKey) {
     const steps = resolveTourSteps(pageKey);
     if (!steps.length) return;
+    tourPageRef.current = pageKey;
     setTourPage(pageKey);
     setTourSteps(steps);
     setTourRun(true);
+    // Mark seen when the tour actually opens — not only on Done/Skip. Journal
+    // tours start asynchronously (open entry → settle → startTour); waiting
+    // until onDone left a window where a stale profile refresh or a joyride
+    // callback with an empty tourPage never persisted walkthroughs_seen, so
+    // the Journal tour kept auto-launching.
+    void markWalkthroughSeen(pageKey);
   }
 
   // Entry point for launching a page tour. The Journal's key features only exist
@@ -2710,9 +2729,10 @@ export default function App() {
   }
 
   function handleTourDone() {
+    const finishedPage = tourPageRef.current || tourPage;
+    tourPageRef.current = "";
     setTourRun(false);
     setTourSteps([]);
-    const finishedPage = tourPage;
     setTourPage("");
     if (finishedPage) void markWalkthroughSeen(finishedPage);
   }
