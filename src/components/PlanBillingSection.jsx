@@ -99,6 +99,7 @@ export default function PlanBillingSection({
   const [billingError, setBillingError] = useState("");
   const [billingNotice, setBillingNotice] = useState("");
   const [preserveOpen, setPreserveOpen] = useState(false);
+  const [preserveAutoOpened, setPreserveAutoOpened] = useState(false);
 
   async function refreshBillingStatus() {
     if (!apiBase || typeof getAccessToken !== "function") return null;
@@ -131,6 +132,16 @@ export default function PlanBillingSection({
       cancelled = true;
     };
   }, [apiBase, getAccessToken]);
+
+  useEffect(() => {
+    if (preserveAutoOpened) return;
+    const bios = Array.isArray(billingStatus?.stewarded_bios)
+      ? billingStatus.stewarded_bios
+      : [];
+    if (bios.length === 0) return;
+    setPreserveOpen(true);
+    setPreserveAutoOpened(true);
+  }, [billingStatus, preserveAutoOpened]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -461,16 +472,44 @@ export default function PlanBillingSection({
       ) : null}
 
       <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
-        <p>
-          <strong>Current plan:</strong> {planLabel(effectivePlan, interval, trialEndsAt, product)}
+        <p style={{ margin: "0 0 8px" }}>
+          <strong>Current subscriptions</strong>
         </p>
+        <ul style={{ margin: "0 0 8px", paddingLeft: 18 }}>
+          <li>
+            <strong>Owner:</strong>{" "}
+            {planLabel(effectivePlan, interval, trialEndsAt, product)}
+          </li>
+          {stewardedBios.filter((b) => {
+            const p = String(b?.billing_plan || "").toLowerCase();
+            return p === "keep_interactive" || p === "legacy";
+          }).length === 0 ? (
+            <li className="km-muted">
+              <strong>Share Stewarded:</strong> none active
+            </li>
+          ) : (
+            stewardedBios
+              .filter((b) => {
+                const p = String(b?.billing_plan || "").toLowerCase();
+                return p === "keep_interactive" || p === "legacy";
+              })
+              .map((bio) => (
+                <li key={bio.owner_user_id || bio.display_name}>
+                  <strong>Share Stewarded:</strong> {bio.display_name || "Biography"} —{" "}
+                  {bioPlanLabel(bio)}
+                </li>
+              ))
+          )}
+        </ul>
         {plan === "trialing" && trialEndsLabel ? (
           <p className="km-muted">
             Full trial ends on <strong>{trialEndsLabel}</strong>.
           </p>
         ) : null}
         {cancelAtPeriodEnd && periodEndLabel ? (
-          <p className="km-muted">Access continues through {periodEndLabel}, then free listener.</p>
+          <p className="km-muted">
+            Owner plan access continues through {periodEndLabel}, then free listener.
+          </p>
         ) : null}
         {!status?.stripe_configured ? (
           <p className="km-muted">Billing is not fully configured on this environment yet.</p>
@@ -742,14 +781,34 @@ export default function PlanBillingSection({
                             </>
                           ) : null}
                           {interactive ? (
-                            <Button
-                              disabled={busy || !status?.stripe_configured}
-                              onClick={() => archiveStewardBio(bio)}
-                            >
-                              {bio?.is_paid && !bio?.cancel_at_period_end
-                                ? "Archive at period end"
-                                : "Archive"}
-                            </Button>
+                            <div style={{ display: "grid", gap: 6 }}>
+                              <Button
+                                disabled={
+                                  busy ||
+                                  !status?.stripe_configured ||
+                                  Boolean(bio?.cancel_at_period_end)
+                                }
+                                onClick={() => archiveStewardBio(bio)}
+                              >
+                                {bio?.cancel_at_period_end
+                                  ? "Archive already scheduled"
+                                  : bio?.is_paid
+                                    ? "Archive at period end"
+                                    : "Archive"}
+                              </Button>
+                              {bio?.is_paid && !bio?.cancel_at_period_end ? (
+                                <p className="km-muted" style={{ margin: 0, fontSize: 13 }}>
+                                  Paid Share Stewarded renews until you archive. This
+                                  schedules cancel at period end — chat stays Shared until
+                                  then, then Archives automatically.
+                                </p>
+                              ) : null}
+                              {bio?.cancel_at_period_end ? (
+                                <p className="km-muted" style={{ margin: 0, fontSize: 13 }}>
+                                  Stays Shared until the paid period ends, then Archives.
+                                </p>
+                              ) : null}
+                            </div>
                           ) : null}
                         </div>
                       </li>

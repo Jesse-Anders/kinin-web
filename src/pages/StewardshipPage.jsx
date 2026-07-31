@@ -944,8 +944,10 @@ export default function StewardshipPage({
                                       : "Archive"}
                                   </strong>{" "}
                                   — pause chat for this biography. Paid Share Stewarded
-                                  subscriptions cancel at period end so access continues
-                                  until then; free seats archive immediately.
+                                  does <em>not</em> archive on its own; it renews until
+                                  you archive (or payment fails). Archiving a paid seat
+                                  schedules cancel at period end — Shared until then,
+                                  then Archive. Free seats archive immediately.
                                 </>
                               }
                             >
