@@ -66,18 +66,23 @@ function bioPlanLabel(bio) {
     if (bio?.cancel_at_period_end) {
       const when = formatPeriodEnd(bio.current_period_end);
       return when
-        ? `Keep interactive — ends ${when}`
-        : "Keep interactive — ending at period end";
+        ? `Shared — ends ${when}`
+        : "Shared — ending at period end";
     }
-    if (bio?.is_free_seat) return "Keep interactive (included with Build Biography)";
+    if (bio?.is_free_seat) return "Shared (free with Build Biography)";
     if (bio?.is_paid) {
       const iv = String(bio.interval || "").toLowerCase();
-      if (iv === "annual") return `Keep interactive · annual (${PRICE_KEEP_ANNUAL})`;
-      return `Keep interactive · monthly (${PRICE_KEEP_MONTHLY})`;
+      if (iv === "annual") return `Shared · annual (${PRICE_KEEP_ANNUAL})`;
+      return `Shared · monthly (${PRICE_KEEP_MONTHLY})`;
     }
-    return "Keep interactive";
+    return "Shared";
   }
-  return "Archive";
+  return "Archive (chat paused)";
+}
+
+function isArchiveBio(bio) {
+  const plan = String(bio?.billing_plan || "").toLowerCase();
+  return plan === "archive" || plan === "dormant" || !plan;
 }
 
 /**
@@ -296,6 +301,133 @@ export default function PlanBillingSection({
     }
   }
 
+  async function postStewardBilling({
+    ownerUserId,
+    billingPlan,
+    interval: iv = "monthly",
+    notice = "",
+  }) {
+    const token = await getAccessToken();
+    const origin = window.location.origin;
+    const res = await fetch(`${apiBase}/stewardship/billing`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        owner_user_id: ownerUserId,
+        billing_plan: billingPlan,
+        interval: iv,
+        success_url: `${origin}/account?section=billing&checkout=success`,
+        cancel_url: `${origin}/account?section=billing&checkout=cancel`,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    const parsed = typeof data?.body === "string" ? JSON.parse(data.body) : data;
+    if (!res.ok && !parsed?.checkout_required) {
+      throw new Error(describeApiErrorMessage(parsed) || parsed?.error || `HTTP ${res.status}`);
+    }
+    if (parsed?.checkout_required && parsed?.url) {
+      window.location.href = parsed.url;
+      return parsed;
+    }
+    if (notice) setBillingNotice(notice);
+    await refreshBillingStatus();
+    return parsed;
+  }
+
+  async function useFreeStewardSeat(bio, freeSeatHolder) {
+    const name = bio.display_name || "this biography";
+    if (
+      freeSeatHolder &&
+      freeSeatHolder.owner_user_id &&
+      freeSeatHolder.owner_user_id !== bio.owner_user_id
+    ) {
+      const holderName = freeSeatHolder.display_name || "another biography";
+      const ok = window.confirm(
+        `Your free Share Stewarded seat is currently on ${holderName}. ` +
+          `Archive that biography and use the free seat for ${name}?`
+      );
+      if (!ok) return;
+    } else {
+      const ok = window.confirm(
+        `Use your free Share Stewarded seat (included with Build Biography) for ${name}?`
+      );
+      if (!ok) return;
+    }
+
+    setBillingBusy(true);
+    setBillingError("");
+    setBillingNotice("");
+    try {
+      if (
+        freeSeatHolder &&
+        freeSeatHolder.owner_user_id &&
+        freeSeatHolder.owner_user_id !== bio.owner_user_id
+      ) {
+        await postStewardBilling({
+          ownerUserId: freeSeatHolder.owner_user_id,
+          billingPlan: "archive",
+        });
+      }
+      await postStewardBilling({
+        ownerUserId: bio.owner_user_id,
+        billingPlan: "keep_interactive",
+        notice: `Free Share Stewarded seat assigned to ${name}.`,
+      });
+    } catch (e) {
+      setBillingError(e?.message || "Could not assign free seat");
+    } finally {
+      setBillingBusy(false);
+    }
+  }
+
+  async function subscribeStewardBio(bio, iv) {
+    const name = bio.display_name || "this biography";
+    setBillingBusy(true);
+    setBillingError("");
+    setBillingNotice("");
+    try {
+      await postStewardBilling({
+        ownerUserId: bio.owner_user_id,
+        billingPlan: "keep_interactive",
+        interval: iv,
+        notice: `Opening Checkout to share ${name}…`,
+      });
+    } catch (e) {
+      setBillingError(e?.message || "Could not start stewardship checkout");
+      setBillingBusy(false);
+    }
+  }
+
+  async function archiveStewardBio(bio) {
+    const name = bio.display_name || "this biography";
+    const paid = Boolean(bio?.is_paid);
+    const ok = window.confirm(
+      paid
+        ? `Archive ${name}? Shared access continues until the end of the billing period, then chat pauses.`
+        : `Archive ${name}? Chat will pause immediately. You can assign your free seat or subscribe again later.`
+    );
+    if (!ok) return;
+    setBillingBusy(true);
+    setBillingError("");
+    setBillingNotice("");
+    try {
+      await postStewardBilling({
+        ownerUserId: bio.owner_user_id,
+        billingPlan: "archive",
+        notice: paid
+          ? `Archive scheduled for ${name} at period end.`
+          : `${name} is now Archived.`,
+      });
+    } catch (e) {
+      setBillingError(e?.message || "Could not archive biography");
+    } finally {
+      setBillingBusy(false);
+    }
+  }
+
   const status = billingStatus;
   const effectivePlan = status?.plan_state || planState;
   const interval = status?.interval || "";
@@ -310,7 +442,10 @@ export default function PlanBillingSection({
   const plan = String(effectivePlan || "").toLowerCase();
   const isBuild = plan === "active" && product !== "share_bio";
   const isShareBio = plan === "share_bio" || (plan === "active" && product === "share_bio");
+  const grantsFreeSeat = isBuild || plan === "past_due";
   const stewardedBios = Array.isArray(status?.stewarded_bios) ? status.stewarded_bios : [];
+  const freeSeatHolder = stewardedBios.find((b) => b?.is_free_seat) || null;
+  const freeSeatAvailable = grantsFreeSeat && !freeSeatHolder;
 
   return (
     <Frame label="Plan & billing">
@@ -445,55 +580,69 @@ export default function PlanBillingSection({
               <p style={{ margin: "0 0 6px" }}>
                 <strong>Share My Biography</strong>
               </p>
-              <p className="km-muted" style={{ margin: "0 0 12px" }}>
-                Already included with a Build Biography plan. Choose this alone if you only want
-                family to interact with your biography — without interviewing or journaling.
-              </p>
-              <div
-                className="km-form-actions"
-                style={{ justifyContent: "flex-start", flexWrap: "wrap", gap: 12 }}
-              >
-                {canCheckoutOwner ? (
-                  <>
-                    <Button
-                      disabled={busy || !status?.stripe_configured}
-                      onClick={() => openCheckout("monthly", "share_bio")}
-                    >
-                      Monthly · {PRICE_SHARE_MONTHLY}
+              {isBuild ? (
+                <>
+                  <p className="km-muted" style={{ margin: "0 0 12px" }}>
+                    This feature is already included with your active Build Biography
+                    subscription.
+                  </p>
+                  <div
+                    className="km-form-actions"
+                    style={{ justifyContent: "flex-start", flexWrap: "wrap", gap: 12 }}
+                  >
+                    <Button disabled>
+                      Monthly · {PRICE_SHARE_MONTHLY} — included
                     </Button>
-                    <Button
-                      disabled={busy || !status?.stripe_configured}
-                      onClick={() => openCheckout("annual", "share_bio")}
-                    >
-                      Annual · {PRICE_SHARE_ANNUAL}
+                    <Button disabled>
+                      Annual · {PRICE_SHARE_ANNUAL} — included
                     </Button>
-                  </>
-                ) : null}
-                {canChange && isBuild ? (
-                  <Button
-                    disabled={busy || !status?.stripe_configured}
-                    onClick={() => changePlan(interval || "monthly", "share_bio")}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="km-muted" style={{ margin: "0 0 12px" }}>
+                    Keep your own biography interactive for family — without interviewing or
+                    journaling. Not needed if you already have Build Biography.
+                  </p>
+                  <div
+                    className="km-form-actions"
+                    style={{ justifyContent: "flex-start", flexWrap: "wrap", gap: 12 }}
                   >
-                    Switch to Share My Biography
-                  </Button>
-                ) : null}
-                {canChange && isShareBio && interval !== "annual" ? (
-                  <Button
-                    disabled={busy || !status?.stripe_configured}
-                    onClick={() => changePlan("annual", "share_bio")}
-                  >
-                    Switch to annual · {PRICE_SHARE_ANNUAL}
-                  </Button>
-                ) : null}
-                {canChange && isShareBio && interval !== "monthly" ? (
-                  <Button
-                    disabled={busy || !status?.stripe_configured}
-                    onClick={() => changePlan("monthly", "share_bio")}
-                  >
-                    Switch to monthly at period end · {PRICE_SHARE_MONTHLY}
-                  </Button>
-                ) : null}
-              </div>
+                    {canCheckoutOwner ? (
+                      <>
+                        <Button
+                          disabled={busy || !status?.stripe_configured}
+                          onClick={() => openCheckout("monthly", "share_bio")}
+                        >
+                          Monthly · {PRICE_SHARE_MONTHLY}
+                        </Button>
+                        <Button
+                          disabled={busy || !status?.stripe_configured}
+                          onClick={() => openCheckout("annual", "share_bio")}
+                        >
+                          Annual · {PRICE_SHARE_ANNUAL}
+                        </Button>
+                      </>
+                    ) : null}
+                    {canChange && isShareBio && interval !== "annual" ? (
+                      <Button
+                        disabled={busy || !status?.stripe_configured}
+                        onClick={() => changePlan("annual", "share_bio")}
+                      >
+                        Switch to annual · {PRICE_SHARE_ANNUAL}
+                      </Button>
+                    ) : null}
+                    {canChange && isShareBio && interval !== "monthly" ? (
+                      <Button
+                        disabled={busy || !status?.stripe_configured}
+                        onClick={() => changePlan("monthly", "share_bio")}
+                      >
+                        Switch to monthly at period end · {PRICE_SHARE_MONTHLY}
+                      </Button>
+                    ) : null}
+                  </div>
+                </>
+              )}
             </div>
 
             <div>
@@ -501,21 +650,111 @@ export default function PlanBillingSection({
                 <strong>Share Stewarded Biographies</strong>
               </p>
               <p className="km-muted" style={{ margin: "0 0 12px" }}>
-                The first shared stewarded biography is free with a Build Biography plan.
-                Additional biographies are {PRICE_KEEP_MONTHLY} or {PRICE_KEEP_ANNUAL} each.
-                Manage each biography under Settings → Stewardship.
+                When you steward a sealed biography, turn on sharing so family can chat with
+                it. Build Biography includes <strong>one free</strong> shared stewarded
+                biography; additional ones are {PRICE_KEEP_MONTHLY} or {PRICE_KEEP_ANNUAL}{" "}
+                each.
+                {grantsFreeSeat && freeSeatAvailable ? (
+                  <>
+                    {" "}
+                    Your free seat is available — assign it to one biography below.
+                  </>
+                ) : null}
+                {grantsFreeSeat && freeSeatHolder ? (
+                  <>
+                    {" "}
+                    Free seat in use on{" "}
+                    <strong>{freeSeatHolder.display_name || "a biography"}</strong>.
+                  </>
+                ) : null}
+                {!grantsFreeSeat ? (
+                  <> Subscribe to Build Biography above to unlock the free seat.</>
+                ) : null}
               </p>
               {stewardedBios.length === 0 ? (
                 <p className="km-muted" style={{ margin: 0 }}>
-                  You aren&apos;t stewarding any sealed biographies yet.
+                  You aren&apos;t stewarding any sealed biographies yet. Accept a handoff in
+                  Settings → Stewardship, then return here to assign your free seat or
+                  subscribe.
                 </p>
               ) : (
-                <ul style={{ paddingLeft: 18, margin: 0 }}>
-                  {stewardedBios.map((bio) => (
-                    <li key={bio.owner_user_id || bio.display_name} style={{ marginBottom: 8 }}>
-                      <strong>{bio.display_name || "Biography"}</strong> — {bioPlanLabel(bio)}
-                    </li>
-                  ))}
+                <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                  {stewardedBios.map((bio) => {
+                    const archived = isArchiveBio(bio);
+                    const interactive = !archived;
+                    return (
+                      <li
+                        key={bio.owner_user_id || bio.display_name}
+                        style={{
+                          marginBottom: 16,
+                          paddingBottom: 16,
+                          borderBottom: "1px solid rgba(0,0,0,0.08)",
+                        }}
+                      >
+                        <p style={{ margin: "0 0 4px" }}>
+                          <strong>{bio.display_name || "Biography"}</strong>
+                        </p>
+                        <p className="km-muted" style={{ margin: "0 0 10px" }}>
+                          {bioPlanLabel(bio)}
+                        </p>
+                        <div
+                          className="km-form-actions"
+                          style={{
+                            justifyContent: "flex-start",
+                            flexWrap: "wrap",
+                            gap: 10,
+                          }}
+                        >
+                          {archived ? (
+                            <>
+                              <Button
+                                variant="primary"
+                                disabled={busy || !grantsFreeSeat}
+                                onClick={() => useFreeStewardSeat(bio, freeSeatHolder)}
+                                title={
+                                  !grantsFreeSeat
+                                    ? "Requires an active Build Biography subscription"
+                                    : freeSeatAvailable
+                                      ? "Assign your free seat included with Build Biography"
+                                      : freeSeatHolder
+                                        ? `Move free seat from ${freeSeatHolder.display_name || "the other biography"}`
+                                        : ""
+                                }
+                              >
+                                {!grantsFreeSeat
+                                  ? "Free seat needs Build Biography"
+                                  : freeSeatAvailable
+                                    ? "Use free seat"
+                                    : "Move free seat here"}
+                              </Button>
+                              <Button
+                                disabled={busy || !status?.stripe_configured}
+                                onClick={() => subscribeStewardBio(bio, "monthly")}
+                              >
+                                Subscribe monthly · {PRICE_KEEP_MONTHLY}
+                              </Button>
+                              <Button
+                                disabled={busy || !status?.stripe_configured}
+                                onClick={() => subscribeStewardBio(bio, "annual")}
+                              >
+                                Subscribe annual · {PRICE_KEEP_ANNUAL}
+                              </Button>
+                            </>
+                          ) : null}
+                          {interactive ? (
+                            <Button
+                              disabled={busy || !status?.stripe_configured}
+                              onClick={() => archiveStewardBio(bio)}
+                            >
+                              {bio?.is_paid && !bio?.cancel_at_period_end
+                                ? "Archive at period end"
+                                : "Archive"}
+                            </Button>
+                          ) : null}
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>
