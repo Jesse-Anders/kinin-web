@@ -53,6 +53,14 @@ function lifecycleLabel(state) {
 const PRICE_KEEP_MONTHLY = "$4.99/month";
 const PRICE_KEEP_ANNUAL = "$49/year";
 
+/** Soft tones so consecutive stewardship cards don’t blend while scrolling. */
+const STEWARD_BLOCK_TONES = [
+  { bg: "rgba(46, 88, 72, 0.09)", border: "rgba(46, 88, 72, 0.28)" },
+  { bg: "rgba(122, 78, 48, 0.09)", border: "rgba(122, 78, 48, 0.26)" },
+  { bg: "rgba(52, 74, 110, 0.09)", border: "rgba(52, 74, 110, 0.26)" },
+  { bg: "rgba(98, 86, 40, 0.1)", border: "rgba(98, 86, 40, 0.28)" },
+];
+
 function formatPeriodEnd(unixSeconds) {
   const n = Number(unixSeconds);
   if (!Number.isFinite(n) || n <= 0) return "";
@@ -130,6 +138,7 @@ export default function StewardshipPage({
   const [notice, setNotice] = useState("");
   const [freeSeatAvailable, setFreeSeatAvailable] = useState(false);
   const [grantsFreeSeat, setGrantsFreeSeat] = useState(false);
+  const [stripeConfigured, setStripeConfigured] = useState(true);
   const [claimDraft, setClaimDraft] = useState({ owner_user_id: "", reason: "death", attestation: "", death_certificate_key: "" });
   const [shareDraft, setShareDraft] = useState({
     owner_user_id: "",
@@ -167,6 +176,19 @@ export default function StewardshipPage({
         setFreeSeatAvailable(
           grants && !nextRoles.some((r) => r?.status === "active" && r?.is_free_seat)
         );
+      }
+      try {
+        const billRes = await fetch(`${apiBase}/billing/status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (billRes.ok) {
+          const billParsed = parseApiPayload(await billRes.text());
+          if (typeof billParsed?.stripe_configured === "boolean") {
+            setStripeConfigured(billParsed.stripe_configured);
+          }
+        }
+      } catch {
+        /* keep prior stripeConfigured */
       }
       return nextRoles;
     } catch (e) {
@@ -555,9 +577,22 @@ export default function StewardshipPage({
             <p>No one has named you as their Account Steward yet.</p>
           </div>
         ) : (
-          <div style={{ display: "grid", gap: 16 }}>
-            {roles.map((role) => (
-              <div key={`${role.owner_user_id}-${role.steward_email}`} className="km-prose" style={{ borderTop: "1px solid rgba(26,20,11,0.12)", paddingTop: 14 }}>
+          <div style={{ display: "grid", gap: 18 }}>
+            {roles.map((role, index) => {
+              const tone = STEWARD_BLOCK_TONES[index % STEWARD_BLOCK_TONES.length];
+              const inviteOpen = shareDraft.owner_user_id === role.owner_user_id;
+              const transferOpen = transferDraft.owner_user_id === role.owner_user_id;
+              return (
+              <div
+                key={`${role.owner_user_id}-${role.steward_email}`}
+                className="km-prose"
+                style={{
+                  background: tone.bg,
+                  border: `1px solid ${tone.border}`,
+                  borderRadius: 14,
+                  padding: "16px 16px 18px",
+                }}
+              >
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <Shield size={18} aria-hidden="true" />
                   <strong style={{ fontSize: "1.15rem" }}>
@@ -817,19 +852,14 @@ export default function StewardshipPage({
                       const freeHolder = roles.find(
                         (r) => r?.status === "active" && r?.is_free_seat
                       );
+                      const cancelUntil = formatPeriodEnd(role?.current_period_end);
                       return (
                         <div style={{ display: "grid", gap: 16, maxWidth: 560 }}>
                           <p style={{ margin: 0 }}>
                             Stewardship is active for {ownerName}. Their biography is
-                            completed — storytelling on that account is closed. Use the
-                            actions below to care for it.{" "}
-                            <strong>Archive</strong> is free (chat paused).{" "}
-                            <strong>Share Stewarded</strong> ({PRICE_KEEP_MONTHLY} or{" "}
-                            {PRICE_KEEP_ANNUAL} per biography) enables explore chat and
-                            family invites. Build Biography includes one free Share
-                            Stewarded seat — same controls as My Account → Plan &amp;
-                            billing. To pass this biography to someone else, use Hand off
-                            Stewardship (they must already have a Kinin account).
+                            completed — storytelling on that account is closed.{" "}
+                            <strong>Billing buttons below match My Account → Plan
+                            &amp; billing</strong> so you can test either page.
                           </p>
                           {onArchive ? (
                             <Banner tone="info">
@@ -866,6 +896,88 @@ export default function StewardshipPage({
                               </span>
                             </Banner>
                           ) : null}
+
+                          <div style={{ display: "grid", gap: 8 }}>
+                            <p className="km-muted" style={{ margin: 0, fontSize: 13 }}>
+                              Share Stewarded billing (same controls as Plan &amp; billing)
+                            </p>
+                            <div
+                              className="km-form-actions"
+                              style={{
+                                justifyContent: "flex-start",
+                                flexWrap: "wrap",
+                                gap: 10,
+                              }}
+                            >
+                              {onArchive ? (
+                                <>
+                                  <Button
+                                    variant="primary"
+                                    disabled={busy || !grantsFreeSeat}
+                                    onClick={() => useFreeSeatForRole(role)}
+                                    title={
+                                      !grantsFreeSeat
+                                        ? "Requires an active Build Biography subscription"
+                                        : freeSeatAvailable
+                                          ? "Assign your free seat included with Build Biography"
+                                          : freeHolder
+                                            ? `Move free seat from ${freeHolder.owner_display_name || "the other biography"}`
+                                            : ""
+                                    }
+                                  >
+                                    {!grantsFreeSeat
+                                      ? "Free seat needs Build Biography"
+                                      : freeSeatAvailable
+                                        ? "Use free seat"
+                                        : "Move free seat here"}
+                                  </Button>
+                                  <Button
+                                    disabled={busy || !stripeConfigured}
+                                    onClick={() => subscribeRole(role, "monthly")}
+                                  >
+                                    Subscribe monthly · {PRICE_KEEP_MONTHLY}
+                                  </Button>
+                                  <Button
+                                    disabled={busy || !stripeConfigured}
+                                    onClick={() => subscribeRole(role, "annual")}
+                                  >
+                                    Subscribe annual · {PRICE_KEEP_ANNUAL}
+                                  </Button>
+                                </>
+                              ) : (
+                                <div style={{ display: "grid", gap: 6 }}>
+                                  <Button
+                                    disabled={
+                                      busy ||
+                                      !stripeConfigured ||
+                                      Boolean(role?.cancel_at_period_end)
+                                    }
+                                    onClick={() => archiveRole(role)}
+                                  >
+                                    {role?.cancel_at_period_end
+                                      ? "Cancellation scheduled"
+                                      : role?.is_paid
+                                        ? "Cancel subscription"
+                                        : "Archive"}
+                                  </Button>
+                                  {role?.is_paid && !role?.cancel_at_period_end ? (
+                                    <p className="km-muted" style={{ margin: 0, fontSize: 13 }}>
+                                      Cancels renewal. This biography stays Shared until
+                                      the end of the paid period, then returns to Archive.
+                                    </p>
+                                  ) : null}
+                                  {role?.cancel_at_period_end ? (
+                                    <p className="km-muted" style={{ margin: 0, fontSize: 13 }}>
+                                      {cancelUntil
+                                        ? `Stays Shared until ${cancelUntil}, then returns to Archive.`
+                                        : "Stays Shared until the paid period ends, then returns to Archive."}
+                                    </p>
+                                  ) : null}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
                           <ActionBlock
                             help={
                               <>
@@ -899,111 +1011,127 @@ export default function StewardshipPage({
                               Export copy
                             </Button>
                           </ActionBlock>
-                          {onArchive ? (
-                            <ActionBlock
-                              help={
-                                <>
-                                  <strong>Share Stewarded</strong> — enable explore chat
-                                  and family invites for {ownerName}. Use your free seat
-                                  if Build Biography is active and the seat is free;
-                                  otherwise subscribe monthly or annually via Stripe.
-                                </>
-                              }
-                            >
-                              <div
-                                className="km-form-actions"
-                                style={{
-                                  justifyContent: "flex-start",
-                                  flexWrap: "wrap",
-                                  gap: 10,
-                                }}
-                              >
-                                <Button
-                                  variant="primary"
-                                  disabled={busy || !grantsFreeSeat}
-                                  onClick={() => useFreeSeatForRole(role)}
-                                >
-                                  {!grantsFreeSeat
-                                    ? "Free seat needs Build Biography"
-                                    : freeSeatAvailable
-                                      ? "Use free seat"
-                                      : "Move free seat here"}
-                                </Button>
-                                <Button
-                                  disabled={busy}
-                                  onClick={() => subscribeRole(role, "monthly")}
-                                >
-                                  Subscribe monthly · {PRICE_KEEP_MONTHLY}
-                                </Button>
-                                <Button
-                                  disabled={busy}
-                                  onClick={() => subscribeRole(role, "annual")}
-                                >
-                                  Subscribe annual · {PRICE_KEEP_ANNUAL}
-                                </Button>
-                              </div>
-                            </ActionBlock>
-                          ) : (
-                            <ActionBlock
-                              help={
-                                role?.is_paid ? (
-                                  <>
-                                    <strong>
-                                      {role?.cancel_at_period_end
-                                        ? "Cancellation scheduled"
-                                        : "Cancel subscription"}
-                                    </strong>{" "}
-                                    — stops renewal. This biography stays Shared
-                                    until{" "}
-                                    {formatPeriodEnd(role?.current_period_end) ||
-                                      "the end of the paid period"}
-                                    , then returns to Archive.
-                                  </>
-                                ) : (
-                                  <>
-                                    <strong>Archive</strong> — pause chat for this
-                                    biography immediately. You can assign your free seat
-                                    or subscribe again later.
-                                  </>
-                                )
-                              }
-                            >
-                              <Button
-                                disabled={busy || Boolean(role?.cancel_at_period_end)}
-                                onClick={() => archiveRole(role)}
-                              >
-                                {role?.cancel_at_period_end
-                                  ? "Cancellation scheduled"
-                                  : role?.is_paid
-                                    ? "Cancel subscription"
-                                    : "Archive"}
-                              </Button>
-                            </ActionBlock>
-                          )}
                           <ActionBlock
                             help={
                               <>
-                                <strong>Invite family access</strong> — invite a
-                                family member to explore the completed biography for{" "}
-                                {ownerName}. They can ask questions; they cannot edit.
-                                Family explore chat requires Share Stewarded — turn it
-                                on first if this biography is still on Archive.
+                                <strong>Invite family access</strong> — invite someone to
+                                explore <strong>{ownerName}</strong>’s completed
+                                biography. They can ask questions; they cannot edit.
+                                Requires Share Stewarded (not Archive).
                               </>
                             }
                           >
                             <Button
                               disabled={busy}
-                              onClick={() =>
+                              aria-expanded={inviteOpen}
+                              onClick={() => {
+                                if (inviteOpen) {
+                                  setShareDraft({
+                                    owner_user_id: "",
+                                    owner_display_name: "",
+                                    email: "",
+                                    relationship: "",
+                                  });
+                                  return;
+                                }
+                                setTransferDraft({
+                                  owner_user_id: "",
+                                  owner_display_name: "",
+                                  email: "",
+                                  name: "",
+                                });
                                 setShareDraft({
                                   owner_user_id: role.owner_user_id,
                                   owner_display_name: ownerName,
                                   email: "",
                                   relationship: "",
-                                })
-                              }
+                                });
+                              }}
                             >
-                              Invite family access
+                              {inviteOpen
+                                ? "Hide invite form"
+                                : "Invite family access"}
                             </Button>
+                            {inviteOpen ? (
+                              <div
+                                style={{
+                                  marginTop: 12,
+                                  padding: "14px 14px 12px",
+                                  borderRadius: 10,
+                                  background: "rgba(255,255,255,0.55)",
+                                  border: "1px solid rgba(26,20,11,0.12)",
+                                }}
+                              >
+                                <p style={{ margin: "0 0 12px", fontWeight: 600 }}>
+                                  Invite family to {ownerName}’s biography
+                                </p>
+                                <p className="km-muted" style={{ margin: "0 0 12px" }}>
+                                  They can ask questions grounded in memories already
+                                  shared. They cannot edit the interview or journal.
+                                </p>
+                                <div className="km-form-grid">
+                                  <FormRow label="Email">
+                                    <TextInput
+                                      value={shareDraft.email}
+                                      onChange={(e) =>
+                                        setShareDraft((p) => ({
+                                          ...p,
+                                          email: e.target.value,
+                                        }))
+                                      }
+                                      disabled={busy}
+                                      inputMode="email"
+                                    />
+                                  </FormRow>
+                                  <FormRow label="Relationship (optional)">
+                                    <TextInput
+                                      value={shareDraft.relationship}
+                                      onChange={(e) =>
+                                        setShareDraft((p) => ({
+                                          ...p,
+                                          relationship: e.target.value,
+                                        }))
+                                      }
+                                      disabled={busy}
+                                    />
+                                  </FormRow>
+                                </div>
+                                <div className="km-row" style={{ marginTop: 14, gap: 8 }}>
+                                  <Button
+                                    variant="primary"
+                                    disabled={busy || !(shareDraft.email || "").trim()}
+                                    onClick={async () => {
+                                      await post("/stewardship/shares", {
+                                        owner_user_id: shareDraft.owner_user_id,
+                                        email: shareDraft.email,
+                                        relationship: shareDraft.relationship,
+                                      });
+                                      setShareDraft({
+                                        owner_user_id: "",
+                                        owner_display_name: "",
+                                        email: "",
+                                        relationship: "",
+                                      });
+                                    }}
+                                  >
+                                    Send invite
+                                  </Button>
+                                  <Button
+                                    disabled={busy}
+                                    onClick={() =>
+                                      setShareDraft({
+                                        owner_user_id: "",
+                                        owner_display_name: "",
+                                        email: "",
+                                        relationship: "",
+                                      })
+                                    }
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : null}
                           </ActionBlock>
                           {role.pending_transfer_to_email ? (
                             <ActionBlock
@@ -1036,24 +1164,151 @@ export default function StewardshipPage({
                                   of {ownerName}’s completed biography to another
                                   person who already has a Kinin account. They get an
                                   email, accept in Settings → Stewardship, and start on
-                                  free Archive. You keep explore access afterward
-                                  unless access is removed later.
+                                  free Archive.
                                 </>
                               }
                             >
                               <Button
                                 disabled={busy}
-                                onClick={() =>
+                                aria-expanded={transferOpen}
+                                onClick={() => {
+                                  if (transferOpen) {
+                                    setTransferDraft({
+                                      owner_user_id: "",
+                                      owner_display_name: "",
+                                      email: "",
+                                      name: "",
+                                    });
+                                    return;
+                                  }
+                                  setShareDraft({
+                                    owner_user_id: "",
+                                    owner_display_name: "",
+                                    email: "",
+                                    relationship: "",
+                                  });
                                   setTransferDraft({
                                     owner_user_id: role.owner_user_id,
                                     owner_display_name: ownerName,
                                     email: "",
                                     name: "",
-                                  })
-                                }
+                                  });
+                                }}
                               >
-                                Hand off Stewardship
+                                {transferOpen
+                                  ? "Hide hand off form"
+                                  : "Hand off Stewardship"}
                               </Button>
+                              {transferOpen ? (
+                                <div
+                                  style={{
+                                    marginTop: 12,
+                                    padding: "14px 14px 12px",
+                                    borderRadius: 10,
+                                    background: "rgba(255,255,255,0.55)",
+                                    border: "1px solid rgba(26,20,11,0.12)",
+                                  }}
+                                >
+                                  <p style={{ margin: "0 0 12px", fontWeight: 600 }}>
+                                    Hand off {ownerName}’s biography
+                                  </p>
+                                  <p className="km-muted" style={{ margin: "0 0 12px" }}>
+                                    Recipient must already have a Kinin account. They
+                                    start on free Archive when they accept.
+                                  </p>
+                                  <div className="km-form-grid">
+                                    <FormRow label="Recipient name (optional)">
+                                      <TextInput
+                                        value={transferDraft.name}
+                                        onChange={(e) =>
+                                          setTransferDraft((p) => ({
+                                            ...p,
+                                            name: e.target.value,
+                                          }))
+                                        }
+                                        disabled={busy}
+                                      />
+                                    </FormRow>
+                                    <FormRow label="Recipient email">
+                                      <TextInput
+                                        value={transferDraft.email}
+                                        onChange={(e) =>
+                                          setTransferDraft((p) => ({
+                                            ...p,
+                                            email: e.target.value,
+                                          }))
+                                        }
+                                        disabled={busy}
+                                        inputMode="email"
+                                      />
+                                    </FormRow>
+                                  </div>
+                                  <div
+                                    className="km-row"
+                                    style={{ marginTop: 14, gap: 8 }}
+                                  >
+                                    <Button
+                                      variant="primary"
+                                      disabled={
+                                        busy || !(transferDraft.email || "").trim()
+                                      }
+                                      onClick={async () => {
+                                        const toEmail = (
+                                          transferDraft.email || ""
+                                        ).trim();
+                                        const toName = (
+                                          transferDraft.name || ""
+                                        ).trim();
+                                        const who = toName
+                                          ? `${toName} (${toEmail})`
+                                          : toEmail;
+                                        const ownerLabel =
+                                          transferDraft.owner_display_name ||
+                                          "this person";
+                                        const ok = window.confirm(
+                                          `Hand off Stewardship of ${ownerLabel}’s biography to ${who}?\n\n` +
+                                            "They must already have a Kinin account. We’ll email them to accept, " +
+                                            "and you’ll get a confirmation. You remain the Account Steward until they accept. " +
+                                            "When they accept, the biography starts on free Archive.",
+                                        );
+                                        if (!ok) return;
+                                        const parsed = await post(
+                                          "/stewardship/transfer",
+                                          {
+                                            owner_user_id:
+                                              transferDraft.owner_user_id,
+                                            email: toEmail,
+                                            name: toName,
+                                          },
+                                          `Transfer request sent to ${who}. We've emailed them to accept — you’ll also get a confirmation. Status shows as Transfer pending until they accept.`,
+                                        );
+                                        if (!parsed) return;
+                                        setTransferDraft({
+                                          owner_user_id: "",
+                                          owner_display_name: "",
+                                          email: "",
+                                          name: "",
+                                        });
+                                      }}
+                                    >
+                                      Send transfer request
+                                    </Button>
+                                    <Button
+                                      disabled={busy}
+                                      onClick={() =>
+                                        setTransferDraft({
+                                          owner_user_id: "",
+                                          owner_display_name: "",
+                                          email: "",
+                                          name: "",
+                                        })
+                                      }
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : null}
                             </ActionBlock>
                           )}
                         </div>
@@ -1062,7 +1317,8 @@ export default function StewardshipPage({
                   ) : null}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </Frame>
@@ -1132,169 +1388,6 @@ export default function StewardshipPage({
         </div>
       ) : null}
 
-      {transferDraft.owner_user_id ? (
-        <div style={{ marginTop: 20 }}>
-          <Frame label="Hand off Stewardship">
-            {error ? (
-              <div style={{ marginBottom: 12 }}>
-                <Banner tone="danger">{error}</Banner>
-              </div>
-            ) : null}
-            {notice ? (
-              <div style={{ marginBottom: 12 }}>
-                <Banner tone="info">{notice}</Banner>
-              </div>
-            ) : null}
-            <div className="km-prose" style={{ maxWidth: 560, marginBottom: 12 }}>
-              <p>
-                Transfer Stewardship of the completed biography for{" "}
-                {transferDraft.owner_display_name || "this person"} to someone who
-                already has a Kinin account. They will receive an email and must
-                accept in Settings → Stewardship. Accepting starts free Archive
-                for them (no payment setup required).
-              </p>
-            </div>
-            <div className="km-form-grid">
-              <FormRow label="Recipient name (optional)">
-                <TextInput
-                  value={transferDraft.name}
-                  onChange={(e) =>
-                    setTransferDraft((p) => ({ ...p, name: e.target.value }))
-                  }
-                  disabled={busy}
-                />
-              </FormRow>
-              <FormRow label="Recipient email">
-                <TextInput
-                  value={transferDraft.email}
-                  onChange={(e) =>
-                    setTransferDraft((p) => ({ ...p, email: e.target.value }))
-                  }
-                  disabled={busy}
-                  inputMode="email"
-                />
-              </FormRow>
-            </div>
-            <div className="km-row" style={{ marginTop: 14, gap: 8 }}>
-              <Button
-                variant="primary"
-                disabled={busy || !(transferDraft.email || "").trim()}
-                onClick={async () => {
-                  const toEmail = (transferDraft.email || "").trim();
-                  const toName = (transferDraft.name || "").trim();
-                  const who = toName ? `${toName} (${toEmail})` : toEmail;
-                  const ownerLabel =
-                    transferDraft.owner_display_name || "this person";
-                  const ok = window.confirm(
-                    `Hand off Stewardship of ${ownerLabel}’s biography to ${who}?\n\n` +
-                      "They must already have a Kinin account. We’ll email them to accept, " +
-                      "and you’ll get a confirmation. You remain the Account Steward until they accept. " +
-                      "When they accept, the biography starts on free Archive.",
-                  );
-                  if (!ok) return;
-                  const parsed = await post(
-                    "/stewardship/transfer",
-                    {
-                      owner_user_id: transferDraft.owner_user_id,
-                      email: toEmail,
-                      name: toName,
-                    },
-                    `Transfer request sent to ${who}. We've emailed them to accept — you’ll also get a confirmation. Status shows as Transfer pending until they accept.`,
-                  );
-                  if (!parsed) return;
-                  setTransferDraft({
-                    owner_user_id: "",
-                    owner_display_name: "",
-                    email: "",
-                    name: "",
-                  });
-                }}
-              >
-                Send transfer request
-              </Button>
-              <Button
-                disabled={busy}
-                onClick={() =>
-                  setTransferDraft({
-                    owner_user_id: "",
-                    owner_display_name: "",
-                    email: "",
-                    name: "",
-                  })
-                }
-              >
-                Cancel
-              </Button>
-            </div>
-          </Frame>
-        </div>
-      ) : null}
-
-      {shareDraft.owner_user_id ? (
-        <div style={{ marginTop: 20 }}>
-        <Frame label="Invite family access">
-          <div className="km-prose" style={{ maxWidth: 560, marginBottom: 12 }}>
-            <p>
-              Invite a family member to explore the completed biography for{" "}
-              {shareDraft.owner_display_name || "this person"}. They can ask
-              questions grounded in memories already shared. They cannot edit the
-              interview or journal.
-            </p>
-          </div>
-          <div className="km-form-grid">
-            <FormRow label="Email">
-              <TextInput
-                value={shareDraft.email}
-                onChange={(e) => setShareDraft((p) => ({ ...p, email: e.target.value }))}
-                disabled={busy}
-                inputMode="email"
-              />
-            </FormRow>
-            <FormRow label="Relationship (optional)">
-              <TextInput
-                value={shareDraft.relationship}
-                onChange={(e) => setShareDraft((p) => ({ ...p, relationship: e.target.value }))}
-                disabled={busy}
-              />
-            </FormRow>
-          </div>
-          <div className="km-row" style={{ marginTop: 14, gap: 8 }}>
-            <Button
-              variant="primary"
-              disabled={busy}
-              onClick={async () => {
-                await post("/stewardship/shares", {
-                  owner_user_id: shareDraft.owner_user_id,
-                  email: shareDraft.email,
-                  relationship: shareDraft.relationship,
-                });
-                setShareDraft({
-                  owner_user_id: "",
-                  owner_display_name: "",
-                  email: "",
-                  relationship: "",
-                });
-              }}
-            >
-              Send invite
-            </Button>
-            <Button
-              disabled={busy}
-              onClick={() =>
-                setShareDraft({
-                  owner_user_id: "",
-                  owner_display_name: "",
-                  email: "",
-                  relationship: "",
-                })
-              }
-            >
-              Cancel
-            </Button>
-          </div>
-        </Frame>
-        </div>
-      ) : null}
     </>
   );
 
