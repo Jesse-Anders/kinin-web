@@ -37,9 +37,9 @@ function planLabel(raw, interval, trialEndsAt, product) {
   const iv = String(interval || "").trim().toLowerCase();
   const prod = String(product || "").trim().toLowerCase();
   if (p === "share_bio" || (p === "active" && prod === "share_bio")) {
-    if (iv === "monthly") return `Share Biography · monthly (${PRICE_SHARE_MONTHLY})`;
-    if (iv === "annual") return `Share Biography · annual (${PRICE_SHARE_ANNUAL})`;
-    return "Share Biography";
+    if (iv === "monthly") return `Share My Biography · monthly (${PRICE_SHARE_MONTHLY})`;
+    if (iv === "annual") return `Share My Biography · annual (${PRICE_SHARE_ANNUAL})`;
+    return "Share My Biography";
   }
   if (p === "active") {
     if (iv === "monthly") return `Build Biography · monthly (${PRICE_BUILD_MONTHLY})`;
@@ -93,7 +93,7 @@ export default function PlanBillingSection({
   const [billingBusy, setBillingBusy] = useState(false);
   const [billingError, setBillingError] = useState("");
   const [billingNotice, setBillingNotice] = useState("");
-  const [shareOpen, setShareOpen] = useState(false);
+  const [preserveOpen, setPreserveOpen] = useState(false);
 
   async function refreshBillingStatus() {
     if (!apiBase || typeof getAccessToken !== "function") return null;
@@ -159,7 +159,7 @@ export default function PlanBillingSection({
         if (plan === "active") {
           setBillingNotice("Build Biography is active.");
         } else if (plan === "share_bio") {
-          setBillingNotice("Share Biography is active.");
+          setBillingNotice("Share My Biography is active.");
         } else if (plan === "beta_invited") {
           setBillingNotice("You're subscribed in Stripe; complimentary full access is unchanged.");
         } else {
@@ -207,7 +207,7 @@ export default function PlanBillingSection({
       }
       if (parsed?.error === "owner_plan_xor_conflict") {
         setBillingNotice(
-          "Build Biography and Share Biography can't both be active. Switch plans below, or cancel the current plan in Manage billing first."
+          "Build Biography and Share My Biography can't both be active. Switch plans below, or cancel the current plan in Manage billing first."
         );
         await refreshBillingStatus().catch(() => null);
         setBillingBusy(false);
@@ -314,14 +314,6 @@ export default function PlanBillingSection({
 
   return (
     <Frame label="Plan & billing">
-      <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
-        <p>
-          <strong>Build Biography</strong> unlocks interviewing and journaling, and includes
-          one free Keep interactive seat for a sealed biography you steward.{" "}
-          <strong>Share Biography</strong> is a lighter owner plan (no interview) — you can
-          have one or the other, not both.
-        </p>
-      </div>
       {billingError ? (
         <div style={{ marginBottom: 16 }}>
           <Banner tone="danger">{billingError}</Banner>
@@ -335,7 +327,7 @@ export default function PlanBillingSection({
 
       <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
         <p>
-          <strong>Owner plan:</strong> {planLabel(effectivePlan, interval, trialEndsAt, product)}
+          <strong>Current plan:</strong> {planLabel(effectivePlan, interval, trialEndsAt, product)}
         </p>
         {plan === "trialing" && trialEndsLabel ? (
           <p className="km-muted">
@@ -351,8 +343,8 @@ export default function PlanBillingSection({
       </div>
 
       <div className="km-prose" style={{ maxWidth: 560, marginBottom: 10 }}>
-        <p>
-          <strong>Build Biography</strong>
+        <p style={{ margin: 0 }}>
+          <strong>Subscription — Build Biography</strong>
         </p>
       </div>
       <div
@@ -393,14 +385,6 @@ export default function PlanBillingSection({
             Switch to monthly at period end · {PRICE_BUILD_MONTHLY}
           </Button>
         ) : null}
-        {canChange && isBuild ? (
-          <Button
-            disabled={busy || !status?.stripe_configured}
-            onClick={() => changePlan(interval || "monthly", "share_bio")}
-          >
-            Switch to Share Biography
-          </Button>
-        ) : null}
         {canChange && isShareBio ? (
           <Button
             variant="primary"
@@ -410,95 +394,128 @@ export default function PlanBillingSection({
             Switch to Build Biography
           </Button>
         ) : null}
-        {canChange && isShareBio && interval !== "annual" ? (
-          <Button
-            disabled={busy || !status?.stripe_configured}
-            onClick={() => changePlan("annual", "share_bio")}
-          >
-            Share Biography annual · {PRICE_SHARE_ANNUAL}
-          </Button>
-        ) : null}
-        {canChange && isShareBio && interval !== "monthly" ? (
-          <Button
-            disabled={busy || !status?.stripe_configured}
-            onClick={() => changePlan("monthly", "share_bio")}
-          >
-            Share Biography monthly at period end · {PRICE_SHARE_MONTHLY}
-          </Button>
-        ) : null}
         <Button disabled={busy || !status?.has_customer} onClick={() => openPortal()}>
           Manage billing
         </Button>
       </div>
 
-      {canCheckoutOwner ? (
-        <div className="km-prose" style={{ maxWidth: 560, marginBottom: 20 }}>
-          <button
-            type="button"
-            className="km-linkish"
+      <div style={{ maxWidth: 560, marginBottom: 12 }}>
+        <button
+          type="button"
+          aria-expanded={preserveOpen}
+          onClick={() => setPreserveOpen((v) => !v)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            width: "100%",
+            background: "none",
+            border: "none",
+            padding: 0,
+            textAlign: "left",
+            cursor: "pointer",
+            font: "inherit",
+            color: "inherit",
+          }}
+        >
+          <span
+            aria-hidden="true"
             style={{
-              background: "none",
-              border: "none",
-              padding: 0,
-              textAlign: "left",
-              cursor: "pointer",
-              font: "inherit",
-              color: "inherit",
-              textDecoration: "underline",
+              display: "inline-block",
+              width: "1em",
+              transition: "transform 0.15s ease",
+              transform: preserveOpen ? "rotate(90deg)" : "rotate(0deg)",
+              fontSize: "0.85em",
+              lineHeight: 1,
             }}
-            onClick={() => setShareOpen((v) => !v)}
           >
-            Don&apos;t want to continue interviewing or journaling right now, but want to make
-            sure family and friends can still interact with your biography?
-          </button>
-          {shareOpen ? (
-            <div style={{ marginTop: 12 }}>
-              <p className="km-muted" style={{ marginBottom: 12 }}>
-                Share Biography ({PRICE_SHARE_MONTHLY} or {PRICE_SHARE_ANNUAL}) keeps your own
-                biography interactive for family — without interview or journal. It can&apos;t
-                run alongside Build Biography.
+            ▸
+          </span>
+          <strong>Subscriptions — Preserve Biographies</strong>
+        </button>
+
+        {preserveOpen ? (
+          <div className="km-prose" style={{ marginTop: 16, paddingLeft: 4 }}>
+            <div style={{ marginBottom: 22 }}>
+              <p style={{ margin: "0 0 6px" }}>
+                <strong>Share My Biography</strong>
               </p>
-              <div className="km-form-actions" style={{ justifyContent: "flex-start", gap: 12 }}>
-                <Button
-                  disabled={busy || !status?.stripe_configured}
-                  onClick={() => openCheckout("monthly", "share_bio")}
-                >
-                  Share Biography monthly · {PRICE_SHARE_MONTHLY}
-                </Button>
-                <Button
-                  disabled={busy || !status?.stripe_configured}
-                  onClick={() => openCheckout("annual", "share_bio")}
-                >
-                  Share Biography annual · {PRICE_SHARE_ANNUAL}
-                </Button>
+              <p className="km-muted" style={{ margin: "0 0 12px" }}>
+                Already included with a Build Biography plan. Choose this alone if you only want
+                family to interact with your biography — without interviewing or journaling.
+              </p>
+              <div
+                className="km-form-actions"
+                style={{ justifyContent: "flex-start", flexWrap: "wrap", gap: 12 }}
+              >
+                {canCheckoutOwner ? (
+                  <>
+                    <Button
+                      disabled={busy || !status?.stripe_configured}
+                      onClick={() => openCheckout("monthly", "share_bio")}
+                    >
+                      Monthly · {PRICE_SHARE_MONTHLY}
+                    </Button>
+                    <Button
+                      disabled={busy || !status?.stripe_configured}
+                      onClick={() => openCheckout("annual", "share_bio")}
+                    >
+                      Annual · {PRICE_SHARE_ANNUAL}
+                    </Button>
+                  </>
+                ) : null}
+                {canChange && isBuild ? (
+                  <Button
+                    disabled={busy || !status?.stripe_configured}
+                    onClick={() => changePlan(interval || "monthly", "share_bio")}
+                  >
+                    Switch to Share My Biography
+                  </Button>
+                ) : null}
+                {canChange && isShareBio && interval !== "annual" ? (
+                  <Button
+                    disabled={busy || !status?.stripe_configured}
+                    onClick={() => changePlan("annual", "share_bio")}
+                  >
+                    Switch to annual · {PRICE_SHARE_ANNUAL}
+                  </Button>
+                ) : null}
+                {canChange && isShareBio && interval !== "monthly" ? (
+                  <Button
+                    disabled={busy || !status?.stripe_configured}
+                    onClick={() => changePlan("monthly", "share_bio")}
+                  >
+                    Switch to monthly at period end · {PRICE_SHARE_MONTHLY}
+                  </Button>
+                ) : null}
               </div>
             </div>
-          ) : null}
-        </div>
-      ) : null}
 
-      <div className="km-prose" style={{ maxWidth: 560, marginBottom: 10 }}>
-        <p>
-          <strong>Stewarded biographies</strong>
-        </p>
-      </div>
-      <div className="km-prose" style={{ maxWidth: 560, marginBottom: 12 }}>
-        {stewardedBios.length === 0 ? (
-          <p className="km-muted">
-            When you steward a family member&apos;s sealed biography, you can turn on{" "}
-            <strong>Keep interactive</strong> ({PRICE_KEEP_MONTHLY} or {PRICE_KEEP_ANNUAL} per
-            biography) so family can chat with it. Build Biography includes one free Keep
-            interactive seat. Manage each biography under Settings → Stewardship.
-          </p>
-        ) : (
-          <ul style={{ paddingLeft: 18, margin: 0 }}>
-            {stewardedBios.map((bio) => (
-              <li key={bio.owner_user_id || bio.display_name} style={{ marginBottom: 8 }}>
-                <strong>{bio.display_name || "Biography"}</strong> — {bioPlanLabel(bio)}
-              </li>
-            ))}
-          </ul>
-        )}
+            <div>
+              <p style={{ margin: "0 0 6px" }}>
+                <strong>Share Stewarded Biographies</strong>
+              </p>
+              <p className="km-muted" style={{ margin: "0 0 12px" }}>
+                The first shared stewarded biography is free with a Build Biography plan.
+                Additional biographies are {PRICE_KEEP_MONTHLY} or {PRICE_KEEP_ANNUAL} each.
+                Manage each biography under Settings → Stewardship.
+              </p>
+              {stewardedBios.length === 0 ? (
+                <p className="km-muted" style={{ margin: 0 }}>
+                  You aren&apos;t stewarding any sealed biographies yet.
+                </p>
+              ) : (
+                <ul style={{ paddingLeft: 18, margin: 0 }}>
+                  {stewardedBios.map((bio) => (
+                    <li key={bio.owner_user_id || bio.display_name} style={{ marginBottom: 8 }}>
+                      <strong>{bio.display_name || "Biography"}</strong> — {bioPlanLabel(bio)}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        ) : null}
       </div>
     </Frame>
   );
