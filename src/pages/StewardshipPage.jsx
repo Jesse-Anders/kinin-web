@@ -50,16 +50,43 @@ function lifecycleLabel(state) {
   return map[state] || state || "Active — interview in progress";
 }
 
-function billingLabel(plan) {
-  const p = String(plan || "").toLowerCase();
-  if (p === "keep_interactive" || p === "legacy") return "Keep interactive ($4.99/mo)";
-  if (p === "archive" || p === "dormant") return "Archive (free)";
+const PRICE_KEEP_MONTHLY = "$4.99/month";
+const PRICE_KEEP_ANNUAL = "$49/year";
+
+function formatPeriodEnd(unixSeconds) {
+  const n = Number(unixSeconds);
+  if (!Number.isFinite(n) || n <= 0) return "";
+  try {
+    return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
+      new Date(n * 1000)
+    );
+  } catch {
+    return "";
+  }
+}
+
+function billingLabel(role) {
+  const plan = String(role?.billing_plan || "").toLowerCase();
+  if (plan === "keep_interactive" || plan === "legacy") {
+    if (role?.cancel_at_period_end) {
+      const when = formatPeriodEnd(role.current_period_end);
+      return when ? `Shared — ends ${when}` : "Shared — ending at period end";
+    }
+    if (role?.is_free_seat) return "Shared (free with Build Biography)";
+    if (role?.is_paid) {
+      const iv = String(role.billing_interval || "").toLowerCase();
+      if (iv === "annual") return `Shared · annual (${PRICE_KEEP_ANNUAL})`;
+      return `Shared · monthly (${PRICE_KEEP_MONTHLY})`;
+    }
+    return "Shared";
+  }
+  if (plan === "archive" || plan === "dormant") return "Archive (chat paused)";
   return plan || "";
 }
 
 function isArchivePlan(plan) {
   const p = String(plan || "").toLowerCase();
-  return p === "archive" || p === "dormant";
+  return p === "archive" || p === "dormant" || !p;
 }
 
 /** One help line above its button — used in Stewardship action stacks. */
@@ -99,6 +126,8 @@ export default function StewardshipPage({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [freeSeatAvailable, setFreeSeatAvailable] = useState(false);
+  const [grantsFreeSeat, setGrantsFreeSeat] = useState(false);
   const [claimDraft, setClaimDraft] = useState({ owner_user_id: "", reason: "death", attestation: "", death_certificate_key: "" });
   const [shareDraft, setShareDraft] = useState({
     owner_user_id: "",
@@ -125,8 +154,18 @@ export default function StewardshipPage({
       throwIfUnauthorized(res);
       const parsed = parseApiPayload(await res.text());
       if (!res.ok) throw new Error(parsed?.error || `HTTP ${res.status}`);
-      setRoles(Array.isArray(parsed?.roles) ? parsed.roles : []);
+      const nextRoles = Array.isArray(parsed?.roles) ? parsed.roles : [];
+      setRoles(nextRoles);
       setOwn(parsed?.own_lifecycle || null);
+      const grants = parsed?.build_biography_grants_free_seat === true;
+      setGrantsFreeSeat(grants);
+      if (typeof parsed?.free_seat_available === "boolean") {
+        setFreeSeatAvailable(parsed.free_seat_available);
+      } else {
+        setFreeSeatAvailable(
+          grants && !nextRoles.some((r) => r?.status === "active" && r?.is_free_seat)
+        );
+      }
     } catch (e) {
       if (isAuthExpiredError(e)) return;
       setError(describeApiErrorMessage(e, "Could not load Stewardship."));
@@ -137,6 +176,24 @@ export default function StewardshipPage({
 
   useEffect(() => {
     load();
+  }, [load]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const checkout = params.get("checkout");
+    if (!checkout) return;
+    params.delete("checkout");
+    const qs = params.toString();
+    const next = `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash || ""}`;
+    window.history.replaceState({}, "", next);
+    if (checkout === "cancel") {
+      setNotice("Checkout canceled. You can share a stewarded biography anytime.");
+      return;
+    }
+    if (checkout === "success") {
+      setNotice("Checking your stewardship subscription…");
+      load();
+    }
   }, [load]);
 
   async function post(path, body, successNotice = "Saved.") {
@@ -155,13 +212,17 @@ export default function StewardshipPage({
       });
       throwIfUnauthorized(res);
       const parsed = parseApiPayload(await res.text());
-      if (!res.ok) {
+      if (!res.ok && !(parsed?.checkout_required && parsed?.url)) {
         const code =
           parsed?.error || parsed?.detail || parsed?.message || `HTTP ${res.status}`;
         const err = new Error(code);
         err.status = res.status;
         err.payload = parsed;
         throw err;
+      }
+      if (parsed?.checkout_required && parsed?.url) {
+        window.location.href = parsed.url;
+        return parsed;
       }
       setNotice(successNotice);
       await load();
@@ -180,6 +241,79 @@ export default function StewardshipPage({
     } finally {
       setBusy(false);
     }
+  }
+
+  async function setRoleBilling(role, billingPlan, interval = "monthly", successNotice = "Saved.") {
+    const origin = window.location.origin;
+    return post(
+      "/stewardship/billing",
+      {
+        owner_user_id: role.owner_user_id,
+        billing_plan: billingPlan,
+        interval,
+        success_url: `${origin}/settings/stewardship?checkout=success`,
+        cancel_url: `${origin}/settings/stewardship?checkout=cancel`,
+      },
+      successNotice,
+    );
+  }
+
+  async function useFreeSeatForRole(role) {
+    const name = role.owner_display_name || "this biography";
+    const freeHolder = roles.find((r) => r?.status === "active" && r?.is_free_seat);
+    if (freeHolder && freeHolder.owner_user_id !== role.owner_user_id) {
+      const holderName = freeHolder.owner_display_name || "another biography";
+      const ok = window.confirm(
+        `Your free Share Stewarded seat is currently on ${holderName}. ` +
+          `Archive that biography and use the free seat for ${name}?`
+      );
+      if (!ok) return;
+      const archived = await setRoleBilling(
+        freeHolder,
+        "archive",
+        "monthly",
+        `${holderName} archived so the free seat can move.`,
+      );
+      if (!archived) return;
+    } else {
+      const ok = window.confirm(
+        `Use your free Share Stewarded seat (included with Build Biography) for ${name}?`
+      );
+      if (!ok) return;
+    }
+    await setRoleBilling(
+      role,
+      "keep_interactive",
+      "monthly",
+      `Free Share Stewarded seat assigned to ${name}.`,
+    );
+  }
+
+  async function subscribeRole(role, interval) {
+    const name = role.owner_display_name || "this biography";
+    await setRoleBilling(
+      role,
+      "keep_interactive",
+      interval,
+      `Opening Checkout to share ${name}…`,
+    );
+  }
+
+  async function archiveRole(role) {
+    const name = role.owner_display_name || "this biography";
+    const paid = Boolean(role?.is_paid);
+    const ok = window.confirm(
+      paid
+        ? `Archive ${name}? Shared access continues until the end of the billing period, then chat pauses.`
+        : `Archive ${name}? Chat will pause immediately. You can assign your free seat or subscribe again later.`,
+    );
+    if (!ok) return;
+    await setRoleBilling(
+      role,
+      "archive",
+      "monthly",
+      paid ? `Archive scheduled for ${name} at period end.` : `${name} is now Archived.`,
+    );
   }
 
   async function requestHandoff() {
@@ -361,6 +495,13 @@ export default function StewardshipPage({
 
       <div style={{ marginTop: 20 }}>
       <Frame label="Biographies you steward">
+        <div className="km-prose" style={{ maxWidth: 560, marginBottom: 14 }}>
+          <p className="km-muted" style={{ margin: 0 }}>
+            Share or Archive each stewarded biography here — same Stripe billing as My
+            Account → Plan &amp; billing. Build Biography includes one free Share
+            Stewarded seat.
+          </p>
+        </div>
         {loading ? (
           <Skeleton height={80} />
         ) : roles.length === 0 ? (
@@ -377,7 +518,7 @@ export default function StewardshipPage({
                     {role.owner_display_name || "Someone"}
                   </strong>
                 </div>
-                {role.status === "active" && role.billing_plan ? (
+                {role.status === "active" ? (
                   <div
                     style={{
                       marginTop: 8,
@@ -387,9 +528,9 @@ export default function StewardshipPage({
                       letterSpacing: "0.01em",
                     }}
                   >
-                    Current Plan:{" "}
+                    Current plan:{" "}
                     <span style={{ whiteSpace: "nowrap" }}>
-                      {billingLabel(role.billing_plan)}
+                      {billingLabel(role)}
                     </span>
                   </div>
                 ) : (
@@ -417,9 +558,9 @@ export default function StewardshipPage({
                       <p>
                         <strong>An Account Steward asked you to take over.</strong>{" "}
                         Accepting transfers Stewardship of this completed biography to
-                        you on free Archive (chat paused). Turn on Keep interactive
-                        later ($4.99/mo or $49/yr, or free with Build Biography) if you
-                        want explore chat and family interaction.
+                        you on free Archive (chat paused). Turn on Share Stewarded later
+                        ({PRICE_KEEP_MONTHLY} or {PRICE_KEEP_ANNUAL}, or free with Build
+                        Biography) if you want explore chat and family interaction.
                       </p>
                       <div style={{ display: "grid", gap: 16, marginTop: 12 }}>
                         <ActionBlock
@@ -427,7 +568,7 @@ export default function StewardshipPage({
                             <>
                               <strong>Accept stewardship transfer — Archive (free)</strong>{" "}
                               — take over care with no charge. Chat stays paused until
-                              you turn on Keep interactive for family explore access.
+                              you turn on Share Stewarded for family explore access.
                             </>
                           }
                         >
@@ -438,7 +579,7 @@ export default function StewardshipPage({
                               post(
                                 "/stewardship/transfer/accept",
                                 { owner_user_id: role.owner_user_id },
-                                "Stewardship transfer accepted on free Archive. Turn on Keep interactive in Stewardship when you want family explore chat.",
+                                "Stewardship transfer accepted on free Archive. Turn on Share Stewarded below when you want family explore chat.",
                               )
                             }
                           >
@@ -479,7 +620,7 @@ export default function StewardshipPage({
                         <strong>They asked you to take over.</strong> Accepting
                         activates Stewardship on free Archive and permanently
                         seals their Interview, Journal, Pins, and Review. Turn on
-                        Keep interactive later when you want explore chat and family
+                        Share Stewarded later when you want explore chat and family
                         interaction with this biography.
                       </p>
                       <div style={{ display: "grid", gap: 16, marginTop: 12 }}>
@@ -488,8 +629,8 @@ export default function StewardshipPage({
                             <>
                               <strong>Accept handoff — Archive (free)</strong> —
                               keep the biography stored with chat paused. No charge.
-                              After accepting, turn on Keep interactive in Stewardship
-                              so family can explore and chat.
+                              After accepting, turn on Share Stewarded below so family
+                              can explore and chat.
                             </>
                           }
                         >
@@ -502,7 +643,7 @@ export default function StewardshipPage({
                                 {
                                   owner_user_id: role.owner_user_id,
                                 },
-                                "Stewardship accepted on free Archive. Their biography is completed. Turn on Keep interactive when you want family explore chat.",
+                                "Stewardship accepted on free Archive. Their biography is completed. Turn on Share Stewarded when you want family explore chat.",
                               )
                             }
                           >
@@ -627,31 +768,42 @@ export default function StewardshipPage({
                     (() => {
                       const ownerName = role.owner_display_name || "this person";
                       const onArchive = isArchivePlan(role.billing_plan);
-                      const switchToArchive = !onArchive;
-                      const switchLabel = switchToArchive
-                        ? "Switch to Archive (free)"
-                        : "Turn on Keep interactive ($4.99/mo)";
-                      const switchHelp = switchToArchive
-                        ? "pause chat for this biography. If you have a paid Keep interactive plan, it cancels at period end so access continues until then."
-                        : "enable explore/chat and family-invite tools. Your first Keep interactive seat may be free with Build Biography; otherwise Checkout opens for $4.99/mo or $49/yr.";
+                      const freeHolder = roles.find(
+                        (r) => r?.status === "active" && r?.is_free_seat
+                      );
                       return (
                         <div style={{ display: "grid", gap: 16, maxWidth: 560 }}>
                           <p style={{ margin: 0 }}>
                             Stewardship is active for {ownerName}. Their biography is
                             completed — storytelling on that account is closed. Use the
-                            actions below to care for it. Archive is free (chat paused);
-                            Keep interactive is $4.99/mo (or $49/yr) per biography when you
-                            want explore chat and family interaction. Build Biography
-                            includes one free Keep interactive seat. To pass this biography
-                            to someone else, use Hand off Stewardship (they must already
-                            have a Kinin account).
+                            actions below to care for it.{" "}
+                            <strong>Archive</strong> is free (chat paused).{" "}
+                            <strong>Share Stewarded</strong> ({PRICE_KEEP_MONTHLY} or{" "}
+                            {PRICE_KEEP_ANNUAL} per biography) enables explore chat and
+                            family invites. Build Biography includes one free Share
+                            Stewarded seat — same controls as My Account → Plan &amp;
+                            billing. To pass this biography to someone else, use Hand off
+                            Stewardship (they must already have a Kinin account).
                           </p>
                           {onArchive ? (
                             <Banner tone="info">
                               <span>
-                                <strong>Current plan: Archive (free).</strong> Chat is
-                                paused. Turn on Keep interactive so you and invited family
-                                can explore this biography.
+                                <strong>Current plan: Archive (chat paused).</strong> Turn
+                                on Share Stewarded so you and invited family can explore
+                                this biography.
+                                {grantsFreeSeat && freeSeatAvailable ? (
+                                  <> Your free seat from Build Biography is available.</>
+                                ) : null}
+                                {grantsFreeSeat && freeHolder ? (
+                                  <>
+                                    {" "}
+                                    Free seat is currently on{" "}
+                                    <strong>
+                                      {freeHolder.owner_display_name || "another biography"}
+                                    </strong>
+                                    .
+                                  </>
+                                ) : null}
                               </span>
                             </Banner>
                           ) : null}
@@ -701,47 +853,84 @@ export default function StewardshipPage({
                               Export copy
                             </Button>
                           </ActionBlock>
-                          <ActionBlock
-                            help={
-                              <>
-                                <strong>{switchLabel}</strong> — {switchHelp}
-                              </>
-                            }
-                          >
-                            <Button
-                              disabled={busy}
-                              onClick={async () => {
-                                const origin = window.location.origin;
-                                const parsed = await post(
-                                  "/stewardship/billing",
-                                  {
-                                    owner_user_id: role.owner_user_id,
-                                    billing_plan: switchToArchive
-                                      ? "archive"
-                                      : "keep_interactive",
-                                    interval: "monthly",
-                                    success_url: `${origin}/settings/stewardship?checkout=success`,
-                                    cancel_url: `${origin}/settings/stewardship?checkout=cancel`,
-                                  },
-                                  switchToArchive
-                                    ? "Archive scheduled or applied."
-                                    : "Keep interactive updated."
-                                );
-                                if (parsed?.checkout_required && parsed?.url) {
-                                  window.location.href = parsed.url;
-                                }
-                              }}
+                          {onArchive ? (
+                            <ActionBlock
+                              help={
+                                <>
+                                  <strong>Share Stewarded</strong> — enable explore chat
+                                  and family invites for {ownerName}. Use your free seat
+                                  if Build Biography is active and the seat is free;
+                                  otherwise subscribe monthly or annually via Stripe.
+                                </>
+                              }
                             >
-                              {switchLabel}
-                            </Button>
-                          </ActionBlock>
+                              <div
+                                className="km-form-actions"
+                                style={{
+                                  justifyContent: "flex-start",
+                                  flexWrap: "wrap",
+                                  gap: 10,
+                                }}
+                              >
+                                <Button
+                                  variant="primary"
+                                  disabled={busy || !grantsFreeSeat}
+                                  onClick={() => useFreeSeatForRole(role)}
+                                >
+                                  {!grantsFreeSeat
+                                    ? "Free seat needs Build Biography"
+                                    : freeSeatAvailable
+                                      ? "Use free seat"
+                                      : "Move free seat here"}
+                                </Button>
+                                <Button
+                                  disabled={busy}
+                                  onClick={() => subscribeRole(role, "monthly")}
+                                >
+                                  Subscribe monthly · {PRICE_KEEP_MONTHLY}
+                                </Button>
+                                <Button
+                                  disabled={busy}
+                                  onClick={() => subscribeRole(role, "annual")}
+                                >
+                                  Subscribe annual · {PRICE_KEEP_ANNUAL}
+                                </Button>
+                              </div>
+                            </ActionBlock>
+                          ) : (
+                            <ActionBlock
+                              help={
+                                <>
+                                  <strong>
+                                    {role?.is_paid && !role?.cancel_at_period_end
+                                      ? "Archive at period end"
+                                      : "Archive"}
+                                  </strong>{" "}
+                                  — pause chat for this biography. Paid Share Stewarded
+                                  subscriptions cancel at period end so access continues
+                                  until then; free seats archive immediately.
+                                </>
+                              }
+                            >
+                              <Button
+                                disabled={busy || Boolean(role?.cancel_at_period_end)}
+                                onClick={() => archiveRole(role)}
+                              >
+                                {role?.cancel_at_period_end
+                                  ? "Archive already scheduled"
+                                  : role?.is_paid
+                                    ? "Archive at period end"
+                                    : "Archive"}
+                              </Button>
+                            </ActionBlock>
+                          )}
                           <ActionBlock
                             help={
                               <>
                                 <strong>Invite family access</strong> — invite a
                                 family member to explore the completed biography for{" "}
                                 {ownerName}. They can ask questions; they cannot edit.
-                                Family explore chat requires Keep interactive — turn it
+                                Family explore chat requires Share Stewarded — turn it
                                 on first if this biography is still on Archive.
                               </>
                             }
