@@ -99,7 +99,6 @@ export default function PlanBillingSection({
   const [billingError, setBillingError] = useState("");
   const [billingNotice, setBillingNotice] = useState("");
   const [preserveOpen, setPreserveOpen] = useState(false);
-  const [preserveAutoOpened, setPreserveAutoOpened] = useState(false);
 
   async function refreshBillingStatus() {
     if (!apiBase || typeof getAccessToken !== "function") return null;
@@ -132,16 +131,6 @@ export default function PlanBillingSection({
       cancelled = true;
     };
   }, [apiBase, getAccessToken]);
-
-  useEffect(() => {
-    if (preserveAutoOpened) return;
-    const bios = Array.isArray(billingStatus?.stewarded_bios)
-      ? billingStatus.stewarded_bios
-      : [];
-    if (bios.length === 0) return;
-    setPreserveOpen(true);
-    setPreserveAutoOpened(true);
-  }, [billingStatus, preserveAutoOpened]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

@@ -565,9 +565,9 @@ export default function StewardshipPage({
       <Frame label="Biographies you steward">
         <div className="km-prose" style={{ maxWidth: 560, marginBottom: 14 }}>
           <p className="km-muted" style={{ margin: 0 }}>
-            Share or Archive each stewarded biography here — same Stripe billing as My
-            Account → Plan &amp; billing. Build Biography includes one free Share
-            Stewarded seat.
+            Choose how each completed biography is shared. Archive pauses chat; Share
+            Stewarded keeps explore chat and family invites available. Build Biography
+            includes one free Share Stewarded seat.
           </p>
         </div>
         {loading ? (
@@ -857,9 +857,8 @@ export default function StewardshipPage({
                         <div style={{ display: "grid", gap: 16, maxWidth: 560 }}>
                           <p style={{ margin: 0 }}>
                             Stewardship is active for {ownerName}. Their biography is
-                            completed — storytelling on that account is closed.{" "}
-                            <strong>Billing buttons below match My Account → Plan
-                            &amp; billing</strong> so you can test either page.
+                            completed — storytelling on that account is closed. Use the
+                            actions below to care for it.
                           </p>
                           {onArchive ? (
                             <Banner tone="info">
@@ -898,9 +897,6 @@ export default function StewardshipPage({
                           ) : null}
 
                           <div style={{ display: "grid", gap: 8 }}>
-                            <p className="km-muted" style={{ margin: 0, fontSize: 13 }}>
-                              Share Stewarded billing (same controls as Plan &amp; billing)
-                            </p>
                             <div
                               className="km-form-actions"
                               style={{
