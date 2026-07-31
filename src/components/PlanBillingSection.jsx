@@ -343,8 +343,13 @@ export default function PlanBillingSection({
       </div>
 
       <div className="km-prose" style={{ maxWidth: 560, marginBottom: 10 }}>
-        <p style={{ margin: 0 }}>
+        <p style={{ margin: "0 0 8px" }}>
           <strong>Subscription — Build Biography</strong>
+        </p>
+        <p className="km-muted" style={{ margin: 0 }}>
+          Unlocks interviewing and journaling for your own biography, and includes sharing it
+          with family. Also includes one free Share Stewarded Biography seat for a sealed
+          biography you steward.
         </p>
       </div>
       <div
