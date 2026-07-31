@@ -9,6 +9,25 @@ const PRICE_SHARE_ANNUAL = "$49/year";
 const PRICE_KEEP_MONTHLY = "$4.99/month";
 const PRICE_KEEP_ANNUAL = "$49/year";
 
+/** Soft panel tones — stewarded bios match Stewardship page (first two, alternating). */
+const OWN_BIO_TONE = {
+  bg: "rgba(52, 74, 110, 0.09)",
+  border: "rgba(52, 74, 110, 0.26)",
+};
+const STEWARD_BIO_TONES = [
+  { bg: "rgba(46, 88, 72, 0.09)", border: "rgba(46, 88, 72, 0.28)" },
+  { bg: "rgba(122, 78, 48, 0.09)", border: "rgba(122, 78, 48, 0.26)" },
+];
+
+function tonePanelStyle(tone) {
+  return {
+    background: tone.bg,
+    border: `1px solid ${tone.border}`,
+    borderRadius: 14,
+    padding: "16px 16px 18px",
+  };
+}
+
 function formatIsoDate(iso) {
   if (!iso) return "";
   const t = Date.parse(iso);
@@ -608,8 +627,8 @@ export default function PlanBillingSection({
         </button>
 
         {preserveOpen ? (
-          <div className="km-prose" style={{ marginTop: 16, paddingLeft: 4 }}>
-            <div style={{ marginBottom: 22 }}>
+          <div className="km-prose" style={{ marginTop: 16, display: "grid", gap: 14 }}>
+            <div style={tonePanelStyle(OWN_BIO_TONE)}>
               <p style={{ margin: "0 0 6px" }}>
                 <strong>Share My Biography</strong>
               </p>
@@ -711,19 +730,25 @@ export default function PlanBillingSection({
                   subscribe.
                 </p>
               ) : (
-                <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-                  {stewardedBios.map((bio) => {
+                <ul
+                  style={{
+                    listStyle: "none",
+                    padding: 0,
+                    margin: 0,
+                    display: "grid",
+                    gap: 14,
+                  }}
+                >
+                  {stewardedBios.map((bio, index) => {
                     const archived = isArchiveBio(bio);
                     const interactive = !archived;
                     const cancelUntil = formatPeriodEnd(bio?.current_period_end);
+                    const tone =
+                      STEWARD_BIO_TONES[index % STEWARD_BIO_TONES.length];
                     return (
                       <li
                         key={bio.owner_user_id || bio.display_name}
-                        style={{
-                          marginBottom: 16,
-                          paddingBottom: 16,
-                          borderBottom: "1px solid rgba(0,0,0,0.08)",
-                        }}
+                        style={tonePanelStyle(tone)}
                       >
                         <p style={{ margin: "0 0 4px" }}>
                           <strong>{bio.display_name || "Biography"}</strong>

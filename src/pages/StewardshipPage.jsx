@@ -53,12 +53,10 @@ function lifecycleLabel(state) {
 const PRICE_KEEP_MONTHLY = "$4.99/month";
 const PRICE_KEEP_ANNUAL = "$49/year";
 
-/** Soft tones so consecutive stewardship cards don’t blend while scrolling. */
+/** Soft tones so consecutive stewardship cards don’t blend (same pair as Plan & billing). */
 const STEWARD_BLOCK_TONES = [
   { bg: "rgba(46, 88, 72, 0.09)", border: "rgba(46, 88, 72, 0.28)" },
   { bg: "rgba(122, 78, 48, 0.09)", border: "rgba(122, 78, 48, 0.26)" },
-  { bg: "rgba(52, 74, 110, 0.09)", border: "rgba(52, 74, 110, 0.26)" },
-  { bg: "rgba(98, 86, 40, 0.1)", border: "rgba(98, 86, 40, 0.28)" },
 ];
 
 function formatPeriodEnd(unixSeconds) {
