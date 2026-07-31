@@ -143,7 +143,7 @@ export default function StewardshipPage({
   });
 
   const load = useCallback(async () => {
-    if (!isAuthed || !apiBase) return;
+    if (!isAuthed || !apiBase) return null;
     setLoading(true);
     setError("");
     try {
@@ -166,9 +166,11 @@ export default function StewardshipPage({
           grants && !nextRoles.some((r) => r?.status === "active" && r?.is_free_seat)
         );
       }
+      return nextRoles;
     } catch (e) {
-      if (isAuthExpiredError(e)) return;
+      if (isAuthExpiredError(e)) return null;
       setError(describeApiErrorMessage(e, "Could not load Stewardship."));
+      return null;
     } finally {
       setLoading(false);
     }
@@ -190,10 +192,45 @@ export default function StewardshipPage({
       setNotice("Checkout canceled. You can share a stewarded biography anytime.");
       return;
     }
-    if (checkout === "success") {
+    if (checkout !== "success") return;
+
+    let cancelled = false;
+    (async () => {
       setNotice("Checking your stewardship subscription…");
-      load();
-    }
+      try {
+        for (let i = 0; i < 6; i += 1) {
+          if (cancelled) return;
+          const nextRoles = await load();
+          const shared = (nextRoles || []).some((r) => {
+            if (r?.status !== "active") return false;
+            const plan = String(r?.billing_plan || "").toLowerCase();
+            return (
+              (plan === "keep_interactive" || plan === "legacy") &&
+              (r?.is_paid || r?.is_free_seat || r?.stripe_subscription_id)
+            );
+          });
+          if (shared) {
+            if (!cancelled) {
+              setNotice("Share Stewarded is active for a biography under your care.");
+            }
+            return;
+          }
+          await new Promise((r) => setTimeout(r, i === 0 ? 1000 : 1500));
+        }
+        if (!cancelled) {
+          setNotice(
+            "Payment received in Stripe, but Stewardship hasn’t updated yet. Wait a few seconds and refresh this page."
+          );
+        }
+      } catch {
+        if (!cancelled) {
+          setNotice("Could not confirm the subscription yet. Refresh Stewardship in a moment.");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [load]);
 
   async function post(path, body, successNotice = "Saved.") {
