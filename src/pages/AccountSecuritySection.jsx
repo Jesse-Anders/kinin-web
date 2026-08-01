@@ -72,134 +72,143 @@ export default function AccountSecuritySection({
             </span>
           </Banner>
         ) : (
-          <>
-            {/* --- Change email --- */}
-            {emailStage === "confirm" ? (
-              <>
-                {emailNotice ? <Banner tone="info">{emailNotice}</Banner> : null}
-                {emailError ? (
-                  <Banner tone="danger">
-                    <span><strong>Error.</strong> {emailError}</span>
-                  </Banner>
-                ) : null}
-                <FormRow
-                  label="Verification code"
-                  help="Enter the code we emailed to your new address."
-                >
-                  <TextInput
-                    value={emailForm.code}
-                    onChange={(e) =>
-                      setEmailForm((f) => ({ ...f, code: e.target.value }))
-                    }
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    disabled={emailBusy}
-                  />
-                </FormRow>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <Button
-                    variant="primary"
-                    onClick={() => confirmEmailChange()}
-                    disabled={emailBusy}
+          <details
+            className="km-disclosure"
+            // Stay open while a verification code is pending so the flow isn't buried.
+            {...(emailStage === "confirm" ? { open: true } : {})}
+          >
+            <summary className="km-disclosure-summary">
+              Change email address or password
+            </summary>
+            <div className="km-disclosure-body km-form-grid" style={{ gap: 20 }}>
+              {/* --- Change email --- */}
+              {emailStage === "confirm" ? (
+                <>
+                  {emailNotice ? <Banner tone="info">{emailNotice}</Banner> : null}
+                  {emailError ? (
+                    <Banner tone="danger">
+                      <span><strong>Error.</strong> {emailError}</span>
+                    </Banner>
+                  ) : null}
+                  <FormRow
+                    label="Verification code"
+                    help="Enter the code we emailed to your new address."
                   >
-                    {emailBusy ? "Confirming…" : "Confirm new email"}
-                  </Button>
-                  <Button onClick={() => resendEmailChangeCode()} disabled={emailBusy}>
-                    Resend code
-                  </Button>
-                  <Button onClick={() => cancelEmailChange()} disabled={emailBusy}>
-                    Cancel
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <>
-                {emailNotice ? <Banner tone="info">{emailNotice}</Banner> : null}
-                {emailError ? (
-                  <Banner tone="danger">
-                    <span><strong>Error.</strong> {emailError}</span>
-                  </Banner>
-                ) : null}
-                <FormRow
-                  label="New email"
-                  help="We'll send a verification code to the new address before switching."
-                >
-                  <TextInput
-                    type="email"
-                    value={emailForm.newEmail}
-                    onChange={(e) =>
-                      setEmailForm((f) => ({ ...f, newEmail: e.target.value }))
-                    }
-                    autoComplete="email"
-                    disabled={emailBusy}
-                  />
-                </FormRow>
-                <div>
-                  <Button
-                    variant="primary"
-                    onClick={() => requestEmailChange()}
-                    disabled={emailBusy}
+                    <TextInput
+                      value={emailForm.code}
+                      onChange={(e) =>
+                        setEmailForm((f) => ({ ...f, code: e.target.value }))
+                      }
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      disabled={emailBusy}
+                    />
+                  </FormRow>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <Button
+                      variant="primary"
+                      onClick={() => confirmEmailChange()}
+                      disabled={emailBusy}
+                    >
+                      {emailBusy ? "Confirming…" : "Confirm new email"}
+                    </Button>
+                    <Button onClick={() => resendEmailChangeCode()} disabled={emailBusy}>
+                      Resend code
+                    </Button>
+                    <Button onClick={() => cancelEmailChange()} disabled={emailBusy}>
+                      Cancel
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {emailNotice ? <Banner tone="info">{emailNotice}</Banner> : null}
+                  {emailError ? (
+                    <Banner tone="danger">
+                      <span><strong>Error.</strong> {emailError}</span>
+                    </Banner>
+                  ) : null}
+                  <FormRow
+                    label="New email"
+                    help="We'll send a verification code to the new address before switching."
                   >
-                    {emailBusy ? "Sending…" : "Change email"}
-                  </Button>
-                </div>
-              </>
-            )}
+                    <TextInput
+                      type="email"
+                      value={emailForm.newEmail}
+                      onChange={(e) =>
+                        setEmailForm((f) => ({ ...f, newEmail: e.target.value }))
+                      }
+                      autoComplete="email"
+                      disabled={emailBusy}
+                    />
+                  </FormRow>
+                  <div>
+                    <Button
+                      variant="primary"
+                      onClick={() => requestEmailChange()}
+                      disabled={emailBusy}
+                    >
+                      {emailBusy ? "Sending…" : "Change email"}
+                    </Button>
+                  </div>
+                </>
+              )}
 
-            {/* --- Change password --- */}
-            <div
-              style={{
-                borderTop: "1px solid var(--km-border, rgba(0,0,0,0.1))",
-                paddingTop: 16,
-                marginTop: 4,
-              }}
-            />
-            {passwordNotice ? (
-              <Banner tone="info">{passwordNotice}</Banner>
-            ) : null}
-            {passwordError ? (
-              <Banner tone="danger">
-                <span><strong>Error.</strong> {passwordError}</span>
-              </Banner>
-            ) : null}
-            <PasswordField
-              label="Current password"
-              value={passwordForm.current}
-              onChange={(e) =>
-                setPasswordForm((f) => ({ ...f, current: e.target.value }))
-              }
-              autoComplete="current-password"
-              disabled={passwordBusy}
-            />
-            <PasswordField
-              label="New password"
-              help="At least 8 characters, with an uppercase and lowercase letter, a number, and a symbol."
-              value={passwordForm.next}
-              onChange={(e) =>
-                setPasswordForm((f) => ({ ...f, next: e.target.value }))
-              }
-              autoComplete="new-password"
-              disabled={passwordBusy}
-            />
-            <PasswordField
-              label="Confirm new password"
-              value={passwordForm.confirm}
-              onChange={(e) =>
-                setPasswordForm((f) => ({ ...f, confirm: e.target.value }))
-              }
-              autoComplete="new-password"
-              disabled={passwordBusy}
-            />
-            <div>
-              <Button
-                variant="primary"
-                onClick={() => changePassword()}
+              {/* --- Change password --- */}
+              <div
+                style={{
+                  borderTop: "1px solid var(--km-border, rgba(0,0,0,0.1))",
+                  paddingTop: 16,
+                  marginTop: 4,
+                }}
+              />
+              {passwordNotice ? (
+                <Banner tone="info">{passwordNotice}</Banner>
+              ) : null}
+              {passwordError ? (
+                <Banner tone="danger">
+                  <span><strong>Error.</strong> {passwordError}</span>
+                </Banner>
+              ) : null}
+              <PasswordField
+                label="Current password"
+                value={passwordForm.current}
+                onChange={(e) =>
+                  setPasswordForm((f) => ({ ...f, current: e.target.value }))
+                }
+                autoComplete="current-password"
                 disabled={passwordBusy}
-              >
-                {passwordBusy ? "Updating…" : "Update password"}
-              </Button>
+              />
+              <PasswordField
+                label="New password"
+                help="At least 8 characters, with an uppercase and lowercase letter, a number, and a symbol."
+                value={passwordForm.next}
+                onChange={(e) =>
+                  setPasswordForm((f) => ({ ...f, next: e.target.value }))
+                }
+                autoComplete="new-password"
+                disabled={passwordBusy}
+              />
+              <PasswordField
+                label="Confirm new password"
+                value={passwordForm.confirm}
+                onChange={(e) =>
+                  setPasswordForm((f) => ({ ...f, confirm: e.target.value }))
+                }
+                autoComplete="new-password"
+                disabled={passwordBusy}
+              />
+              <div>
+                <Button
+                  variant="primary"
+                  onClick={() => changePassword()}
+                  disabled={passwordBusy}
+                >
+                  {passwordBusy ? "Updating…" : "Update password"}
+                </Button>
+              </div>
             </div>
-          </>
+          </details>
         )}
       </div>
     </Frame>
