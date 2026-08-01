@@ -4788,15 +4788,11 @@ export default function App() {
           category={SETTINGS_PAGE_TO_CATEGORY[activePage] || null}
           categories={SETTINGS_CATEGORIES}
           onNavigateCategory={(page) => navigateToPage(page)}
-          onClose={() => navigateToPage("interview")}
           profileBusy={profileBusy}
           profileNotice={profileNotice}
           profileError={profileError}
           ttsVoiceUuid={ttsVoiceUuid}
-          setTtsVoiceUuid={(uuid) => {
-            setTtsVoiceUuid(uuid);
-            void saveVoicePreferences(uuid);
-          }}
+          saveVoicePreferences={saveVoicePreferences}
           voiceFeaturesEnabled={voiceFeaturesEnabled}
           saveVoiceFeaturesEnabled={saveVoiceFeaturesEnabled}
           continuitySettings={continuitySettings}

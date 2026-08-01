@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Banner, Button, Frame, Section } from "../theme";
 import InterviewDetailsPanel from "../components/InterviewDetailsPanel";
 import VoicePickerSection from "../components/VoicePickerSection";
@@ -9,24 +9,24 @@ import StewardshipPage from "./StewardshipPage";
 // true (and re-open the backend STT gate) if we reintroduce it as an add-on.
 const SHOW_VOICE_FEATURES_TOGGLE = false;
 
+// Categories that use draft → Save Settings / Cancel (stay on page).
+const SAVEABLE_CATEGORIES = new Set(["voice", "reminders", "biographies", "help"]);
+
 // Settings, split by category. `category` is one of the ids in
 // SETTINGS_CATEGORIES (voice | reminders | biographies | interview) or null for
 // the index landing. Plan & billing lives on My Account. A persistent breakout
-// menu switches between categories; each section persists on its own
-// (optimistic saves in App.jsx). Managing who can interact with your biography
-// now lives on the Family Circle page — this section keeps only the on/off
-// switch plus a link there.
+// menu switches between categories. Editable sections use local drafts and
+// persist only when the user clicks Save Settings.
 export default function SettingsPage({
   category,
   categories,
   onNavigateCategory,
-  onClose,
   profileBusy,
   profileNotice,
   profileError,
   // voice
   ttsVoiceUuid,
-  setTtsVoiceUuid,
+  saveVoicePreferences,
   // voice features add-on
   voiceFeaturesEnabled,
   saveVoiceFeaturesEnabled,
@@ -48,14 +48,150 @@ export default function SettingsPage({
   // stewardship
   stewardshipProps = null,
 }) {
-  const biographyEnabled = biographySettings?.enabled !== false;
-  const helpTipsOn = helpTipsEnabled !== false;
-  const voiceFeaturesOn = voiceFeaturesEnabled === true;
-  const cadenceValue = String(continuitySettings?.reminder_cadence_weeks ?? 2);
-
   const [replayNotice, setReplayNotice] = useState("");
+  const [localNotice, setLocalNotice] = useState("");
+
+  const [draftVoiceUuid, setDraftVoiceUuid] = useState(ttsVoiceUuid || "");
+  const [draftVoiceFeatures, setDraftVoiceFeatures] = useState(voiceFeaturesEnabled === true);
+  const [draftCadence, setDraftCadence] = useState(
+    String(continuitySettings?.reminder_cadence_weeks ?? 2)
+  );
+  const [draftSparkCadence, setDraftSparkCadence] = useState(
+    weeklySparkSettings?.cadence || "weekly"
+  );
+  const [draftBioEnabled, setDraftBioEnabled] = useState(
+    biographySettings?.enabled !== false
+  );
+  const [draftHelpTips, setDraftHelpTips] = useState(helpTipsEnabled !== false);
+
+  // Clear page-local notices when moving between categories.
+  useEffect(() => {
+    setLocalNotice("");
+    setReplayNotice("");
+  }, [category]);
+
+  // Reset drafts when switching categories or when saved props catch up.
+  useEffect(() => {
+    setDraftVoiceUuid(ttsVoiceUuid || "");
+    setDraftVoiceFeatures(voiceFeaturesEnabled === true);
+    setDraftCadence(String(continuitySettings?.reminder_cadence_weeks ?? 2));
+    setDraftSparkCadence(weeklySparkSettings?.cadence || "weekly");
+    setDraftBioEnabled(biographySettings?.enabled !== false);
+    setDraftHelpTips(helpTipsEnabled !== false);
+  }, [
+    category,
+    ttsVoiceUuid,
+    voiceFeaturesEnabled,
+    continuitySettings?.reminder_cadence_weeks,
+    weeklySparkSettings?.cadence,
+    biographySettings?.enabled,
+    helpTipsEnabled,
+  ]);
 
   const activeCategory = categories.find((c) => c.id === category) || null;
+  const showSaveCancel = SAVEABLE_CATEGORIES.has(category);
+
+  const dirty = useMemo(() => {
+    if (category === "voice") {
+      const voiceDirty = (draftVoiceUuid || "") !== (ttsVoiceUuid || "");
+      const featuresDirty =
+        SHOW_VOICE_FEATURES_TOGGLE && draftVoiceFeatures !== (voiceFeaturesEnabled === true);
+      return voiceDirty || featuresDirty;
+    }
+    if (category === "reminders") {
+      const cadenceDirty =
+        draftCadence !== String(continuitySettings?.reminder_cadence_weeks ?? 2);
+      const sparkDirty =
+        !!weeklySparkSettings?.enrolled &&
+        draftSparkCadence !== (weeklySparkSettings?.cadence || "weekly");
+      return cadenceDirty || sparkDirty;
+    }
+    if (category === "biographies") {
+      return draftBioEnabled !== (biographySettings?.enabled !== false);
+    }
+    if (category === "help") {
+      return draftHelpTips !== (helpTipsEnabled !== false);
+    }
+    return false;
+  }, [
+    category,
+    draftVoiceUuid,
+    ttsVoiceUuid,
+    draftVoiceFeatures,
+    voiceFeaturesEnabled,
+    draftCadence,
+    continuitySettings?.reminder_cadence_weeks,
+    draftSparkCadence,
+    weeklySparkSettings?.enrolled,
+    weeklySparkSettings?.cadence,
+    draftBioEnabled,
+    biographySettings?.enabled,
+    draftHelpTips,
+    helpTipsEnabled,
+  ]);
+
+  function handleCancel() {
+    setDraftVoiceUuid(ttsVoiceUuid || "");
+    setDraftVoiceFeatures(voiceFeaturesEnabled === true);
+    setDraftCadence(String(continuitySettings?.reminder_cadence_weeks ?? 2));
+    setDraftSparkCadence(weeklySparkSettings?.cadence || "weekly");
+    setDraftBioEnabled(biographySettings?.enabled !== false);
+    setDraftHelpTips(helpTipsEnabled !== false);
+    setLocalNotice("");
+  }
+
+  async function handleSave() {
+    setLocalNotice("");
+    if (category === "voice") {
+      let ok = true;
+      if ((draftVoiceUuid || "") !== (ttsVoiceUuid || "")) {
+        ok = saveVoicePreferences ? !!(await saveVoicePreferences(draftVoiceUuid)) : false;
+      }
+      if (
+        ok &&
+        SHOW_VOICE_FEATURES_TOGGLE &&
+        draftVoiceFeatures !== (voiceFeaturesEnabled === true) &&
+        saveVoiceFeaturesEnabled
+      ) {
+        ok = !!(await saveVoiceFeaturesEnabled(draftVoiceFeatures));
+      }
+      if (ok) setLocalNotice("Settings saved.");
+      return;
+    }
+    if (category === "reminders") {
+      let ok = true;
+      if (draftCadence !== String(continuitySettings?.reminder_cadence_weeks ?? 2)) {
+        ok = saveReminderCadence ? !!(await saveReminderCadence(Number(draftCadence))) : false;
+      }
+      if (
+        ok &&
+        weeklySparkSettings?.enrolled &&
+        draftSparkCadence !== (weeklySparkSettings?.cadence || "weekly") &&
+        saveWeeklySparkCadence
+      ) {
+        ok = !!(await saveWeeklySparkCadence(draftSparkCadence));
+      }
+      if (ok) setLocalNotice("Settings saved.");
+      return;
+    }
+    if (category === "biographies") {
+      if (draftBioEnabled === (biographySettings?.enabled !== false)) {
+        setLocalNotice("Settings saved.");
+        return;
+      }
+      const ok = saveBiographyEnabled ? !!(await saveBiographyEnabled(draftBioEnabled)) : false;
+      if (ok) setLocalNotice("Settings saved.");
+      return;
+    }
+    if (category === "help") {
+      if (draftHelpTips === (helpTipsEnabled !== false)) {
+        setLocalNotice("Settings saved.");
+        return;
+      }
+      const ok = saveHelpTipsEnabled ? !!(await saveHelpTipsEnabled(draftHelpTips)) : false;
+      if (ok) setLocalNotice("Settings saved.");
+    }
+  }
 
   return (
     <Section
@@ -92,15 +228,15 @@ export default function SettingsPage({
           </Banner>
         </div>
       ) : null}
-      {profileNotice ? (
+      {profileNotice || localNotice ? (
         <div style={{ margin: "20px 0" }}>
-          <Banner tone="info">{profileNotice}</Banner>
+          <Banner tone="info">{profileNotice || localNotice}</Banner>
         </div>
       ) : null}
 
       {!activeCategory ? (
         <div className="km-prose" style={{ maxWidth: 560, marginTop: 24 }}>
-          <p>Pick a category above to adjust its settings. Changes save on their own.</p>
+          <p>Pick a category above to adjust its settings, then use Save Settings when you&apos;re ready.</p>
         </div>
       ) : null}
 
@@ -116,8 +252,8 @@ export default function SettingsPage({
                 </p>
               </div>
               <VoicePickerSection
-                ttsVoiceUuid={ttsVoiceUuid}
-                setTtsVoiceUuid={setTtsVoiceUuid}
+                ttsVoiceUuid={draftVoiceUuid}
+                setTtsVoiceUuid={setDraftVoiceUuid}
                 disabled={profileBusy}
               />
             </Frame>
@@ -140,19 +276,16 @@ export default function SettingsPage({
                 <label className="km-checkbox">
                   <input
                     type="checkbox"
-                    checked={voiceFeaturesOn}
-                    onChange={(e) =>
-                      saveVoiceFeaturesEnabled &&
-                      saveVoiceFeaturesEnabled(e.target.checked)
-                    }
+                    checked={draftVoiceFeatures}
+                    onChange={(e) => setDraftVoiceFeatures(e.target.checked)}
                     disabled={profileBusy || !saveVoiceFeaturesEnabled}
                   />
                   <span>
                     <strong>
-                      Voice features are {voiceFeaturesOn ? "on" : "off"}.
+                      Voice features are {draftVoiceFeatures ? "on" : "off"}.
                     </strong>
                     {" "}
-                    {voiceFeaturesOn
+                    {draftVoiceFeatures
                       ? "The microphone is available in chat so you can dictate your messages."
                       : "Turn this on to dictate messages with the microphone in chat."}
                   </span>
@@ -185,11 +318,8 @@ export default function SettingsPage({
                         type="radio"
                         name="reminder-cadence-weeks"
                         value={opt.value}
-                        checked={cadenceValue === opt.value}
-                        onChange={(e) =>
-                          saveReminderCadence &&
-                          saveReminderCadence(Number(e.target.value))
-                        }
+                        checked={draftCadence === opt.value}
+                        onChange={(e) => setDraftCadence(e.target.value)}
                         disabled={profileBusy || !saveReminderCadence}
                       />
                       <span>{opt.label}</span>
@@ -215,7 +345,7 @@ export default function SettingsPage({
             </Frame>
 
             {weeklySparkSettings?.enrolled ? (
-              <Frame label="The Weekly Spark">
+              <Frame label="The Weekly Spark Emailer">
                 <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
                   <p>
                     A little kindling for a conversation or journal entry — optional every time,
@@ -237,10 +367,8 @@ export default function SettingsPage({
                         type="radio"
                         name="weekly-spark-cadence"
                         value={opt.value}
-                        checked={(weeklySparkSettings?.cadence || "weekly") === opt.value}
-                        onChange={() =>
-                          saveWeeklySparkCadence && saveWeeklySparkCadence(opt.value)
-                        }
+                        checked={draftSparkCadence === opt.value}
+                        onChange={() => setDraftSparkCadence(opt.value)}
                         disabled={profileBusy || !saveWeeklySparkCadence}
                       />
                       <span>{opt.label}</span>
@@ -264,19 +392,19 @@ export default function SettingsPage({
             <label className="km-checkbox">
               <input
                 type="checkbox"
-                checked={helpTipsOn}
+                checked={draftHelpTips}
                 onChange={(e) => {
                   setReplayNotice("");
-                  if (saveHelpTipsEnabled) saveHelpTipsEnabled(e.target.checked);
+                  setDraftHelpTips(e.target.checked);
                 }}
                 disabled={profileBusy || !saveHelpTipsEnabled}
               />
               <span>
                 <strong>
-                  Helpful tips and walkthroughs are {helpTipsOn ? "on" : "off"}.
+                  Helpful tips and walkthroughs are {draftHelpTips ? "on" : "off"}.
                 </strong>
                 {" "}
-                {helpTipsOn
+                {draftHelpTips
                   ? "You'll see a short guided tour the first time you open each page."
                   : "You won't see guided tours automatically. You can still open them anytime from the Help button."}
               </span>
@@ -329,18 +457,16 @@ export default function SettingsPage({
             <label className="km-checkbox">
               <input
                 type="checkbox"
-                checked={biographyEnabled}
-                onChange={(e) =>
-                  saveBiographyEnabled && saveBiographyEnabled(e.target.checked)
-                }
+                checked={draftBioEnabled}
+                onChange={(e) => setDraftBioEnabled(e.target.checked)}
                 disabled={profileBusy || !saveBiographyEnabled}
               />
               <span>
                 <strong>
-                  Biography sharing is {biographyEnabled ? "on" : "paused"}.
+                  Biography sharing is {draftBioEnabled ? "on" : "paused"}.
                 </strong>
                 {" "}
-                {biographyEnabled
+                {draftBioEnabled
                   ? "The people in your Family Circle can interact with your biography."
                   : "No one can interact with your biography right now, even the people in your Family Circle."}
               </span>
@@ -391,11 +517,20 @@ export default function SettingsPage({
         ) : null}
       </div>
 
-      <div className="km-form-actions">
-        <Button onClick={onClose} disabled={profileBusy}>
-          Done
-        </Button>
-      </div>
+      {showSaveCancel ? (
+        <div className="km-form-actions">
+          <Button onClick={handleCancel} disabled={profileBusy || !dirty}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleSave}
+            disabled={profileBusy || !dirty}
+          >
+            Save Settings
+          </Button>
+        </div>
+      ) : null}
     </Section>
   );
 }
