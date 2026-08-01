@@ -350,12 +350,18 @@ export default function StewardshipPage({
 
   async function subscribeRole(role, interval) {
     const name = role.owner_display_name || "this biography";
-    await setRoleBilling(
+    const parsed = await setRoleBilling(
       role,
       "keep_interactive",
       interval,
-      `Opening Checkout to share ${name}…`,
+      `Share Stewarded is on for ${name}.`,
     );
+    if (parsed?.via === "free_seat") {
+      setNotice(`Free Share Stewarded seat assigned to ${name}.`);
+    } else if (parsed?.checkout_required && parsed?.url) {
+      // Navigating to Stripe Checkout.
+      return;
+    }
   }
 
   async function archiveRole(role) {

@@ -408,14 +408,21 @@ export default function PlanBillingSection({
     setBillingError("");
     setBillingNotice("");
     try {
-      await postStewardBilling({
+      const parsed = await postStewardBilling({
         ownerUserId: bio.owner_user_id,
         billingPlan: "keep_interactive",
         interval: iv,
-        notice: `Opening Checkout to share ${name}…`,
       });
+      // Checkout redirects away; free-seat (and other in-app) paths must clear busy.
+      if (parsed?.checkout_required && parsed?.url) return;
+      setBillingNotice(
+        parsed?.via === "free_seat"
+          ? `Free Share Stewarded seat assigned to ${name}.`
+          : `Share Stewarded is on for ${name}.`
+      );
     } catch (e) {
       setBillingError(e?.message || "Could not start stewardship checkout");
+    } finally {
       setBillingBusy(false);
     }
   }
