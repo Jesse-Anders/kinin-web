@@ -6,6 +6,7 @@
 const SECTIONS = [
   { id: "admin",                    label: "Home" },
   { id: "admin-metrics",            label: "Metrics" },
+  { id: "admin-health",             label: "Health" },
   { id: "admin-crm",                label: "CRM" },
   { id: "admin-onboarding-preview", label: "Preview onboarding" },
   { id: "admin-user-purge",         label: "User purge" },

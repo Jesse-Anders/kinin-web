@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LifeBuoy, ArrowLeft } from "lucide-react";
 import { Button, ChatRow, TypingDots } from "../theme";
 
@@ -18,6 +18,7 @@ export default function HelpMode({
 }) {
   const [text, setText] = useState("");
   const inputRef = useRef(null);
+  const transcriptRef = useRef(null);
 
   function submit() {
     const trimmed = text.trim();
@@ -29,9 +30,16 @@ export default function HelpMode({
 
   function autoResize(el) {
     if (!el) return;
+    // CSS max-height clamps growth; overflow-y:auto scrolls multi-paragraph drafts.
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 240)}px`;
+    el.style.height = `${el.scrollHeight}px`;
   }
+
+  useEffect(() => {
+    const el = transcriptRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [messages, busy]);
 
   return (
     <div className="km-help">
@@ -49,49 +57,52 @@ export default function HelpMode({
         </button>
       </div>
 
-      <div className="km-help-surface km-chat">
-        {messages.length === 0 ? (
-          <div className="km-help-empty">
-            Ask anything about Kinin — editing your answers, privacy, your account, or how the interview works.
+      <div className="km-conversation-shell">
+        <div ref={transcriptRef} className="km-help-surface km-chat">
+          {messages.length === 0 ? (
+            <div className="km-help-empty">
+              Ask anything about Kinin — editing your answers, privacy, your account, or how the interview works.
+            </div>
+          ) : (
+            messages.map((m, idx) => (
+              <ChatRow key={m.id ?? idx} role={m.role} tag={m.role === "user" ? "You" : "Kinin"}>
+                {m.role === "assistant" && busy && !m.content ? <TypingDots label="Kinin is looking into it" /> : m.content}
+              </ChatRow>
+            ))
+          )}
+        </div>
+
+        <div className="km-conversation-composer">
+          <div className="km-help-input-row">
+            <textarea
+              ref={inputRef}
+              value={text}
+              onChange={(e) => {
+                setText(e.target.value.slice(0, maxChars));
+                autoResize(e.target);
+              }}
+              onInput={(e) => autoResize(e.target)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  submit();
+                }
+              }}
+              placeholder="Ask about Kinin…"
+              className="km-chat-input"
+              maxLength={maxChars}
+              rows={1}
+              disabled={disabled || busy}
+            />
+            <Button variant="primary" onClick={submit} disabled={disabled || busy || !text.trim()}>
+              {busy ? "Sending..." : "Send"}
+            </Button>
           </div>
-        ) : (
-          messages.map((m, idx) => (
-            <ChatRow key={m.id ?? idx} role={m.role} tag={m.role === "user" ? "You" : "Kinin"}>
-              {m.role === "assistant" && busy && !m.content ? <TypingDots label="Kinin is looking into it" /> : m.content}
-            </ChatRow>
-          ))
-        )}
+          <p className="km-help-note">
+            Help chats are separate from your interview — they're not saved to your biography.
+          </p>
+        </div>
       </div>
-
-      <div className="km-help-input-row">
-        <textarea
-          ref={inputRef}
-          value={text}
-          onChange={(e) => {
-            setText(e.target.value.slice(0, maxChars));
-            autoResize(e.target);
-          }}
-          onInput={(e) => autoResize(e.target)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              submit();
-            }
-          }}
-          placeholder="Ask about Kinin…"
-          className="km-chat-input"
-          maxLength={maxChars}
-          rows={1}
-          disabled={disabled || busy}
-        />
-        <Button variant="primary" onClick={submit} disabled={disabled || busy || !text.trim()}>
-          {busy ? "Sending..." : "Send"}
-        </Button>
-      </div>
-
-      <p className="km-help-note">
-        Help chats are separate from your interview — they're not saved to your biography.
-      </p>
     </div>
   );
 }

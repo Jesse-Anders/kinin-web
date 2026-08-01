@@ -720,10 +720,36 @@ a:hover {
   color: var(--ink-faint);
 }
 
+/* ─── Conversation shell (scrollable transcript + sticky composer) ───
+   Used by the interviewer and Help mode so wheel/touch over the chat
+   scrolls the transcript, not the whole page. Height targets the
+   remaining viewport under typical top chrome (sidebar/topbar/header). */
+.km-conversation-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 280px;
+  height: clamp(320px, calc(100dvh - 240px), 820px);
+  border: 1px solid var(--thread-soft);
+  border-radius: var(--radius);
+  background: var(--cream-warm);
+  overflow: hidden;
+}
+.km-conversation-composer {
+  flex: 0 0 auto;
+  padding: 0 12px 10px;
+  background: var(--cream);
+  border-top: 1px solid var(--thread);
+}
+
 /* ─── Chat surface (the message list area) ─── */
 .km-chat-surface {
-  min-height: 260px;
-  padding: 8px 0 16px;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 8px 14px 16px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 .km-chat-empty {
   text-align: center;
@@ -767,9 +793,12 @@ a:hover {
   display: flex;
   gap: 12px;
   align-items: flex-end;
-  margin: 12px 0 16px;
-  border-top: 1px solid var(--thread);
-  padding-top: 16px;
+  margin: 12px 0 8px;
+  padding-top: 12px;
+}
+.km-conversation-composer .km-chat-input-row {
+  border-top: none;
+  margin-top: 0;
 }
 .km-chat-input {
   flex: 1;
@@ -781,10 +810,15 @@ a:hover {
   line-height: 1.5;
   color: var(--ink);
   resize: none;
-  overflow: hidden;
+  /* Grow with content up to ~40% of the viewport, then scroll inside. */
+  max-height: min(40dvh, 320px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   outline: none;
   border-radius: var(--radius);
   transition: border-color var(--t-fast);
+  field-sizing: content; /* progressive; ignored where unsupported */
 }
 .km-chat-input:focus { border-color: var(--ink); }
 .km-chat-input::placeholder { color: var(--ink-faint); font-style: italic; }
@@ -844,8 +878,21 @@ a:hover {
 .km-help {
   border: 1px solid var(--sage);
   background: var(--info-bg);
-  padding: 0 16px 8px;
+  padding: 0 12px 12px;
   margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.km-help .km-conversation-shell {
+  height: clamp(280px, calc(100dvh - 280px), 780px);
+  border-color: var(--sage);
+  background: var(--cream);
+  margin-top: 4px;
+}
+.km-help .km-conversation-composer {
+  background: var(--info-bg);
+  border-top-color: var(--sage);
 }
 .km-help-banner {
   display: flex;
@@ -898,8 +945,13 @@ a:hover {
 }
 .km-help-return-btn:hover { background: var(--sage-deep); color: var(--cream); }
 .km-help-surface {
-  min-height: 220px;
-  padding: 12px 0 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 12px 14px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 .km-help-empty {
   text-align: center;
@@ -913,15 +965,29 @@ a:hover {
   display: flex;
   gap: 12px;
   align-items: flex-end;
-  padding-top: 14px;
-  border-top: 1px solid var(--sage);
+  padding-top: 12px;
+  margin: 0;
+  border-top: none;
 }
 .km-help-note {
-  margin: 10px 2px 0;
+  margin: 8px 2px 0;
   text-align: center;
   color: var(--ink-faint);
   font-size: 12.5px;
   line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+  .km-conversation-shell {
+    height: clamp(280px, calc(100dvh - 200px), 820px);
+    border-radius: 10px;
+  }
+  .km-help .km-conversation-shell {
+    height: clamp(260px, calc(100dvh - 240px), 780px);
+  }
+  .km-chat-input {
+    max-height: min(35dvh, 280px);
+  }
 }
 
 /* ─── Help menu (persistent top-right entry point) ─────────────────────────

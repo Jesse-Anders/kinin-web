@@ -77,6 +77,7 @@ import ExecutorAcceptPage from "./pages/ExecutorAcceptPage";
 import ConfirmEmailPage from "./pages/ConfirmEmailPage";
 import AdminThemeStudioPage from "./pages/AdminThemeStudioPage";
 import AdminEmailStudioPage from "./pages/AdminEmailStudioPage";
+import AdminHealthPage from "./pages/AdminHealthPage";
 import InterviewDetailsPanel from "./components/InterviewDetailsPanel";
 import HelpMode from "./components/HelpMode";
 import HelpMenu from "./components/HelpMenu";
@@ -223,6 +224,7 @@ const PAGE_TO_PATH = {
   "admin-user-purge": "/admin/user-purge",
   "admin-theme": "/admin/theme",
   "admin-email": "/admin/email",
+  "admin-health": "/admin/health",
   account: "/account",
   "danger-zone": "/danger-zone",
   settings: "/settings",
@@ -599,6 +601,7 @@ export default function App() {
     continuitySettings: { reminder_cadence_weeks: 2, reminder_channel: "email" },
   });
   const messageInputRef = useRef(null);
+  const chatTranscriptRef = useRef(null);
 
   // Real-time streaming dictation via OpenAI Realtime (WebRTC). Streams live
   // interim + final text into the message box; works across modern browsers.
@@ -634,6 +637,15 @@ export default function App() {
     if (el) autoResizeMessageInput(el);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [message, dictation.interim, dictation.listening]);
+
+  // Keep the interview transcript pinned to the latest turn inside its own
+  // scroll pane (not the document).
+  useEffect(() => {
+    if (activePage !== "interview") return;
+    const el = chatTranscriptRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [activePage, chat, isSendingTurn]);
 
   // Kinin voice (TTS) — per-session toggle, defaults off. Audio bytes
   // come back from POST /tts and are played client-side as Blob URLs.
@@ -1490,7 +1502,8 @@ export default function App() {
       activePage === "admin-metrics-pricing" ||
       activePage === "admin-user-purge" ||
       activePage === "admin-theme" ||
-      activePage === "admin-email";
+      activePage === "admin-email" ||
+      activePage === "admin-health";
 
     if (isRestrictedAuthPage && !isAuthed) {
       navigate("/", { replace: true });
@@ -3026,8 +3039,10 @@ export default function App() {
 
   function autoResizeMessageInput(el) {
     if (!el) return;
+    // Height grows with content; CSS max-height (≈40dvh) clamps and enables
+    // internal scroll so multi-paragraph answers stay usable on phone/desktop.
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 240)}px`;
+    el.style.height = `${el.scrollHeight}px`;
   }
 
   async function endSession() {
@@ -4222,7 +4237,8 @@ export default function App() {
           activePage === "admin-metrics-pricing" ||
           activePage === "admin-user-purge" ||
           activePage === "admin-theme" ||
-          activePage === "admin-email"
+          activePage === "admin-email" ||
+          activePage === "admin-health"
         ) ? (
           <AdminNav activePage={activePage} setActivePage={navigateToPage} />
         ) : null}
@@ -4233,6 +4249,13 @@ export default function App() {
             isAuthed={isAuthed}
             getAccessToken={getAccessToken}
             apiBase={API_BASE}
+          />
+        ) : activePage === "admin-health" ? (
+          <AdminHealthPage
+            isAuthed={isAuthed}
+            getAccessToken={getAccessToken}
+            apiBase={API_BASE}
+            setActivePage={navigateToPage}
           />
         ) : (
         <div
@@ -4708,7 +4731,12 @@ export default function App() {
         />
       ) : (
         <div>
-          <div className="km-chat-surface km-chat" data-help-anchor="interview-chat">
+          <div className="km-conversation-shell">
+          <div
+            ref={chatTranscriptRef}
+            className="km-chat-surface km-chat"
+            data-help-anchor="interview-chat"
+          >
             {chat.length === 0 ? (
               isStartingSession ? (
                 <div className="km-chat-loading">
@@ -4777,6 +4805,7 @@ export default function App() {
             )}
           </div>
 
+          <div className="km-conversation-composer">
           <div className="km-chat-input-row" data-help-anchor="interview-composer">
             <textarea
               ref={messageInputRef}
@@ -4977,6 +5006,8 @@ export default function App() {
               {voiceError}
             </div>
           ) : null}
+          </div>
+          </div>
           {!IS_BETA_LITE ? (
             <details className="km-details">
               <summary className="km-details-summary">
