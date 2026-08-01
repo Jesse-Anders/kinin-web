@@ -33,6 +33,8 @@ export default function SettingsPage({
   // reminders
   continuitySettings,
   saveReminderCadence,
+  weeklySparkSettings,
+  saveWeeklySparkCadence,
   // biographies
   biographySettings,
   saveBiographyEnabled,
@@ -161,55 +163,93 @@ export default function SettingsPage({
         ) : null}
 
         {category === "reminders" ? (
-          <Frame label="Reminder rhythm">
-            <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
-              <p>Choose how long you can go absent before Kinin gets back in touch.</p>
-            </div>
-            <div>
-              <div className="km-mono-label" style={{ marginBottom: 10 }}>
-                Remind me when I haven't talked with Kinin for
+          <>
+            <Frame label="Reminder rhythm">
+              <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
+                <p>Choose how long you can go absent before Kinin gets back in touch.</p>
               </div>
-              <div className="km-radio-list">
-                {[
-                  { value: "1", label: "1 week" },
-                  { value: "2", label: "2 weeks" },
-                  { value: "3", label: "3 weeks" },
-                  { value: "4", label: "4 weeks" },
-                  { value: "0", label: "Never" },
-                ].map((opt) => (
-                  <label key={opt.value} className="km-radio">
-                    <input
-                      type="radio"
-                      name="reminder-cadence-weeks"
-                      value={opt.value}
-                      checked={cadenceValue === opt.value}
-                      onChange={(e) =>
-                        saveReminderCadence &&
-                        saveReminderCadence(Number(e.target.value))
-                      }
-                      disabled={profileBusy || !saveReminderCadence}
-                    />
-                    <span>{opt.label}</span>
+              <div>
+                <div className="km-mono-label" style={{ marginBottom: 10 }}>
+                  Remind me when I haven't talked with Kinin for
+                </div>
+                <div className="km-radio-list">
+                  {[
+                    { value: "1", label: "1 week" },
+                    { value: "2", label: "2 weeks" },
+                    { value: "3", label: "3 weeks" },
+                    { value: "4", label: "4 weeks" },
+                    { value: "0", label: "Never" },
+                  ].map((opt) => (
+                    <label key={opt.value} className="km-radio">
+                      <input
+                        type="radio"
+                        name="reminder-cadence-weeks"
+                        value={opt.value}
+                        checked={cadenceValue === opt.value}
+                        onChange={(e) =>
+                          saveReminderCadence &&
+                          saveReminderCadence(Number(e.target.value))
+                        }
+                        disabled={profileBusy || !saveReminderCadence}
+                      />
+                      <span>{opt.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div style={{ marginTop: 20 }}>
+                <div className="km-mono-label" style={{ marginBottom: 10 }}>
+                  How should Kinin remind me?
+                </div>
+                <div className="km-radio-list">
+                  <label className="km-radio">
+                    <input type="radio" checked readOnly disabled={profileBusy} />
+                    <span>Email</span>
                   </label>
-                ))}
+                  <label className="km-radio km-radio-disabled">
+                    <input type="radio" disabled />
+                    <span>Text <span className="km-muted">— coming soon</span></span>
+                  </label>
+                </div>
               </div>
-            </div>
-            <div style={{ marginTop: 20 }}>
-              <div className="km-mono-label" style={{ marginBottom: 10 }}>
-                How should Kinin remind me?
-              </div>
-              <div className="km-radio-list">
-                <label className="km-radio">
-                  <input type="radio" checked readOnly disabled={profileBusy} />
-                  <span>Email</span>
-                </label>
-                <label className="km-radio km-radio-disabled">
-                  <input type="radio" disabled />
-                  <span>Text <span className="km-muted">— coming soon</span></span>
-                </label>
-              </div>
-            </div>
-          </Frame>
+            </Frame>
+
+            {weeklySparkSettings?.enrolled ? (
+              <Frame label="The Weekly Spark">
+                <div className="km-prose" style={{ maxWidth: 560, marginBottom: 18 }}>
+                  <p>
+                    A little kindling for a conversation or journal entry — optional every time,
+                    like a side quest.
+                  </p>
+                </div>
+                <div className="km-mono-label" style={{ marginBottom: 10 }}>
+                  How often should we send The Weekly Spark?
+                </div>
+                <div className="km-radio-list">
+                  {[
+                    { value: "weekly", label: "Every week" },
+                    { value: "biweekly", label: "Every 2 weeks" },
+                    { value: "monthly", label: "Monthly" },
+                    { value: "off", label: "Turn off" },
+                  ].map((opt) => (
+                    <label key={opt.value} className="km-radio">
+                      <input
+                        type="radio"
+                        name="weekly-spark-cadence"
+                        value={opt.value}
+                        checked={(weeklySparkSettings?.cadence || "weekly") === opt.value}
+                        onChange={() =>
+                          saveWeeklySparkCadence && saveWeeklySparkCadence(opt.value)
+                        }
+                        disabled={profileBusy || !saveWeeklySparkCadence}
+                      />
+                      <span>{opt.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </Frame>
+            ) : null}
+          </>
         ) : null}
 
         {category === "help" ? (

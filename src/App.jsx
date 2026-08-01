@@ -72,6 +72,7 @@ import BiographiesPage from "./pages/BiographiesPage";
 import MyBiographyPage from "./pages/MyBiographyPage";
 import FamilyCirclePage from "./pages/FamilyCirclePage";
 import UnsubscribePage from "./pages/UnsubscribePage";
+import EmailPreferencesPage from "./pages/EmailPreferencesPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import ExecutorAcceptPage from "./pages/ExecutorAcceptPage";
 import ConfirmEmailPage from "./pages/ConfirmEmailPage";
@@ -208,6 +209,7 @@ const PAGE_TO_PATH = {
   contact: "/contact",
   privacy: "/privacy",
   unsubscribe: "/unsubscribe",
+  "email-preferences": "/email/preferences",
   "executor-accept": "/executor/accept",
   confirm: "/confirm",
   onboarding: "/onboarding",
@@ -577,6 +579,13 @@ export default function App() {
     reminder_cadence_weeks: 2,
     reminder_channel: "email",
   });
+  const [weeklySparkSettings, setWeeklySparkSettings] = useState({
+    enrolled: false,
+    cadence: "weekly",
+    timezone: "",
+  });
+  const pendingStartPromptRef = useRef(null);
+  const startPromptHandledRef = useRef(false);
   const [accountExecutor, setAccountExecutor] = useState({
     name: "",
     email: "",
@@ -1788,6 +1797,23 @@ export default function App() {
     });
   }
 
+  function applyWeeklySparkFromPayload(parsed) {
+    const spark = parsed?.weekly_spark_settings || {};
+    setWeeklySparkSettings({
+      enrolled: spark.enrolled === true,
+      cadence: spark.cadence || "weekly",
+      timezone: spark.timezone || "",
+    });
+  }
+
+  function detectBrowserTimezone() {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    } catch {
+      return "";
+    }
+  }
+
   function applyAccountExecutorFromPayload(parsed) {
     const executor = parsed?.account_executor || {};
     setAccountExecutor({
@@ -1805,6 +1831,7 @@ export default function App() {
     applyVoicePreferencesFromPayload(parsed);
     applyBioProfileFromPayload(parsed);
     applyContinuityFromPayload(parsed);
+    applyWeeklySparkFromPayload(parsed);
     setOnboardingStatus({
       required: onboarding.required === true,
       completed_at: onboarding.completed_at || null,
@@ -2047,10 +2074,66 @@ export default function App() {
     // Auto-start session on login/cold-launch to get intro + session_id without
     // requiring a user message. If the stored session has gone stale (long idle
     // gap or a new local day), mint a fresh conversation instead of resuming.
-    startSession(isSessionStale() ? { newSession: true } : {});
+    // Weekly Spark deep links always want a fresh conversation.
+    const sparkPending = !!pendingStartPromptRef.current;
+    startSession(sparkPending || isSessionStale() ? { newSession: true } : {});
     setDidStart(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthed, onboardingChecked, onboardingRequired]);
+
+  // Phase 1 stub → light Phase 2 hook: after session exists, seed custom_topic
+  // from the Weekly Spark question catalog when ?start_prompt=N was present.
+  useEffect(() => {
+    if (!isAuthed || !didStart || !sessionId || busy || submittingCustomTopic) return;
+    if (startPromptHandledRef.current) return;
+    const idx = pendingStartPromptRef.current;
+    if (!idx) return;
+    startPromptHandledRef.current = true;
+    pendingStartPromptRef.current = null;
+    try {
+      sessionStorage.removeItem("kinin_start_prompt");
+    } catch { /* ignore */ }
+
+    (async () => {
+      try {
+        const idToken = await getAccessToken();
+        const res = await fetch(`${API_BASE}/weekly_spark/prompt/${idx}`, {
+          headers: { Authorization: `Bearer ${idToken}` },
+        });
+        await ensureApiOk(res);
+        const data = await res.json();
+        const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
+        const text = (parsed?.text || "").trim();
+        if (text) {
+          navigateToPage("interview");
+          await chooseCustomTopic(text);
+        }
+      } catch (e) {
+        setError(
+          (e && e.message) ||
+            "Couldn't open this week's Spark in chat. You can still start from the question in your email."
+        );
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthed, didStart, sessionId, busy, submittingCustomTopic]);
+
+  // Best-effort local timezone sync for Weekly Spark Sunday 6am sends.
+  useEffect(() => {
+    if (!isAuthed || !onboardingChecked) return;
+    if (!weeklySparkSettings?.enrolled) return;
+    const tz = detectBrowserTimezone();
+    if (!tz || tz === weeklySparkSettings.timezone) return;
+    (async () => {
+      try {
+        const parsed = await putProfile({ weekly_spark_settings: { timezone: tz } });
+        applyWeeklySparkFromPayload(parsed);
+      } catch {
+        /* non-fatal */
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthed, onboardingChecked, weeklySparkSettings?.enrolled, weeklySparkSettings?.timezone]);
 
   // Keep listener-facing refs in sync with the latest render values.
   isAuthedRef.current = isAuthed;
@@ -2119,6 +2202,37 @@ export default function App() {
     if (!user?.username) return;
     setAccountUsername(user.username);
   }, [user]);
+
+  // Capture Weekly Spark deep link (?start_prompt=N). Phase 1 stubs the param;
+  // once authed we look up the question and seed a custom_topic conversation.
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      const raw = (sp.get("start_prompt") || "").trim();
+      if (raw) {
+        const n = Number(raw);
+        if (Number.isFinite(n) && n >= 1) {
+          pendingStartPromptRef.current = Math.floor(n);
+          try {
+            sessionStorage.setItem("kinin_start_prompt", String(Math.floor(n)));
+          } catch { /* ignore */ }
+        }
+        sp.delete("start_prompt");
+        const qs = sp.toString();
+        window.history.replaceState(
+          {},
+          "",
+          window.location.pathname + (qs ? `?${qs}` : "") + window.location.hash,
+        );
+      } else if (!pendingStartPromptRef.current) {
+        const stored = sessionStorage.getItem("kinin_start_prompt");
+        if (stored) {
+          const n = Number(stored);
+          if (Number.isFinite(n) && n >= 1) pendingStartPromptRef.current = Math.floor(n);
+        }
+      }
+    } catch { /* ignore */ }
+  }, []);
 
   // Capture a biography invite deep link (?invite=biography&email=&from=) so we
   // can welcome the invitee by name and point them at signup. Persist it across
@@ -3382,6 +3496,27 @@ export default function App() {
     }
   }
 
+  async function saveWeeklySparkCadence(cadence) {
+    if (!isAuthed) return false;
+    setProfileError("");
+    setProfileNotice("");
+    const desired = String(cadence || "").trim().toLowerCase();
+    const previous = weeklySparkSettings;
+    setWeeklySparkSettings((prev) => ({ ...prev, cadence: desired }));
+    try {
+      const parsed = await putProfile({
+        weekly_spark_settings: { cadence: desired },
+      });
+      applyWeeklySparkFromPayload(parsed);
+      setProfileNotice("Weekly Spark frequency updated.");
+      return true;
+    } catch (e) {
+      setWeeklySparkSettings(previous);
+      setProfileErrorFromException(e);
+      return false;
+    }
+  }
+
   // Persist the biography sharing on/off privacy switch immediately, without
   // waiting for the user to hit "Save" on the Settings page. Optimistic: local
   // state flips first, then we PUT. On failure we revert and surface a banner —
@@ -4505,6 +4640,8 @@ export default function App() {
         />
       ) : activePage === "unsubscribe" ? (
         <UnsubscribePage apiBase={API_BASE} />
+      ) : activePage === "email-preferences" ? (
+        <EmailPreferencesPage apiBase={API_BASE} />
       ) : activePage === "executor-accept" ? (
         <ExecutorAcceptPage apiBase={API_BASE} />
       ) : activePage === "confirm" ? (
@@ -4664,6 +4801,8 @@ export default function App() {
           saveVoiceFeaturesEnabled={saveVoiceFeaturesEnabled}
           continuitySettings={continuitySettings}
           saveReminderCadence={saveReminderCadence}
+          weeklySparkSettings={weeklySparkSettings}
+          saveWeeklySparkCadence={saveWeeklySparkCadence}
           biographySettings={biographySettings}
           saveBiographyEnabled={saveBiographyEnabled}
           onManageFamilyCircle={() => navigateToPage("family-circle")}
