@@ -720,32 +720,33 @@ a:hover {
   color: var(--ink-faint);
 }
 
-/* ─── Conversation shell (scrollable transcript + sticky composer) ───
-   Used by the interviewer and Help mode so wheel/touch over the chat
-   scrolls the transcript, not the whole page. Height targets the
-   remaining viewport under typical top chrome (sidebar/topbar/header). */
+/* ─── Conversation shell (transcript + composer) ───
+   Open layout (no frame): transcript grows with content so the composer
+   sits just under the last turn. Once the transcript hits max-height it
+   scrolls in place — wheel/touch stay in the chat via overscroll-contain. */
 .km-conversation-shell {
   display: flex;
   flex-direction: column;
-  min-height: 280px;
-  height: clamp(320px, calc(100dvh - 240px), 820px);
-  border: 1px solid var(--thread-soft);
-  border-radius: var(--radius);
-  background: var(--cream-warm);
-  overflow: hidden;
+  gap: 0;
+  min-height: 0;
+  background: transparent;
+  border: none;
+  overflow: visible;
 }
 .km-conversation-composer {
   flex: 0 0 auto;
-  padding: 0 12px 10px;
-  background: var(--cream);
+  padding: 0;
+  background: transparent;
   border-top: 1px solid var(--thread);
 }
 
 /* ─── Chat surface (the message list area) ─── */
 .km-chat-surface {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-height: 0;
-  padding: 8px 14px 16px;
+  /* Cap only when long; short chats stay compact (composer close to text). */
+  max-height: min(58dvh, 640px);
+  padding: 8px 0 16px;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -793,11 +794,10 @@ a:hover {
   display: flex;
   gap: 12px;
   align-items: flex-end;
-  margin: 12px 0 8px;
-  padding-top: 12px;
+  margin: 12px 0 16px;
+  padding-top: 16px;
 }
 .km-conversation-composer .km-chat-input-row {
-  border-top: none;
   margin-top: 0;
 }
 .km-chat-input {
@@ -878,21 +878,22 @@ a:hover {
 .km-help {
   border: 1px solid var(--sage);
   background: var(--info-bg);
-  padding: 0 12px 12px;
+  padding: 0 16px 8px;
   margin-bottom: 16px;
   display: flex;
   flex-direction: column;
   gap: 0;
 }
 .km-help .km-conversation-shell {
-  height: clamp(280px, calc(100dvh - 280px), 780px);
-  border-color: var(--sage);
-  background: var(--cream);
-  margin-top: 4px;
+  /* Same open/compact behavior as interview; help banner already frames the mode. */
+  margin-top: 0;
 }
 .km-help .km-conversation-composer {
-  background: var(--info-bg);
+  background: transparent;
   border-top-color: var(--sage);
+}
+.km-help .km-chat-input {
+  background: var(--cream);
 }
 .km-help-banner {
   display: flex;
@@ -945,9 +946,10 @@ a:hover {
 }
 .km-help-return-btn:hover { background: var(--sage-deep); color: var(--cream); }
 .km-help-surface {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-height: 0;
-  padding: 12px 14px;
+  max-height: min(52dvh, 560px);
+  padding: 12px 0;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -978,12 +980,11 @@ a:hover {
 }
 
 @media (max-width: 768px) {
-  .km-conversation-shell {
-    height: clamp(280px, calc(100dvh - 200px), 820px);
-    border-radius: 10px;
+  .km-chat-surface {
+    max-height: min(50dvh, 520px);
   }
-  .km-help .km-conversation-shell {
-    height: clamp(260px, calc(100dvh - 240px), 780px);
+  .km-help-surface {
+    max-height: min(46dvh, 480px);
   }
   .km-chat-input {
     max-height: min(35dvh, 280px);
