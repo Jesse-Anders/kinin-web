@@ -1,4 +1,4 @@
-import { Banknote, ChartLine, Gauge, ScrollText, Users, Wrench } from "lucide-react";
+import { Banknote, ChartLine, Gauge, Mail, ScrollText, Users, Wrench } from "lucide-react";
 import { Eyebrow } from "../../../theme";
 import { useMetrics } from "../../../admin/metrics/MetricsContext";
 
@@ -42,6 +42,14 @@ const DASHBOARDS = [
     blurb:
       "LLM latency p50/p95/p99 by agent and model. Provider-reported vs. estimated token confidence.",
     Icon: Gauge,
+  },
+  {
+    id: "admin-metrics-email",
+    eyebrow: "VI.",
+    title: "Email Engagement",
+    blurb:
+      "Weekly Spark & Reminder deliverability and clicks, the first-party Spark conversion funnel, and a prompt leaderboard.",
+    Icon: Mail,
   },
 ];
 

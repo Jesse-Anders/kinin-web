@@ -56,6 +56,7 @@ import AdminMetricsCostPage from "./pages/admin/metrics/AdminMetricsCostPage";
 import AdminMetricsEngagementPage from "./pages/admin/metrics/AdminMetricsEngagementPage";
 import AdminMetricsUsersPage from "./pages/admin/metrics/AdminMetricsUsersPage";
 import AdminMetricsPerformancePage from "./pages/admin/metrics/AdminMetricsPerformancePage";
+import AdminMetricsEmailPage from "./pages/admin/metrics/AdminMetricsEmailPage";
 import AdminMetricsPricingPage from "./pages/admin/metrics/AdminMetricsPricingPage";
 import AdminUserPurgePage from "./pages/AdminUserPurgePage";
 import AboutKininPage from "./pages/AboutKininPage";
@@ -222,6 +223,7 @@ const PAGE_TO_PATH = {
   "admin-metrics-engagement": "/admin/metrics/engagement",
   "admin-metrics-users": "/admin/metrics/users",
   "admin-metrics-performance": "/admin/metrics/performance",
+  "admin-metrics-email": "/admin/metrics/email",
   "admin-metrics-pricing": "/admin/metrics/pricing",
   "admin-user-purge": "/admin/user-purge",
   "admin-theme": "/admin/theme",
@@ -586,6 +588,8 @@ export default function App() {
   });
   const pendingStartPromptRef = useRef(null);
   const startPromptHandledRef = useRef(false);
+  // Weekly Spark send-receipt id (&sk=) for first-party funnel attribution.
+  const sparkReceiptRef = useRef(null);
   const [accountExecutor, setAccountExecutor] = useState({
     name: "",
     email: "",
@@ -1508,6 +1512,7 @@ export default function App() {
       activePage === "admin-metrics-engagement" ||
       activePage === "admin-metrics-users" ||
       activePage === "admin-metrics-performance" ||
+      activePage === "admin-metrics-email" ||
       activePage === "admin-metrics-pricing" ||
       activePage === "admin-user-purge" ||
       activePage === "admin-theme" ||
@@ -2106,7 +2111,10 @@ export default function App() {
         const text = (parsed?.text || "").trim();
         if (text) {
           navigateToPage("interview");
-          await chooseCustomTopic(text);
+          await chooseCustomTopic(text, {
+            sparkReceiptId: sparkReceiptRef.current || undefined,
+            sparkIndex: idx,
+          });
         }
       } catch (e) {
         setError(
@@ -2208,6 +2216,22 @@ export default function App() {
   useEffect(() => {
     try {
       const sp = new URLSearchParams(window.location.search);
+      // Spark send-receipt id (&sk=) → carried into the seed + turns so the
+      // conversion funnel (click → chat_started → user_turn) joins to the send.
+      const skRaw = (sp.get("sk") || "").trim();
+      if (skRaw) {
+        sparkReceiptRef.current = skRaw.slice(0, 64);
+        try {
+          sessionStorage.setItem("kinin_spark_sk", sparkReceiptRef.current);
+        } catch { /* ignore */ }
+        sp.delete("sk");
+      } else if (!sparkReceiptRef.current) {
+        try {
+          const storedSk = sessionStorage.getItem("kinin_spark_sk");
+          if (storedSk) sparkReceiptRef.current = storedSk;
+        } catch { /* ignore */ }
+      }
+
       const raw = (sp.get("start_prompt") || "").trim();
       if (raw) {
         const n = Number(raw);
@@ -2218,18 +2242,21 @@ export default function App() {
           } catch { /* ignore */ }
         }
         sp.delete("start_prompt");
-        const qs = sp.toString();
-        window.history.replaceState(
-          {},
-          "",
-          window.location.pathname + (qs ? `?${qs}` : "") + window.location.hash,
-        );
       } else if (!pendingStartPromptRef.current) {
         const stored = sessionStorage.getItem("kinin_start_prompt");
         if (stored) {
           const n = Number(stored);
           if (Number.isFinite(n) && n >= 1) pendingStartPromptRef.current = Math.floor(n);
         }
+      }
+
+      if (raw || skRaw) {
+        const qs = sp.toString();
+        window.history.replaceState(
+          {},
+          "",
+          window.location.pathname + (qs ? `?${qs}` : "") + window.location.hash,
+        );
       }
     } catch { /* ignore */ }
   }, []);
@@ -3289,13 +3316,21 @@ export default function App() {
 
   // Start an open-ended conversation on a topic the user typed in. The backend
   // seeds an interviewer opening anchored on their topic and follows their lead.
-  async function chooseCustomTopic(topicText) {
+  async function chooseCustomTopic(topicText, opts = {}) {
     const topic = (topicText || "").trim();
     if (!topic || submittingCustomTopic || switchingTopicStepId) return;
     setSubmittingCustomTopic(true);
     setTopicChoicesError("");
     try {
       const idToken = await getAccessToken();
+      // When this topic is seeded from a Weekly Spark deep link, forward the
+      // send-receipt id + prompt index so the backend records spark_chat_started
+      // and stashes attribution for the first user_turn.
+      const sparkReceiptId = opts.sparkReceiptId || undefined;
+      const sparkIndex =
+        opts.sparkIndex === undefined || opts.sparkIndex === null
+          ? undefined
+          : opts.sparkIndex;
       const res = await fetch(`${API_BASE}/turn`, {
         method: "POST",
         headers: {
@@ -3305,6 +3340,8 @@ export default function App() {
         body: JSON.stringify({
           session_id: sessionId || undefined,
           custom_topic: topic,
+          ...(sparkReceiptId ? { spark_receipt_id: sparkReceiptId } : {}),
+          ...(sparkIndex !== undefined ? { spark_index: sparkIndex } : {}),
         }),
       });
       await ensureApiOk(res);
@@ -4372,6 +4409,7 @@ export default function App() {
           activePage === "admin-metrics-engagement" ||
           activePage === "admin-metrics-users" ||
           activePage === "admin-metrics-performance" ||
+          activePage === "admin-metrics-email" ||
           activePage === "admin-metrics-pricing" ||
           activePage === "admin-user-purge" ||
           activePage === "admin-theme" ||
@@ -4687,6 +4725,13 @@ export default function App() {
         />
       ) : activePage === "admin-metrics-performance" ? (
         <AdminMetricsPerformancePage
+          isAuthed={isAuthed}
+          getAccessToken={getAccessToken}
+          apiBase={API_BASE}
+          setActivePage={navigateToPage}
+        />
+      ) : activePage === "admin-metrics-email" ? (
+        <AdminMetricsEmailPage
           isAuthed={isAuthed}
           getAccessToken={getAccessToken}
           apiBase={API_BASE}

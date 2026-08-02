@@ -21,6 +21,7 @@ const METRICS_SUBPAGES = new Set([
   "admin-metrics-engagement",
   "admin-metrics-users",
   "admin-metrics-performance",
+  "admin-metrics-email",
   "admin-metrics-pricing",
 ]);
 

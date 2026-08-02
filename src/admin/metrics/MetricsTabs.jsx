@@ -10,6 +10,7 @@ const TABS = [
   { id: "admin-metrics-engagement", label: "Engagement",  roman: "III" },
   { id: "admin-metrics-users",      label: "Users",       roman: "IV" },
   { id: "admin-metrics-performance",label: "Performance", roman: "V" },
+  { id: "admin-metrics-email",      label: "Email",       roman: "VI" },
 ];
 
 export function MetricsTabs({ activeId, setActivePage }) {
