@@ -293,6 +293,42 @@ export default function PlanBillingSection({
     }
   }
 
+  async function resumePlan() {
+    setBillingBusy(true);
+    setBillingError("");
+    setBillingNotice("");
+    try {
+      const token = await getAccessToken();
+      const res = await fetch(`${apiBase}/billing/resume`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: "{}",
+      });
+      const data = await res.json().catch(() => ({}));
+      const parsed = typeof data?.body === "string" ? JSON.parse(data.body) : data;
+      if (!res.ok) {
+        throw new Error(describeApiErrorMessage(parsed) || parsed?.error || `HTTP ${res.status}`);
+      }
+      setBillingNotice(
+        parsed?.action === "already_active"
+          ? "Your plan is already set to renew — nothing to resume."
+          : "Your plan will continue. The scheduled cancellation has been called off."
+      );
+      if (parsed?.plan_state) {
+        setBillingStatus(parsed);
+      } else {
+        await refreshBillingStatus();
+      }
+    } catch (e) {
+      setBillingError(e?.message || "Could not resume plan");
+    } finally {
+      setBillingBusy(false);
+    }
+  }
+
   async function openPortal() {
     setBillingBusy(true);
     setBillingError("");
@@ -473,6 +509,12 @@ export default function PlanBillingSection({
   const plan = String(effectivePlan || "").toLowerCase();
   const isBuild = plan === "active" && product !== "share_bio";
   const isShareBio = plan === "share_bio" || (plan === "active" && product === "share_bio");
+  // Owner plan set to cancel at period end: still active now, becomes free
+  // listener at period end. Drives the cancel callout + Resume affordance and
+  // hides the (contradictory) switch-interval buttons until resumed.
+  const isOwnerPlanActive = isBuild || isShareBio;
+  const ownerCancelPending = isOwnerPlanActive && cancelAtPeriodEnd;
+  const ownerPlanName = isShareBio ? "Share My Biography" : "Build Biography";
   const grantsFreeSeat = isBuild || plan === "past_due";
   const stewardedBios = Array.isArray(status?.stewarded_bios) ? status.stewarded_bios : [];
   const freeSeatHolder = stewardedBios.find((b) => b?.is_free_seat) || null;
@@ -526,10 +568,26 @@ export default function PlanBillingSection({
             Full trial ends on <strong>{trialEndsLabel}</strong>.
           </p>
         ) : null}
-        {cancelAtPeriodEnd && periodEndLabel ? (
-          <p className="km-muted">
-            Owner plan access continues through {periodEndLabel}, then free listener.
-          </p>
+        {ownerCancelPending ? (
+          <div
+            style={{
+              background: "rgba(140, 56, 24, 0.07)",
+              border: "1px solid rgba(140, 56, 24, 0.34)",
+              borderRadius: 12,
+              padding: "12px 14px",
+              margin: "4px 0 6px",
+            }}
+          >
+            <p style={{ margin: "0 0 4px", fontWeight: 600 }}>
+              Your {ownerPlanName} plan is canceled
+              {periodEndLabel ? <> and ends on {periodEndLabel}</> : <> at the end of the current period</>}.
+            </p>
+            <p className="km-muted" style={{ margin: 0 }}>
+              You keep full access until then. After that your account becomes a free listener
+              (shared biographies only). Changed your mind? <strong>Resume plan</strong> below to
+              keep it — no new charge.
+            </p>
+          </div>
         ) : null}
         {!status?.stripe_configured ? (
           <p className="km-muted">Billing is not fully configured on this environment yet.</p>
@@ -567,7 +625,16 @@ export default function PlanBillingSection({
             </Button>
           </>
         ) : null}
-        {canChange && isBuild && interval !== "annual" ? (
+        {ownerCancelPending ? (
+          <Button
+            variant="primary"
+            disabled={busy || !status?.stripe_configured}
+            onClick={() => resumePlan()}
+          >
+            Resume plan
+          </Button>
+        ) : null}
+        {canChange && !cancelAtPeriodEnd && isBuild && interval !== "annual" ? (
           <Button
             variant="primary"
             disabled={busy || !status?.stripe_configured}
@@ -576,7 +643,7 @@ export default function PlanBillingSection({
             Switch to annual · {PRICE_BUILD_ANNUAL}
           </Button>
         ) : null}
-        {canChange && isBuild && interval !== "monthly" ? (
+        {canChange && !cancelAtPeriodEnd && isBuild && interval !== "monthly" ? (
           <Button
             disabled={busy || !status?.stripe_configured}
             onClick={() => changePlan("monthly", "interviewer")}
@@ -584,7 +651,7 @@ export default function PlanBillingSection({
             Switch to monthly at period end · {PRICE_BUILD_MONTHLY}
           </Button>
         ) : null}
-        {canChange && isShareBio ? (
+        {canChange && !cancelAtPeriodEnd && isShareBio ? (
           <Button
             variant="primary"
             disabled={busy || !status?.stripe_configured}
@@ -683,7 +750,7 @@ export default function PlanBillingSection({
                         </Button>
                       </>
                     ) : null}
-                    {canChange && isShareBio && interval !== "annual" ? (
+                    {canChange && !cancelAtPeriodEnd && isShareBio && interval !== "annual" ? (
                       <Button
                         disabled={busy || !status?.stripe_configured}
                         onClick={() => changePlan("annual", "share_bio")}
@@ -691,7 +758,7 @@ export default function PlanBillingSection({
                         Switch to annual · {PRICE_SHARE_ANNUAL}
                       </Button>
                     ) : null}
-                    {canChange && isShareBio && interval !== "monthly" ? (
+                    {canChange && !cancelAtPeriodEnd && isShareBio && interval !== "monthly" ? (
                       <Button
                         disabled={busy || !status?.stripe_configured}
                         onClick={() => changePlan("monthly", "share_bio")}
