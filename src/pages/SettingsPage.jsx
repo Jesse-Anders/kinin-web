@@ -24,6 +24,7 @@ export default function SettingsPage({
   profileBusy,
   profileNotice,
   profileError,
+  onClearNotices,
   // voice
   ttsVoiceUuid,
   saveVoicePreferences,
@@ -64,10 +65,13 @@ export default function SettingsPage({
   );
   const [draftHelpTips, setDraftHelpTips] = useState(helpTipsEnabled !== false);
 
-  // Clear page-local notices when moving between categories.
+  // Clear save confirmations when moving between settings categories.
   useEffect(() => {
     setLocalNotice("");
     setReplayNotice("");
+    onClearNotices?.();
+    // Intentionally only when `category` changes — not when the clear callback identity changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category]);
 
   // Reset drafts when switching categories or when saved props catch up.
@@ -138,10 +142,12 @@ export default function SettingsPage({
     setDraftBioEnabled(biographySettings?.enabled !== false);
     setDraftHelpTips(helpTipsEnabled !== false);
     setLocalNotice("");
+    onClearNotices?.();
   }
 
   async function handleSave() {
     setLocalNotice("");
+    onClearNotices?.();
     if (category === "voice") {
       let ok = true;
       if ((draftVoiceUuid || "") !== (ttsVoiceUuid || "")) {
@@ -155,7 +161,7 @@ export default function SettingsPage({
       ) {
         ok = !!(await saveVoiceFeaturesEnabled(draftVoiceFeatures));
       }
-      if (ok) setLocalNotice("Settings saved.");
+      if (ok) setLocalNotice("Voice settings saved.");
       return;
     }
     if (category === "reminders") {
@@ -171,27 +177,29 @@ export default function SettingsPage({
       ) {
         ok = !!(await saveWeeklySparkCadence(draftSparkCadence));
       }
-      if (ok) setLocalNotice("Settings saved.");
+      if (ok) setLocalNotice("Reminder settings saved.");
       return;
     }
     if (category === "biographies") {
       if (draftBioEnabled === (biographySettings?.enabled !== false)) {
-        setLocalNotice("Settings saved.");
+        setLocalNotice("Biography sharing settings saved.");
         return;
       }
       const ok = saveBiographyEnabled ? !!(await saveBiographyEnabled(draftBioEnabled)) : false;
-      if (ok) setLocalNotice("Settings saved.");
+      if (ok) setLocalNotice("Biography sharing settings saved.");
       return;
     }
     if (category === "help") {
       if (draftHelpTips === (helpTipsEnabled !== false)) {
-        setLocalNotice("Settings saved.");
+        setLocalNotice("Help settings saved.");
         return;
       }
       const ok = saveHelpTipsEnabled ? !!(await saveHelpTipsEnabled(draftHelpTips)) : false;
-      if (ok) setLocalNotice("Settings saved.");
+      if (ok) setLocalNotice("Help settings saved.");
     }
   }
+
+  const saveConfirmation = localNotice || profileNotice;
 
   return (
     <Section
@@ -226,11 +234,6 @@ export default function SettingsPage({
           <Banner tone="danger">
             <span><strong>Something went wrong.</strong> {profileError}</span>
           </Banner>
-        </div>
-      ) : null}
-      {profileNotice || localNotice ? (
-        <div style={{ margin: "20px 0" }}>
-          <Banner tone="info">{profileNotice || localNotice}</Banner>
         </div>
       ) : null}
 
@@ -518,18 +521,25 @@ export default function SettingsPage({
       </div>
 
       {showSaveCancel ? (
-        <div className="km-form-actions">
-          <Button onClick={handleCancel} disabled={profileBusy || !dirty}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            onClick={handleSave}
-            disabled={profileBusy || !dirty}
-          >
-            Save Settings
-          </Button>
-        </div>
+        <>
+          <div className="km-form-actions">
+            <Button onClick={handleCancel} disabled={profileBusy || !dirty}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleSave}
+              disabled={profileBusy || !dirty}
+            >
+              Save Settings
+            </Button>
+          </div>
+          {saveConfirmation ? (
+            <div style={{ marginTop: 16 }}>
+              <Banner tone="info">{saveConfirmation}</Banner>
+            </div>
+          ) : null}
+        </>
       ) : null}
     </Section>
   );

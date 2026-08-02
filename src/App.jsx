@@ -241,7 +241,7 @@ const PAGE_TO_PATH = {
 // and the routing/render switch stay in sync. Plan & billing lives on My Account.
 const SETTINGS_CATEGORIES = [
   { id: "voice", page: "settings-voice", label: "Voice", blurb: "Choose the voice Kinin speaks in." },
-  { id: "reminders", page: "settings-reminders", label: "Reminders", blurb: "How often Kinin checks back in." },
+  { id: "reminders", page: "settings-reminders", label: "Reminders", blurb: "Frequency of Reminders and The Weekly Spark." },
   { id: "biographies", page: "settings-biographies", label: "Biography Sharing", blurb: "Turn sharing of your biography on or off." },
   { id: "interview", page: "settings-interview", label: "Interview details", blurb: "Behind-the-scenes session context." },
   { id: "help", page: "settings-help", label: "Help & tips", blurb: "Guided tours and helpful pop-up tips." },
@@ -3903,7 +3903,10 @@ export default function App() {
       return true;
     } catch {
       if (previous && previous !== next) setTtsVoiceUuid(previous);
-      setError("Couldn't save your voice choice. Please try again.");
+      const msg = "Couldn't save your voice choice. Please try again.";
+      // Settings uses profileError; chat quick-switch still has the top error strip.
+      setProfileError(msg);
+      setError(msg);
       return false;
     }
   }
@@ -4791,6 +4794,10 @@ export default function App() {
           profileBusy={profileBusy}
           profileNotice={profileNotice}
           profileError={profileError}
+          onClearNotices={() => {
+            setProfileNotice("");
+            setProfileError("");
+          }}
           ttsVoiceUuid={ttsVoiceUuid}
           saveVoicePreferences={saveVoicePreferences}
           voiceFeaturesEnabled={voiceFeaturesEnabled}
