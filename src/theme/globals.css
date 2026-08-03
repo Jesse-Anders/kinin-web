@@ -2497,7 +2497,8 @@ a:hover {
 /* ── Generic metrics table ── */
 .km-metrics-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--ink);
@@ -2512,6 +2513,11 @@ a:hover {
   color: var(--ink-faint);
   padding: 8px 10px;
   border-bottom: 1px solid var(--thread);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--cream, #faf7f2);
+  box-shadow: 0 1px 0 var(--thread);
 }
 .km-metrics-table td {
   padding: 10px;

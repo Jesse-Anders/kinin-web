@@ -54,6 +54,7 @@ export default function AdminMetricsUsersPage({ isAuthed, getAccessToken, apiBas
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [drawerUser, setDrawerUser] = useState(null);
+  const [showWordSources, setShowWordSources] = useState(false);
   const fetchToken = useRef(0);
 
   useEffect(() => {
@@ -125,6 +126,15 @@ export default function AdminMetricsUsersPage({ isAuthed, getAccessToken, apiBas
             {s.label}
           </button>
         ))}
+        <button
+          type="button"
+          className={`km-range-bar-preset ${showWordSources ? "is-active" : ""}`}
+          onClick={() => setShowWordSources((v) => !v)}
+          style={{ marginLeft: 8 }}
+          title="Show Interview / Journal / Read Bio word columns"
+        >
+          {showWordSources ? "Hide word sources" : "Show word sources"}
+        </button>
         <span
           style={{
             marginLeft: 12,
@@ -163,9 +173,13 @@ export default function AdminMetricsUsersPage({ isAuthed, getAccessToken, apiBas
                   <th className="num">Tokens</th>
                   <th className="num">Calls</th>
                   <th className="num">Words</th>
-                  <th className="num">Interview</th>
-                  <th className="num">Journal</th>
-                  <th className="num">Read Bio</th>
+                  {showWordSources ? (
+                    <>
+                      <th className="num">Interview</th>
+                      <th className="num">Journal</th>
+                      <th className="num">Read Bio</th>
+                    </>
+                  ) : null}
                   <th className="num">Cost</th>
                   <th>Active days</th>
                   <th style={{ width: 120 }}>Trend</th>
@@ -209,9 +223,13 @@ export default function AdminMetricsUsersPage({ isAuthed, getAccessToken, apiBas
                       <td className="num">{fmtTokens(maybeObfuscateNumber(u.tokens, { demoMode }))}</td>
                       <td className="num">{fmtInt(maybeObfuscateNumber(u.calls, { demoMode }))}</td>
                       <td className="num">{fmtInt(maybeObfuscateNumber(u.user_words, { demoMode }))}</td>
-                      <td className="num">{fmtInt(maybeObfuscateNumber(u.interview_words || 0, { demoMode }))}</td>
-                      <td className="num">{fmtInt(maybeObfuscateNumber(u.journal_words || 0, { demoMode }))}</td>
-                      <td className="num">{fmtInt(maybeObfuscateNumber(u.read_bio_words || 0, { demoMode }))}</td>
+                      {showWordSources ? (
+                        <>
+                          <td className="num">{fmtInt(maybeObfuscateNumber(u.interview_words || 0, { demoMode }))}</td>
+                          <td className="num">{fmtInt(maybeObfuscateNumber(u.journal_words || 0, { demoMode }))}</td>
+                          <td className="num">{fmtInt(maybeObfuscateNumber(u.read_bio_words || 0, { demoMode }))}</td>
+                        </>
+                      ) : null}
                       <td className="num">{fmtUsd(maybeObfuscateNumber(u.cost || 0, { demoMode, isCount: false }))}</td>
                       <td className="num">{u.active_days}</td>
                       <td style={{ minWidth: 100 }}>
@@ -222,7 +240,10 @@ export default function AdminMetricsUsersPage({ isAuthed, getAccessToken, apiBas
                 })}
                 {!users.length ? (
                   <tr>
-                    <td colSpan={12} style={{ textAlign: "center", padding: 20, color: "var(--ink-faint)", fontStyle: "italic" }}>
+                    <td
+                      colSpan={showWordSources ? 12 : 9}
+                      style={{ textAlign: "center", padding: 20, color: "var(--ink-faint)", fontStyle: "italic" }}
+                    >
                       No active users in this range.
                     </td>
                   </tr>
@@ -357,13 +378,32 @@ function UserDrawer({ user, range, isAuthed, getAccessToken, apiBase, aliasSalt,
                 <div className="km-kpi-eyebrow">Words (total)</div>
                 <div className="km-kpi-value">{fmtInt(maybeObfuscateNumber(detail?.totals?.user_word_count || 0, { demoMode }))}</div>
                 <div className="km-kpi-caption">
-                  I {fmtInt(detail?.totals?.interview_word_count || 0)} · J{" "}
-                  {fmtInt(detail?.totals?.journal_word_count || 0)} · Bio{" "}
-                  {fmtInt(detail?.totals?.read_bio_word_count || 0)}
+                  Interview + Journal + Read Bio
                   {detail?.totals?.bio_engagement_word_count
                     ? ` · Engage ${fmtInt(detail.totals.bio_engagement_word_count)}`
                     : ""}
                 </div>
+              </div>
+              <div className="km-kpi-card">
+                <div className="km-kpi-eyebrow">Interview words</div>
+                <div className="km-kpi-value">
+                  {fmtInt(maybeObfuscateNumber(detail?.totals?.interview_word_count || 0, { demoMode }))}
+                </div>
+                <div className="km-kpi-caption">Interview turns (forward-only split)</div>
+              </div>
+              <div className="km-kpi-card">
+                <div className="km-kpi-eyebrow">Journal words</div>
+                <div className="km-kpi-value">
+                  {fmtInt(maybeObfuscateNumber(detail?.totals?.journal_word_count || 0, { demoMode }))}
+                </div>
+                <div className="km-kpi-caption">Finalized journal (net-new)</div>
+              </div>
+              <div className="km-kpi-card">
+                <div className="km-kpi-eyebrow">Read Bio words</div>
+                <div className="km-kpi-value">
+                  {fmtInt(maybeObfuscateNumber(detail?.totals?.read_bio_word_count || 0, { demoMode }))}
+                </div>
+                <div className="km-kpi-caption">Listener typed in biography chat</div>
               </div>
               <div className="km-kpi-card">
                 <div className="km-kpi-eyebrow">Provider / Estimated</div>
@@ -388,12 +428,17 @@ function UserDrawer({ user, range, isAuthed, getAccessToken, apiBase, aliasSalt,
               </div>
             </ChartFrame>
 
-            <ChartFrame eyebrow="By surface" title="Tokens per surface" exportName={`user-${label}-surface`}>
+            <ChartFrame
+              eyebrow="By surface"
+              title="Tokens per surface"
+              description="'untagged' = LLM calls before surface tagging shipped (usually interview + workers)."
+              exportName={`user-${label}-surface`}
+            >
               <div style={{ width: "100%", height: 200 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={(detail?.surface_breakdown || []).slice(0, 10).map((r) => ({
-                      name: r.surface,
+                      name: r.surface === "unknown" ? "untagged" : r.surface,
                       tokens: maybeObfuscateNumber(r.total_tokens, { demoMode }),
                     }))}
                     layout="vertical"

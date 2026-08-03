@@ -2723,6 +2723,9 @@ export default function App() {
       };
       if (mode) body.mode = mode;
       if (pinId) body.pin_id = pinId;
+      // Weekly Spark deep link: we immediately seed the Spark question next, so
+      // tell the backend to skip the (discarded) session-start LLM greeting.
+      if (suppressOpening) body.defer_opening = true;
 
       const res = await fetch(`${API_BASE}/turn`, {
         method: "POST",
