@@ -136,13 +136,46 @@ export default function AdminMetricsOverviewPage({ isAuthed, getAccessToken, api
           isLoading={busy && !data}
         />
         <KpiCard
-          eyebrow="Words written"
+          eyebrow="Words (total)"
           value={totals.user_word_count || 0}
           prior={priorTotals.user_word_count || 0}
           format={(v) => fmtInt(v)}
-          caption="Cumulative user words in user turns"
+          caption="Interview + Journal + Read Bio (actor)"
           series={seriesFor("user_word_count")}
           sparkColor={tokens.inkSoft}
+          isLoading={busy && !data}
+        />
+        <KpiCard
+          eyebrow="Interview words"
+          value={totals.interview_word_count || 0}
+          prior={priorTotals.interview_word_count || 0}
+          format={(v) => fmtInt(v)}
+          caption="Forward-only from deploy of word split"
+          series={seriesFor("interview_word_count")}
+          sparkColor={tokens.sage}
+          tone="sage"
+          isLoading={busy && !data}
+        />
+        <KpiCard
+          eyebrow="Journal words"
+          value={totals.journal_word_count || 0}
+          prior={priorTotals.journal_word_count || 0}
+          format={(v) => fmtInt(v)}
+          caption="Finalized journal body (net-new)"
+          series={seriesFor("journal_word_count")}
+          sparkColor={tokens.butter}
+          tone="butter"
+          isLoading={busy && !data}
+        />
+        <KpiCard
+          eyebrow="Read Bio words"
+          value={totals.read_bio_word_count || 0}
+          prior={priorTotals.read_bio_word_count || 0}
+          format={(v) => fmtInt(v)}
+          caption="Listener typed words in biography chat"
+          series={seriesFor("read_bio_word_count")}
+          sparkColor={tokens.crimson}
+          tone="crimson"
           isLoading={busy && !data}
         />
         <KpiCard

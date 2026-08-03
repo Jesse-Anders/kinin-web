@@ -67,6 +67,16 @@ export default function AdminHomePage({ isAuthed, getAccessToken, apiBase, setAc
   const [forceResult, setForceResult] = useState(null);
   const [forceError, setForceError] = useState("");
 
+  // Read Bio chats
+  const [bioChatRole, setBioChatRole] = useState("listener");
+  const [bioChatSessions, setBioChatSessions] = useState([]);
+  const [bioChatSessionsBusy, setBioChatSessionsBusy] = useState(false);
+  const [bioChatSessionsError, setBioChatSessionsError] = useState("");
+  const [bioChatSelected, setBioChatSelected] = useState(null);
+  const [bioChatTurns, setBioChatTurns] = useState([]);
+  const [bioChatTurnsBusy, setBioChatTurnsBusy] = useState(false);
+  const [bioChatTurnsError, setBioChatTurnsError] = useState("");
+
   // ── Derived / memos ──
 
   const adminStatusCounts = useMemo(() => {
@@ -231,6 +241,74 @@ export default function AdminHomePage({ isAuthed, getAccessToken, apiBase, setAc
       setLookupError(e.message || String(e));
     } finally {
       setLookupBusy(false);
+    }
+  }
+
+  async function fetchBioChatSessions() {
+    setBioChatSessionsError("");
+    setBioChatSessionsBusy(true);
+    setBioChatSessions([]);
+    setBioChatSelected(null);
+    setBioChatTurns([]);
+    try {
+      const accessToken = await getAccessToken();
+      const target = (adminUserId || "").trim();
+      if (!target) throw new Error("target_user_id required");
+      const res = await fetch(`${apiBase}/admin/biographies/chats/list`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ target_user_id: target, role: bioChatRole }),
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(`API error ${res.status}: ${t}`);
+      }
+      const data = await res.json();
+      const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
+      setBioChatSessions(parsed.sessions || []);
+    } catch (e) {
+      setBioChatSessionsError(e.message || String(e));
+    } finally {
+      setBioChatSessionsBusy(false);
+    }
+  }
+
+  async function fetchBioChatTranscript(session) {
+    setBioChatTurnsError("");
+    setBioChatTurnsBusy(true);
+    setBioChatTurns([]);
+    setBioChatSelected(session);
+    try {
+      const accessToken = await getAccessToken();
+      const listener = (session?.listener_user_id || "").trim();
+      const owner = (session?.owner_user_id || "").trim();
+      if (!listener || !owner) throw new Error("listener_user_id and owner_user_id required");
+      const res = await fetch(`${apiBase}/admin/biographies/chats/get`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          listener_user_id: listener,
+          owner_user_id: owner,
+          limit: 500,
+        }),
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(`API error ${res.status}: ${t}`);
+      }
+      const data = await res.json();
+      const parsed = typeof data.body === "string" ? JSON.parse(data.body) : data;
+      setBioChatTurns(parsed.turns || []);
+    } catch (e) {
+      setBioChatTurnsError(e.message || String(e));
+    } finally {
+      setBioChatTurnsBusy(false);
     }
   }
 
@@ -655,7 +733,7 @@ export default function AdminHomePage({ isAuthed, getAccessToken, apiBase, setAc
 
       <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, marginTop: 12 }}>
         <div style={{ marginBottom: 8 }}>
-          <b>Turn Log</b>
+          <b>Interview Turn Log</b>
         </div>
         <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
           <input
@@ -700,8 +778,95 @@ export default function AdminHomePage({ isAuthed, getAccessToken, apiBase, setAc
             ))}
           </div>
         ) : (
-          <div style={{ opacity: 0.7 }}>No turns loaded yet.</div>
+          <div style={{ opacity: 0.7 }}>No interview turns loaded yet.</div>
         )}
+      </div>
+
+      <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, marginTop: 12 }}>
+        <div style={{ marginBottom: 8 }}>
+          <b>Read Bio chats</b>
+        </div>
+        <div className="km-prose" style={{ fontSize: 14, marginBottom: 8, maxWidth: 640 }}>
+          Listener Q&amp;A against a biography (separate from interview turns). Load sessions for the
+          target user as listener or as biography owner, then open a transcript.
+        </div>
+        <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+          <select
+            value={bioChatRole}
+            onChange={(e) => setBioChatRole(e.target.value)}
+            disabled={!isAuthed || bioChatSessionsBusy}
+          >
+            <option value="listener">As listener (bios they read)</option>
+            <option value="owner">As owner (inbound on their bio)</option>
+          </select>
+          <button onClick={fetchBioChatSessions} disabled={!isAuthed || bioChatSessionsBusy}>
+            {bioChatSessionsBusy ? "Loading..." : "Load sessions"}
+          </button>
+        </div>
+        {bioChatSessionsError ? (
+          <div style={{ color: "#b00020", marginBottom: 8 }}>{bioChatSessionsError}</div>
+        ) : null}
+        {bioChatSessions.length ? (
+          <div style={{ display: "grid", gap: 6, marginBottom: 12 }}>
+            {bioChatSessions.map((s) => {
+              const key = `${s.listener_user_id}:${s.owner_user_id}`;
+              const selected =
+                bioChatSelected &&
+                bioChatSelected.listener_user_id === s.listener_user_id &&
+                bioChatSelected.owner_user_id === s.owner_user_id;
+              return (
+                <button
+                  key={key}
+                  onClick={() => fetchBioChatTranscript(s)}
+                  disabled={bioChatTurnsBusy}
+                  style={{
+                    textAlign: "left",
+                    padding: 10,
+                    border: selected ? "1px solid #2563eb" : "1px solid #eee",
+                    borderRadius: 8,
+                    background: selected ? "#eff6ff" : "#fff",
+                  }}
+                >
+                  <div style={{ fontSize: 13 }}>
+                    listener <b>{s.listener_user_id}</b> → owner <b>{s.owner_user_id}</b>
+                  </div>
+                  <div style={{ fontSize: 12, opacity: 0.7 }}>
+                    {s.turn_count || 0} rows · last {s.last_ts || "—"}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div style={{ opacity: 0.7, marginBottom: 8 }}>No Read Bio sessions loaded yet.</div>
+        )}
+        {bioChatTurnsError ? (
+          <div style={{ color: "#b00020", marginBottom: 8 }}>{bioChatTurnsError}</div>
+        ) : null}
+        {bioChatTurnsBusy ? <div style={{ opacity: 0.7 }}>Loading transcript…</div> : null}
+        {bioChatTurns.length ? (
+          <div
+            style={{
+              border: "1px solid #eee",
+              borderRadius: 10,
+              padding: 12,
+              background: "#fafafa",
+              maxHeight: 360,
+              overflow: "auto",
+            }}
+          >
+            {bioChatTurns.map((t, i) => (
+              <div key={`${t.turn_id || ""}-${t.role || ""}-${i}`} style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 4 }}>
+                  {t.ts || "—"} · {t.turn_id || "—"} · {t.role || "—"}
+                </div>
+                <div style={{ color: t.role === "assistant" ? "#2563eb" : "#111" }}>
+                  {t.content || ""}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 12, marginTop: 12 }}>

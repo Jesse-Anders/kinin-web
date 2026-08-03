@@ -2081,7 +2081,15 @@ export default function App() {
     // gap or a new local day), mint a fresh conversation instead of resuming.
     // Weekly Spark deep links always want a fresh conversation.
     const sparkPending = !!pendingStartPromptRef.current;
-    startSession(sparkPending || isSessionStale() ? { newSession: true } : {});
+    // A Spark deep link seeds its own opening via chooseCustomTopic right after,
+    // so suppress the generic session-start greeting to avoid a double intro.
+    startSession(
+      sparkPending
+        ? { newSession: true, suppressOpening: true }
+        : isSessionStale()
+          ? { newSession: true }
+          : {}
+    );
     setDidStart(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthed, onboardingChecked, onboardingRequired]);
@@ -2698,7 +2706,7 @@ export default function App() {
     }
   }
 
-  async function startSession({ mode, pinId, newSession = false } = {}) {
+  async function startSession({ mode, pinId, newSession = false, suppressOpening = false } = {}) {
     setError("");
     setBusy(true);
     setIsStartingSession(true);
@@ -2744,7 +2752,14 @@ export default function App() {
       }
       syncLabelGroupsFromParsed(parsed);
 
-      if (parsed.assistant) {
+      if (suppressOpening) {
+        // Weekly Spark deep link: the spark topic opening (seeded next by
+        // chooseCustomTopic) is the real first turn, so drop the generic
+        // session-start greeting to avoid a confusing double intro. Safe to
+        // discard — the start greeting is returned but never persisted to
+        // session history server-side (see handlers/session.py).
+        setChat([]);
+      } else if (parsed.assistant) {
         setChat([{ role: "assistant", content: parsed.assistant }]);
       }
 

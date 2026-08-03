@@ -163,6 +163,9 @@ export default function AdminMetricsUsersPage({ isAuthed, getAccessToken, apiBas
                   <th className="num">Tokens</th>
                   <th className="num">Calls</th>
                   <th className="num">Words</th>
+                  <th className="num">Interview</th>
+                  <th className="num">Journal</th>
+                  <th className="num">Read Bio</th>
                   <th className="num">Cost</th>
                   <th>Active days</th>
                   <th style={{ width: 120 }}>Trend</th>
@@ -206,6 +209,9 @@ export default function AdminMetricsUsersPage({ isAuthed, getAccessToken, apiBas
                       <td className="num">{fmtTokens(maybeObfuscateNumber(u.tokens, { demoMode }))}</td>
                       <td className="num">{fmtInt(maybeObfuscateNumber(u.calls, { demoMode }))}</td>
                       <td className="num">{fmtInt(maybeObfuscateNumber(u.user_words, { demoMode }))}</td>
+                      <td className="num">{fmtInt(maybeObfuscateNumber(u.interview_words || 0, { demoMode }))}</td>
+                      <td className="num">{fmtInt(maybeObfuscateNumber(u.journal_words || 0, { demoMode }))}</td>
+                      <td className="num">{fmtInt(maybeObfuscateNumber(u.read_bio_words || 0, { demoMode }))}</td>
                       <td className="num">{fmtUsd(maybeObfuscateNumber(u.cost || 0, { demoMode, isCount: false }))}</td>
                       <td className="num">{u.active_days}</td>
                       <td style={{ minWidth: 100 }}>
@@ -216,7 +222,7 @@ export default function AdminMetricsUsersPage({ isAuthed, getAccessToken, apiBas
                 })}
                 {!users.length ? (
                   <tr>
-                    <td colSpan={9} style={{ textAlign: "center", padding: 20, color: "var(--ink-faint)", fontStyle: "italic" }}>
+                    <td colSpan={12} style={{ textAlign: "center", padding: 20, color: "var(--ink-faint)", fontStyle: "italic" }}>
                       No active users in this range.
                     </td>
                   </tr>
@@ -348,9 +354,16 @@ function UserDrawer({ user, range, isAuthed, getAccessToken, apiBase, aliasSalt,
                 <div className="km-kpi-caption">{fmtInt(detail?.totals?.llm_call_count || 0)} LLM calls</div>
               </div>
               <div className="km-kpi-card">
-                <div className="km-kpi-eyebrow">Words</div>
+                <div className="km-kpi-eyebrow">Words (total)</div>
                 <div className="km-kpi-value">{fmtInt(maybeObfuscateNumber(detail?.totals?.user_word_count || 0, { demoMode }))}</div>
-                <div className="km-kpi-caption">{detail?.active_days || 0} active days</div>
+                <div className="km-kpi-caption">
+                  I {fmtInt(detail?.totals?.interview_word_count || 0)} · J{" "}
+                  {fmtInt(detail?.totals?.journal_word_count || 0)} · Bio{" "}
+                  {fmtInt(detail?.totals?.read_bio_word_count || 0)}
+                  {detail?.totals?.bio_engagement_word_count
+                    ? ` · Engage ${fmtInt(detail.totals.bio_engagement_word_count)}`
+                    : ""}
+                </div>
               </div>
               <div className="km-kpi-card">
                 <div className="km-kpi-eyebrow">Provider / Estimated</div>
@@ -371,6 +384,27 @@ function UserDrawer({ user, range, isAuthed, getAccessToken, apiBase, aliasSalt,
                     <Tooltip contentStyle={tooltipStyle()} labelStyle={tooltipLabelStyle()} formatter={(v) => fmtInt(v)} labelFormatter={fmtDay} />
                     <Line type="monotone" dataKey="tokens" stroke={tokens.crimson} strokeWidth={2} dot={false} isAnimationActive={false} />
                   </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </ChartFrame>
+
+            <ChartFrame eyebrow="By surface" title="Tokens per surface" exportName={`user-${label}-surface`}>
+              <div style={{ width: "100%", height: 200 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={(detail?.surface_breakdown || []).slice(0, 10).map((r) => ({
+                      name: r.surface,
+                      tokens: maybeObfuscateNumber(r.total_tokens, { demoMode }),
+                    }))}
+                    layout="vertical"
+                    margin={{ top: 8, right: 12, bottom: 8, left: 12 }}
+                  >
+                    <CartesianGrid stroke={gridStroke()} strokeDasharray="3 3" horizontal={false} />
+                    <XAxis type="number" tick={axisStyle()} stroke={tokens.thread} tickFormatter={(v) => fmtTokens(v)} />
+                    <YAxis type="category" dataKey="name" tick={axisStyle()} stroke={tokens.thread} width={120} />
+                    <Tooltip contentStyle={tooltipStyle()} labelStyle={tooltipLabelStyle()} formatter={(v) => fmtInt(v)} />
+                    <Bar dataKey="tokens" fill={tokens.butter} isAnimationActive={false} />
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
             </ChartFrame>
