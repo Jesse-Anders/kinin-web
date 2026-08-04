@@ -81,6 +81,7 @@ export default function ResetPasswordPage() {
   const [code, setCode] = useState(initial.code);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [resendBusy, setResendBusy] = useState(false);
   const [signinBusy, setSigninBusy] = useState(false);
@@ -262,7 +263,7 @@ export default function ResetPasswordPage() {
           </FormRow>
           <FormRow label="New password" required>
             <TextInput
-              type="password"
+              type={showPassword ? "text" : "password"}
               autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -272,7 +273,7 @@ export default function ResetPasswordPage() {
           </FormRow>
           <FormRow label="Confirm new password" required>
             <TextInput
-              type="password"
+              type={showPassword ? "text" : "password"}
               autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
@@ -280,6 +281,18 @@ export default function ResetPasswordPage() {
               placeholder="Re-enter your password"
             />
           </FormRow>
+          <label
+            className="km-row"
+            style={{ gap: 8, alignItems: "center", cursor: "pointer", fontSize: 14, color: "#555" }}
+          >
+            <input
+              type="checkbox"
+              checked={showPassword}
+              onChange={(e) => setShowPassword(e.target.checked)}
+              disabled={busy}
+            />
+            Show password
+          </label>
 
           <div className="km-prose" style={{ maxWidth: 420, fontSize: 13, color: "#666" }}>
             {password.length > 0 && pwProblems.length > 0 ? (
