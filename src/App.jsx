@@ -77,6 +77,7 @@ import EmailPreferencesPage from "./pages/EmailPreferencesPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import ExecutorAcceptPage from "./pages/ExecutorAcceptPage";
 import ConfirmEmailPage from "./pages/ConfirmEmailPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import AdminThemeStudioPage from "./pages/AdminThemeStudioPage";
 import AdminEmailStudioPage from "./pages/AdminEmailStudioPage";
 import AdminHealthPage from "./pages/AdminHealthPage";
@@ -213,6 +214,7 @@ const PAGE_TO_PATH = {
   "email-preferences": "/email/preferences",
   "executor-accept": "/executor/accept",
   confirm: "/confirm",
+  reset: "/reset",
   onboarding: "/onboarding",
   admin: "/admin",
   "admin-onboarding-preview": "/admin/onboarding-preview",
@@ -4705,6 +4707,8 @@ export default function App() {
         <ExecutorAcceptPage apiBase={API_BASE} />
       ) : activePage === "confirm" ? (
         <ConfirmEmailPage />
+      ) : activePage === "reset" ? (
+        <ResetPasswordPage />
       ) : activePage === "admin-crm" ? (
         <AdminCrmPage
           isAuthed={isAuthed}
