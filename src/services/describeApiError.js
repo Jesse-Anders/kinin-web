@@ -26,6 +26,14 @@ const CODE_MESSAGES = {
     "There's a billing problem on this account. Interview and interactive biography chat are paused until payment is updated. Open My Account to manage your payment method.",
   stripe_not_configured:
     "Billing isn't available in this environment yet. Try again later or contact support.",
+  stripe_http_400:
+    "Billing couldn't start that checkout. Refresh and try again. If it keeps failing, contact support.",
+  stripe_http_402:
+    "Stripe couldn't complete that payment request. Try again or use a different card.",
+  price_not_configured:
+    "That plan isn't configured for billing yet. Please try again later or contact support.",
+  checkout_failed:
+    "Checkout couldn't start. Please try again in a moment.",
   no_stripe_customer:
     "No billing profile yet — subscribe first, then you can manage payment details.",
   subscription_already_active:
@@ -37,6 +45,8 @@ const CODE_MESSAGES = {
   legacy_seat_cap_reached:
     "This biography needs a Keep interactive plan. Open Stewardship to turn it on (Checkout if your free seat is already in use).",
   already_on_interval: "You're already on that plan.",
+  already_scheduled:
+    "That interval change is already scheduled for the end of your current term.",
   no_active_subscription: "No active subscription to change — subscribe first under My Account.",
   onboarding_required: "Finish getting started, then you can continue.",
   account_close_failed: "We couldn't close the account. Please try again.",
@@ -162,13 +172,30 @@ function extractFromError(err) {
   }
 
   const status = Number(err.status || err.statusCode || 0) || null;
-  const payload = err.payload || err.body || null;
-  if (payload && typeof payload === "object") {
+  const nestedPayload = err.payload || err.body || null;
+  if (nestedPayload && typeof nestedPayload === "object") {
     return {
-      status: status || Number(payload.status) || null,
-      code: String(payload.error || "").trim(),
-      payload,
+      status: status || Number(nestedPayload.status) || null,
+      code: String(nestedPayload.error || "").trim(),
+      payload: nestedPayload,
       raw: err.message || String(err),
+    };
+  }
+
+  // Plain API JSON bodies ({ error, detail, ... }) passed directly — never String(obj).
+  if (
+    err &&
+    typeof err === "object" &&
+    !(err instanceof Error) &&
+    (err.error != null || err.detail != null || err.message != null)
+  ) {
+    const code = String(err.error || "").trim();
+    const detail = String(err.detail || err.message || "").trim();
+    return {
+      status: status || Number(err.status) || null,
+      code,
+      payload: err,
+      raw: detail || code || "",
     };
   }
 

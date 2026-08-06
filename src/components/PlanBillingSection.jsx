@@ -275,12 +275,15 @@ export default function PlanBillingSection({
       }
       if (parsed?.action === "upgraded" || parsed?.action === "changed") {
         setBillingNotice("Plan updated. Stripe prorates so you aren't double-billed.");
-      } else if (parsed?.action === "scheduled_downgrade") {
+      } else if (
+        parsed?.action === "scheduled_downgrade" ||
+        parsed?.action === "already_scheduled"
+      ) {
         const when = formatPeriodEnd(parsed?.period_end);
         setBillingNotice(
           when
-            ? `Current term continues until ${when}, then the new interval begins.`
-            : "Current term completes first, then the new interval begins."
+            ? `You're still on your current term until ${when}. After that you'll renew monthly.`
+            : "You're still on your current term; the new interval begins when it ends."
         );
       } else {
         setBillingNotice("Plan update requested.");
@@ -288,6 +291,89 @@ export default function PlanBillingSection({
       await refreshBillingStatus();
     } catch (e) {
       setBillingError(e?.message || "Could not change plan");
+    } finally {
+      setBillingBusy(false);
+    }
+  }
+
+  async function cancelOwnerPlan() {
+    const when = formatPeriodEnd(billingStatus?.current_period_end);
+    const name =
+      String(billingStatus?.product || "").toLowerCase() === "share_bio"
+        ? "Share My Biography"
+        : "Build Biography";
+    const ok = window.confirm(
+      when
+        ? `Cancel ${name}? You keep full access until ${when}, then your account becomes a free listener (shared biographies only).`
+        : `Cancel ${name}? You keep full access until the end of the current period, then your account becomes a free listener (shared biographies only).`
+    );
+    if (!ok) return;
+    setBillingBusy(true);
+    setBillingError("");
+    setBillingNotice("");
+    try {
+      const token = await getAccessToken();
+      const res = await fetch(`${apiBase}/billing/cancel`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: "{}",
+      });
+      const data = await res.json().catch(() => ({}));
+      const parsed = typeof data?.body === "string" ? JSON.parse(data.body) : data;
+      if (!res.ok) {
+        throw new Error(describeApiErrorMessage(parsed) || parsed?.error || `HTTP ${res.status}`);
+      }
+      setBillingNotice(
+        parsed?.action === "already_canceling"
+          ? "This subscription is already set to end at the current period."
+          : "Subscription canceled. You keep access until the end of the current period."
+      );
+      if (parsed?.plan_state) {
+        setBillingStatus(parsed);
+      } else {
+        await refreshBillingStatus();
+      }
+    } catch (e) {
+      setBillingError(e?.message || "Could not cancel subscription");
+    } finally {
+      setBillingBusy(false);
+    }
+  }
+
+  async function keepCurrentInterval() {
+    setBillingBusy(true);
+    setBillingError("");
+    setBillingNotice("");
+    try {
+      const token = await getAccessToken();
+      const res = await fetch(`${apiBase}/billing/cancel-scheduled-change`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: "{}",
+      });
+      const data = await res.json().catch(() => ({}));
+      const parsed = typeof data?.body === "string" ? JSON.parse(data.body) : data;
+      if (!res.ok) {
+        throw new Error(describeApiErrorMessage(parsed) || parsed?.error || `HTTP ${res.status}`);
+      }
+      setBillingNotice(
+        parsed?.action === "already_cleared"
+          ? "No pending interval change — your current plan renews as-is."
+          : "Pending switch to monthly was canceled. You'll stay on annual at renewal."
+      );
+      if (parsed?.plan_state != null) {
+        setBillingStatus(parsed);
+      } else {
+        await refreshBillingStatus();
+      }
+    } catch (e) {
+      setBillingError(e?.message || "Could not keep current interval");
     } finally {
       setBillingBusy(false);
     }
@@ -504,6 +590,9 @@ export default function PlanBillingSection({
   const busy = billingBusy || disabled;
   const periodEndLabel = formatPeriodEnd(status?.current_period_end);
   const cancelAtPeriodEnd = Boolean(status?.cancel_at_period_end);
+  const scheduledInterval = String(status?.scheduled_interval || "")
+    .trim()
+    .toLowerCase();
   const trialEndsAt = status?.trial_ends_at || "";
   const trialEndsLabel = formatIsoDate(trialEndsAt);
   const plan = String(effectivePlan || "").toLowerCase();
@@ -514,6 +603,9 @@ export default function PlanBillingSection({
   // hides the (contradictory) switch-interval buttons until resumed.
   const isOwnerPlanActive = isBuild || isShareBio;
   const ownerCancelPending = isOwnerPlanActive && cancelAtPeriodEnd;
+  // Annual→monthly (etc.) already scheduled at period end — sticky state, not a re-clickable switch.
+  const ownerSchedulePending =
+    isOwnerPlanActive && !cancelAtPeriodEnd && Boolean(scheduledInterval);
   const ownerPlanName = isShareBio ? "Share My Biography" : "Build Biography";
   const grantsFreeSeat = isBuild || plan === "past_due";
   const stewardedBios = Array.isArray(status?.stewarded_bios) ? status.stewarded_bios : [];
@@ -541,6 +633,12 @@ export default function PlanBillingSection({
           <li>
             <strong>Owner:</strong>{" "}
             {planLabel(effectivePlan, interval, trialEndsAt, product)}
+            {ownerSchedulePending && periodEndLabel ? (
+              <>
+                {" "}
+                — switching to {scheduledInterval} on {periodEndLabel}
+              </>
+            ) : null}
           </li>
           {stewardedBios.filter((b) => {
             const p = String(b?.billing_plan || "").toLowerCase();
@@ -589,6 +687,29 @@ export default function PlanBillingSection({
             </p>
           </div>
         ) : null}
+        {ownerSchedulePending ? (
+          <div
+            style={{
+              background: "rgba(52, 74, 110, 0.08)",
+              border: "1px solid rgba(52, 74, 110, 0.28)",
+              borderRadius: 12,
+              padding: "12px 14px",
+              margin: "4px 0 6px",
+            }}
+          >
+            <p style={{ margin: "0 0 4px", fontWeight: 600 }}>
+              Switching to monthly
+              {periodEndLabel ? <> on {periodEndLabel}</> : <> at the end of the current term</>}
+            </p>
+            <p className="km-muted" style={{ margin: 0 }}>
+              You&apos;re still on annual (
+              {isShareBio ? PRICE_SHARE_ANNUAL : PRICE_BUILD_ANNUAL}) until then. After that
+              you&apos;ll renew monthly (
+              {isShareBio ? PRICE_SHARE_MONTHLY : PRICE_BUILD_MONTHLY}). Use{" "}
+              <strong>Keep annual</strong> below if you want to stay on annual at renewal.
+            </p>
+          </div>
+        ) : null}
         {!status?.stripe_configured ? (
           <p className="km-muted">Billing is not fully configured on this environment yet.</p>
         ) : null}
@@ -634,7 +755,16 @@ export default function PlanBillingSection({
             Resume plan
           </Button>
         ) : null}
-        {canChange && !cancelAtPeriodEnd && isBuild && interval !== "annual" ? (
+        {ownerSchedulePending && isBuild ? (
+          <Button
+            variant="primary"
+            disabled={busy || !status?.stripe_configured}
+            onClick={() => keepCurrentInterval()}
+          >
+            Keep annual
+          </Button>
+        ) : null}
+        {canChange && !cancelAtPeriodEnd && !ownerSchedulePending && isBuild && interval !== "annual" ? (
           <Button
             variant="primary"
             disabled={busy || !status?.stripe_configured}
@@ -643,7 +773,7 @@ export default function PlanBillingSection({
             Switch to annual · {PRICE_BUILD_ANNUAL}
           </Button>
         ) : null}
-        {canChange && !cancelAtPeriodEnd && isBuild && interval !== "monthly" ? (
+        {canChange && !cancelAtPeriodEnd && !ownerSchedulePending && isBuild && interval !== "monthly" ? (
           <Button
             disabled={busy || !status?.stripe_configured}
             onClick={() => changePlan("monthly", "interviewer")}
@@ -658,6 +788,14 @@ export default function PlanBillingSection({
             onClick={() => changePlan(interval || "monthly", "interviewer")}
           >
             Switch to Build Biography
+          </Button>
+        ) : null}
+        {isOwnerPlanActive && !ownerCancelPending ? (
+          <Button
+            disabled={busy || !status?.stripe_configured}
+            onClick={() => cancelOwnerPlan()}
+          >
+            Cancel subscription
           </Button>
         ) : null}
         <Button disabled={busy || !status?.has_customer} onClick={() => openPortal()}>
@@ -750,7 +888,20 @@ export default function PlanBillingSection({
                         </Button>
                       </>
                     ) : null}
-                    {canChange && !cancelAtPeriodEnd && isShareBio && interval !== "annual" ? (
+                    {ownerSchedulePending && isShareBio ? (
+                      <Button
+                        variant="primary"
+                        disabled={busy || !status?.stripe_configured}
+                        onClick={() => keepCurrentInterval()}
+                      >
+                        Keep annual
+                      </Button>
+                    ) : null}
+                    {canChange &&
+                    !cancelAtPeriodEnd &&
+                    !ownerSchedulePending &&
+                    isShareBio &&
+                    interval !== "annual" ? (
                       <Button
                         disabled={busy || !status?.stripe_configured}
                         onClick={() => changePlan("annual", "share_bio")}
@@ -758,7 +909,11 @@ export default function PlanBillingSection({
                         Switch to annual · {PRICE_SHARE_ANNUAL}
                       </Button>
                     ) : null}
-                    {canChange && !cancelAtPeriodEnd && isShareBio && interval !== "monthly" ? (
+                    {canChange &&
+                    !cancelAtPeriodEnd &&
+                    !ownerSchedulePending &&
+                    isShareBio &&
+                    interval !== "monthly" ? (
                       <Button
                         disabled={busy || !status?.stripe_configured}
                         onClick={() => changePlan("monthly", "share_bio")}
