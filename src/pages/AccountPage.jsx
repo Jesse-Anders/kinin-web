@@ -48,7 +48,10 @@ export default function AccountPage({
           <FormRow label="Signed in as">
             <TextInput value={accountEmail || ""} readOnly placeholder="you@example.com" />
           </FormRow>
-          <FormRow label="Password">
+          <FormRow
+            label="Password"
+            help="Checked with Cognito here in your browser — it is not sent to Kinin's API."
+          >
             <TextInput
               type="password"
               value={accountPassword}

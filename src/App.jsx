@@ -41,6 +41,10 @@ import {
   reportAuthFailure,
 } from "./services/authSession";
 import { describeApiError, describeApiErrorMessage } from "./services/describeApiError";
+import {
+  InvalidCredentialsError,
+  verifyCognitoPassword,
+} from "./services/verifyCognitoPassword";
 import FaqPage from "./pages/FaqPage";
 import FeedbackPage from "./pages/FeedbackPage";
 import ContactPage from "./pages/ContactPage";
@@ -1617,10 +1621,21 @@ export default function App() {
 
   async function ensureApiOk(res) {
     if (res.ok) return;
+    const { text, parsed } = await getApiErrorPayload(res);
     if (res.status === 401) {
+      // Business 401s (e.g. step-up / invalid_credentials) must surface to the
+      // caller — only treat bare authorizer/session failures as expiry.
+      const code = String(parsed?.error || "").trim();
+      const isBusinessAuth =
+        !!code &&
+        code !== "unauthorized" &&
+        !/^unauthorized:/i.test(code) &&
+        code !== "Unauthorized";
+      if (isBusinessAuth) {
+        throw new Error(`API error ${res.status}: ${JSON.stringify(parsed)}`);
+      }
       await reportAuthFailure();
     }
-    const { text, parsed } = await getApiErrorPayload(res);
     if (res.status === 403 && parsed?.error === "onboarding_required") {
       setOnboardingStatus((prev) => ({
         ...prev,
@@ -2397,8 +2412,25 @@ export default function App() {
       setAccountError(`Type "${ACCOUNT_CONFIRM_PHRASE}" to confirm.`);
       return;
     }
+    if (isFederatedUser) {
+      setAccountError(
+        "This sign-in method doesn't use a Kinin password. Contact support to close the account."
+      );
+      return;
+    }
+    if (!accountPassword) {
+      setAccountError("Enter your password to confirm.");
+      return;
+    }
     setAccountBusy(true);
     try {
+      // Step-up auth in the browser so the password never hits the Kinin API.
+      const verifyAs = (accountEmail || accountUsername || "").trim();
+      await verifyCognitoPassword({
+        username: verifyAs,
+        password: accountPassword,
+      });
+
       const session = await fetchAuthSession();
       const idToken = session.tokens?.idToken?.toString();
       if (!idToken) throw new Error("Missing idToken. Are you logged in?");
@@ -2411,8 +2443,6 @@ export default function App() {
         },
         body: JSON.stringify({
           confirmation: accountConfirmText,
-          username: accountUsername,
-          password: accountPassword,
         }),
       });
 
@@ -2442,7 +2472,13 @@ export default function App() {
       navigateToPage("interview");
       window.location.assign(window.location.origin + window.location.pathname);
     } catch (e) {
-      setAccountError(e?.message || String(e));
+      if (e instanceof InvalidCredentialsError || e?.code === "invalid_credentials") {
+        setAccountError("That password isn't correct. Try again.");
+      } else if (isAuthExpiredError(e)) {
+        setAccountError("Please sign in again to continue.");
+      } else {
+        setAccountError(describeApiErrorMessage(e) || e?.message || String(e));
+      }
     } finally {
       setAccountPassword("");
       setAccountBusy(false);

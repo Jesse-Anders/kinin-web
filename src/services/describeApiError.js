@@ -57,6 +57,7 @@ const CODE_MESSAGES = {
   confirmation_mismatch: "Confirmation text didn't match. Please try again.",
   username_mismatch: "That username doesn't match this account.",
   username_and_password_required: "Username and password are required to continue.",
+  invalid_credentials: "That password isn't correct. Try again.",
 
   // Biography / circle
   biography_access_denied: "You don't have access to this biography anymore.",
