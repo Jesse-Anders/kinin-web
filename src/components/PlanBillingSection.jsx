@@ -91,8 +91,16 @@ function bioPlanLabel(bio) {
     if (bio?.is_free_seat) return "Shared (free with Build Biography)";
     if (bio?.is_paid) {
       const iv = String(bio.interval || "").toLowerCase();
-      if (iv === "annual") return `Shared · annual (${PRICE_KEEP_ANNUAL})`;
-      return `Shared · monthly (${PRICE_KEEP_MONTHLY})`;
+      const scheduled = String(bio.scheduled_interval || "").toLowerCase();
+      const when = formatPeriodEnd(bio.current_period_end);
+      let base =
+        iv === "annual"
+          ? `Shared · annual (${PRICE_KEEP_ANNUAL})`
+          : `Shared · monthly (${PRICE_KEEP_MONTHLY})`;
+      if (scheduled === "monthly" && when) {
+        base += ` — switching to monthly on ${when}`;
+      }
+      return base;
     }
     return "Shared";
   }
@@ -446,23 +454,30 @@ export default function PlanBillingSection({
     ownerUserId,
     billingPlan,
     interval: iv = "monthly",
+    action = "",
     notice = "",
   }) {
     const token = await getAccessToken();
     const origin = window.location.origin;
+    const body = {
+      owner_user_id: ownerUserId,
+      success_url: `${origin}/account?section=billing&checkout=success`,
+      cancel_url: `${origin}/account?section=billing&checkout=cancel`,
+    };
+    if (action) {
+      body.action = action;
+      if (iv) body.interval = iv;
+    } else {
+      body.billing_plan = billingPlan;
+      body.interval = iv;
+    }
     const res = await fetch(`${apiBase}/stewardship/billing`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        owner_user_id: ownerUserId,
-        billing_plan: billingPlan,
-        interval: iv,
-        success_url: `${origin}/account?section=billing&checkout=success`,
-        cancel_url: `${origin}/account?section=billing&checkout=cancel`,
-      }),
+      body: JSON.stringify(body),
     });
     const data = await res.json().catch(() => ({}));
     const parsed = typeof data?.body === "string" ? JSON.parse(data.body) : data;
@@ -576,6 +591,81 @@ export default function PlanBillingSection({
       });
     } catch (e) {
       setBillingError(e?.message || "Could not update biography billing");
+    } finally {
+      setBillingBusy(false);
+    }
+  }
+
+  async function resumeStewardBio(bio) {
+    const name = bio.display_name || "this biography";
+    setBillingBusy(true);
+    setBillingError("");
+    setBillingNotice("");
+    try {
+      await postStewardBilling({
+        ownerUserId: bio.owner_user_id,
+        billingPlan: "keep_interactive",
+        notice: `${name} will keep renewing. The scheduled cancellation was called off.`,
+      });
+    } catch (e) {
+      setBillingError(e?.message || "Could not resume subscription");
+    } finally {
+      setBillingBusy(false);
+    }
+  }
+
+  async function changeStewardInterval(bio, iv) {
+    const name = bio.display_name || "this biography";
+    setBillingBusy(true);
+    setBillingError("");
+    setBillingNotice("");
+    try {
+      const parsed = await postStewardBilling({
+        ownerUserId: bio.owner_user_id,
+        action: "change_interval",
+        interval: iv,
+      });
+      if (parsed?.action === "upgraded" || parsed?.action === "changed") {
+        setBillingNotice(`${name}: plan updated. Stripe prorates so you aren't double-billed.`);
+      } else if (
+        parsed?.action === "scheduled_downgrade" ||
+        parsed?.action === "already_scheduled"
+      ) {
+        const when = formatPeriodEnd(parsed?.period_end || bio?.current_period_end);
+        setBillingNotice(
+          when
+            ? `${name}: still on annual until ${when}, then renews monthly.`
+            : `${name}: still on the current term; monthly begins when it ends.`
+        );
+      } else {
+        setBillingNotice(`${name}: plan update requested.`);
+      }
+      await refreshBillingStatus();
+    } catch (e) {
+      setBillingError(e?.message || "Could not change stewardship plan");
+    } finally {
+      setBillingBusy(false);
+    }
+  }
+
+  async function keepStewardAnnual(bio) {
+    const name = bio.display_name || "this biography";
+    setBillingBusy(true);
+    setBillingError("");
+    setBillingNotice("");
+    try {
+      const parsed = await postStewardBilling({
+        ownerUserId: bio.owner_user_id,
+        action: "cancel_scheduled_change",
+      });
+      setBillingNotice(
+        parsed?.action === "already_cleared"
+          ? `${name}: no pending interval change.`
+          : `${name}: pending switch to monthly was canceled. Stays on annual at renewal.`
+      );
+      await refreshBillingStatus();
+    } catch (e) {
+      setBillingError(e?.message || "Could not keep annual plan");
     } finally {
       setBillingBusy(false);
     }
@@ -746,7 +836,7 @@ export default function PlanBillingSection({
             </Button>
           </>
         ) : null}
-        {ownerCancelPending ? (
+        {ownerCancelPending && isBuild ? (
           <Button
             variant="primary"
             disabled={busy || !status?.stripe_configured}
@@ -790,7 +880,7 @@ export default function PlanBillingSection({
             Switch to Build Biography
           </Button>
         ) : null}
-        {isOwnerPlanActive && !ownerCancelPending ? (
+        {isBuild && !ownerCancelPending ? (
           <Button
             disabled={busy || !status?.stripe_configured}
             onClick={() => cancelOwnerPlan()}
@@ -888,6 +978,15 @@ export default function PlanBillingSection({
                         </Button>
                       </>
                     ) : null}
+                    {ownerCancelPending && isShareBio ? (
+                      <Button
+                        variant="primary"
+                        disabled={busy || !status?.stripe_configured}
+                        onClick={() => resumePlan()}
+                      >
+                        Resume plan
+                      </Button>
+                    ) : null}
                     {ownerSchedulePending && isShareBio ? (
                       <Button
                         variant="primary"
@@ -919,6 +1018,14 @@ export default function PlanBillingSection({
                         onClick={() => changePlan("monthly", "share_bio")}
                       >
                         Switch to monthly at period end · {PRICE_SHARE_MONTHLY}
+                      </Button>
+                    ) : null}
+                    {isShareBio && !ownerCancelPending ? (
+                      <Button
+                        disabled={busy || !status?.stripe_configured}
+                        onClick={() => cancelOwnerPlan()}
+                      >
+                        Cancel subscription
                       </Button>
                     ) : null}
                   </div>
@@ -1030,24 +1137,77 @@ export default function PlanBillingSection({
                             </>
                           ) : null}
                           {interactive ? (
-                            <div style={{ display: "grid", gap: 6 }}>
-                              <Button
-                                disabled={
-                                  busy ||
-                                  !status?.stripe_configured ||
-                                  Boolean(bio?.cancel_at_period_end)
-                                }
-                                onClick={() => archiveStewardBio(bio)}
-                              >
-                                {bio?.cancel_at_period_end
-                                  ? "Cancellation scheduled"
-                                  : bio?.is_paid
-                                    ? "Cancel subscription"
-                                    : "Archive"}
-                              </Button>
+                            <div style={{ display: "grid", gap: 8 }}>
+                              {bio?.is_paid && !bio?.cancel_at_period_end ? (
+                                <div
+                                  className="km-form-actions"
+                                  style={{
+                                    justifyContent: "flex-start",
+                                    flexWrap: "wrap",
+                                    gap: 8,
+                                    margin: 0,
+                                  }}
+                                >
+                                  {String(bio?.scheduled_interval || "").toLowerCase() ===
+                                  "monthly" ? (
+                                    <Button
+                                      variant="primary"
+                                      disabled={busy || !status?.stripe_configured}
+                                      onClick={() => keepStewardAnnual(bio)}
+                                    >
+                                      Keep annual
+                                    </Button>
+                                  ) : null}
+                                  {String(bio?.scheduled_interval || "").toLowerCase() !==
+                                    "monthly" &&
+                                  String(bio?.interval || "").toLowerCase() !== "annual" ? (
+                                    <Button
+                                      disabled={busy || !status?.stripe_configured}
+                                      onClick={() => changeStewardInterval(bio, "annual")}
+                                    >
+                                      Switch to annual · {PRICE_KEEP_ANNUAL}
+                                    </Button>
+                                  ) : null}
+                                  {String(bio?.scheduled_interval || "").toLowerCase() !==
+                                    "monthly" &&
+                                  String(bio?.interval || "").toLowerCase() === "annual" ? (
+                                    <Button
+                                      disabled={busy || !status?.stripe_configured}
+                                      onClick={() => changeStewardInterval(bio, "monthly")}
+                                    >
+                                      Switch to monthly at period end · {PRICE_KEEP_MONTHLY}
+                                    </Button>
+                                  ) : null}
+                                </div>
+                              ) : null}
+                              {String(bio?.scheduled_interval || "").toLowerCase() ===
+                                "monthly" &&
+                              !bio?.cancel_at_period_end ? (
+                                <p className="km-muted" style={{ margin: 0, fontSize: 13 }}>
+                                  {cancelUntil
+                                    ? `Still on annual until ${cancelUntil}, then renews monthly (${PRICE_KEEP_MONTHLY}).`
+                                    : `Still on annual; switches to monthly (${PRICE_KEEP_MONTHLY}) at period end.`}
+                                </p>
+                              ) : null}
+                              {bio?.cancel_at_period_end ? (
+                                <Button
+                                  variant="primary"
+                                  disabled={busy || !status?.stripe_configured}
+                                  onClick={() => resumeStewardBio(bio)}
+                                >
+                                  Resume plan
+                                </Button>
+                              ) : (
+                                <Button
+                                  disabled={busy || !status?.stripe_configured}
+                                  onClick={() => archiveStewardBio(bio)}
+                                >
+                                  {bio?.is_paid ? "Cancel subscription" : "Archive"}
+                                </Button>
+                              )}
                               {bio?.is_paid && !bio?.cancel_at_period_end ? (
                                 <p className="km-muted" style={{ margin: 0, fontSize: 13 }}>
-                                  Cancels renewal. This biography stays Shared until the
+                                  Cancel stops renewal. This biography stays Shared until the
                                   end of the paid period, then returns to Archive.
                                 </p>
                               ) : null}

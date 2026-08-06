@@ -47,6 +47,8 @@ const CODE_MESSAGES = {
   already_on_interval: "You're already on that plan.",
   already_scheduled:
     "That interval change is already scheduled for the end of your current term.",
+  cancel_pending:
+    "This subscription is set to end at the current period. Resume it before changing the plan.",
   no_active_subscription: "No active subscription to change — subscribe first under My Account.",
   onboarding_required: "Finish getting started, then you can continue.",
   account_close_failed: "We couldn't close the account. Please try again.",
