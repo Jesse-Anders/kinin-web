@@ -764,15 +764,30 @@ export default function App() {
   // includes preset_uuid, and Resemble applies the preset's settings
   // (pace/temperature/exaggeration/description). This is the officially
   // supported style-control path.
-  const [ttsPresetUuid, setTtsPresetUuid] = useState(
-    () =>
-      localStorage.getItem("tts_preset_uuid") ||
-      "6b6bfa07-e246-42ed-9362-4641b85bac79" // Warmth
-  );
+  //
+  // Default is empty: Resemble currently rejects our catalog voices when
+  // paired with account presets (HTTP 401 Token/voice validation failed),
+  // which surfaces as "Voice playback failed." Plain voice UUIDs work.
+  // One-time migration clears the old Warmth default from localStorage.
+  const [ttsPresetUuid, setTtsPresetUuid] = useState(() => {
+    const WARMTH = "6b6bfa07-e246-42ed-9362-4641b85bac79";
+    try {
+      if (
+        !localStorage.getItem("tts_preset_cleared_warmth_v1") &&
+        localStorage.getItem("tts_preset_uuid") === WARMTH
+      ) {
+        localStorage.removeItem("tts_preset_uuid");
+        localStorage.setItem("tts_preset_cleared_warmth_v1", "1");
+      }
+    } catch {
+      // privacy-mode / unavailable localStorage
+    }
+    return localStorage.getItem("tts_preset_uuid") || "";
+  });
   const ttsPresetUuidRef = useRef(ttsPresetUuid);
   useEffect(() => {
     ttsPresetUuidRef.current = ttsPresetUuid;
-    if (ttsPresetUuid) {
+    if (ttsPresetUuid && ttsPresetUuid !== "none") {
       localStorage.setItem("tts_preset_uuid", ttsPresetUuid);
     } else {
       localStorage.removeItem("tts_preset_uuid");
@@ -972,13 +987,13 @@ export default function App() {
       if (!controller.signal.aborted) {
         const msg = e?.message || String(e);
         console.warn("TTS synthesis failed:", msg);
-        if (/tts_http_5\d\d/.test(msg)) {
+        if (/tts_http_5\d\d|tts_synthesis_failed|tts_timeout/.test(msg)) {
           setVoiceError(
-            "Voice service is temporarily unavailable. Try again in a moment.",
+            "Voice service is temporarily unavailable. Try again in a moment, or clear the voice style preset in Settings.",
           );
-        } else if (/tts_http_4\d\d/.test(msg)) {
+        } else if (/tts_http_4\d\d|tts_disabled|access_blocked/.test(msg)) {
           setVoiceError(
-            "Voice could not be generated (model/voice mismatch).",
+            "Voice could not be generated for this account or voice settings.",
           );
         } else {
           setVoiceError("Voice playback failed.");
@@ -3131,15 +3146,14 @@ export default function App() {
               const msg = err?.message || String(err);
               console.warn("Streaming TTS error:", msg);
               // Resemble's structured errors come through as
-              // "tts_http_503", "tts_http_500" etc. — translate to
-              // user-friendly text without exposing internals.
-              if (/tts_http_5\d\d/.test(msg)) {
+              // "tts_http_503", "tts_synthesis_failed", etc.
+              if (/tts_http_5\d\d|tts_synthesis_failed|tts_timeout/.test(msg)) {
                 setVoiceError(
-                  "Voice service is temporarily unavailable. Try again in a moment.",
+                  "Voice service is temporarily unavailable. Try again in a moment, or clear the voice style preset in Settings.",
                 );
-              } else if (/tts_http_4\d\d/.test(msg)) {
+              } else if (/tts_http_4\d\d|tts_disabled|access_blocked/.test(msg)) {
                 setVoiceError(
-                  "Voice could not be generated (model/voice mismatch).",
+                  "Voice could not be generated for this account or voice settings.",
                 );
               } else {
                 setVoiceError("Voice playback failed.");

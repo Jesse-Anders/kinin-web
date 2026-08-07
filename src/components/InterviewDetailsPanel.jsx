@@ -188,7 +188,7 @@ export default function InterviewDetailsPanel({
           })()}
           <div className="km-row" style={{ gap: 6, alignItems: "stretch" }}>
             <select
-              value={currentPresetUuid}
+              value={currentPresetUuid || PRESET_NONE_VALUE}
               onChange={(e) => setTtsPresetUuid(e.target.value)}
               className="km-input-compact"
               style={{ flex: 1 }}
@@ -227,16 +227,14 @@ export default function InterviewDetailsPanel({
             </button>
             <button
               type="button"
-              onClick={() =>
-                setTtsPresetUuid("6b6bfa07-e246-42ed-9362-4641b85bac79")
-              }
+              onClick={() => setTtsPresetUuid(PRESET_NONE_VALUE)}
               disabled={
-                currentPresetUuid === "6b6bfa07-e246-42ed-9362-4641b85bac79"
+                !currentPresetUuid || currentPresetUuid === PRESET_NONE_VALUE
               }
               className="km-tts-model-pill"
-              title="Restore Kinin default (Warmth)"
+              title="Clear style preset (recommended — presets currently break synthesis)"
             >
-              Default
+              None
             </button>
           </div>
           {presetsError ? (
