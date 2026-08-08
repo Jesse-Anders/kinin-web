@@ -2834,6 +2834,10 @@ a:hover {
   border: 1px solid var(--thread);
   border-radius: 6px;
 }
+.km-fc-card-highlight {
+  border-color: var(--crimson);
+  box-shadow: 0 0 0 2px rgba(184, 78, 45, 0.18);
+}
 .km-fc-card-top {
   display: flex;
   align-items: center;
@@ -2936,6 +2940,10 @@ a:hover {
 }
 .km-frame.km-pin-request .km-frame-label {
   color: var(--accent, #a9763f);
+}
+.km-frame.km-pin-highlight {
+  border-color: var(--crimson);
+  box-shadow: 0 0 0 2px rgba(184, 78, 45, 0.18);
 }
 
 /* ─── Settings breakout menu ─── */

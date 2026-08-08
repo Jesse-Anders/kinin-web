@@ -51,7 +51,8 @@ function formatTrialEndDate(iso) {
 // count of pending items). When present, a snoozed/dismissed alert reappears if
 // that value climbs above the baseline recorded when it was silenced — so
 // acknowledging today's items doesn't mute tomorrow's. `bodyFor(ctx)` lets an
-// alert render dynamic copy.
+// alert render dynamic copy. `ctaFor(ctx)` lets an alert pick a dynamic CTA
+// (e.g. deep-link to a Family Circle member).
 //
 // Set `forceWhileEligible: true` for alerts that must stay visible while the
 // condition is true (no snooze/dismiss). Used for pending stewardship claims
@@ -152,17 +153,49 @@ export const ALERTS = [
       "Someone in your Family Circle asked you to share a memory. Open your Pins to see what they'd love to hear.",
     cta: { label: "See what they'd love to hear", page: "pins" },
     isEligible(ctx) {
-      return (ctx.pendingStoryRequests || 0) > 0;
+      return (ctx.pendingStoryRequests || []).length > 0;
     },
     resurfaceValue(ctx) {
-      return ctx.pendingStoryRequests || 0;
+      return (ctx.pendingStoryRequests || []).length;
+    },
+    titleFor(ctx) {
+      const items = Array.isArray(ctx.pendingStoryRequests) ? ctx.pendingStoryRequests : [];
+      const name = (items[0]?.requester_name || "").trim();
+      if (items.length === 1 && name) {
+        return `${name} would love a story`;
+      }
+      if (items.length > 1 && name) {
+        return `${name} and others would love a story`;
+      }
+      return "A family member would love a story";
     },
     bodyFor(ctx) {
-      const n = ctx.pendingStoryRequests || 0;
+      const items = Array.isArray(ctx.pendingStoryRequests) ? ctx.pendingStoryRequests : [];
+      const n = items.length;
+      const nameOf = (item) =>
+        (item?.requester_name || "").trim() || "A family member";
       if (n === 1) {
-        return "Someone in your Family Circle asked you to share a memory. Open your Pins to see what they'd love to hear.";
+        return `${nameOf(items[0])} asked you to share a memory. Open your Pins to see what they'd love to hear.`;
       }
-      return `${n} people in your Family Circle asked you to share a memory. Open your Pins to see what they'd love to hear.`;
+      if (n === 2) {
+        return `${nameOf(items[0])} and ${nameOf(items[1])} asked you to share a memory. Open your Pins to see what they'd love to hear.`;
+      }
+      if (n > 2) {
+        return `${nameOf(items[0])} and ${n - 1} others in your Family Circle asked you to share a memory. Open your Pins to see what they'd love to hear.`;
+      }
+      return "Someone in your Family Circle asked you to share a memory. Open your Pins to see what they'd love to hear.";
+    },
+    ctaFor(ctx) {
+      const items = Array.isArray(ctx.pendingStoryRequests) ? ctx.pendingStoryRequests : [];
+      const pinId = String(items[0]?.pin_id || "").trim();
+      if (pinId) {
+        return {
+          label: "Open that pin",
+          page: "pins",
+          search: `?pin=${encodeURIComponent(pinId)}`,
+        };
+      }
+      return { label: "See what they'd love to hear", page: "pins" };
     },
   },
   {
@@ -184,6 +217,47 @@ export const ALERTS = [
         return "Someone in your Family Circle shared a memory you asked about. Open Family Circle to see.";
       }
       return `${n} memories you asked about have been shared. Open Family Circle to see.`;
+    },
+  },
+  {
+    id: "invite-accepted",
+    tone: "info",
+    title: "Someone joined your Family Circle",
+    body: "Someone has accepted your invite request and is on Kinin.",
+    cta: { label: "Open Family Circle", page: "family-circle" },
+    isEligible(ctx) {
+      return (ctx.unseenInviteAccepts || []).length > 0;
+    },
+    resurfaceValue(ctx) {
+      return (ctx.unseenInviteAccepts || []).length;
+    },
+    bodyFor(ctx) {
+      const items = Array.isArray(ctx.unseenInviteAccepts) ? ctx.unseenInviteAccepts : [];
+      if (items.length === 1) {
+        const name =
+          (items[0].invitee_name || "").trim() ||
+          (items[0].invitee_email || "").trim() ||
+          "Someone";
+        return `${name} has accepted your invite request and is on Kinin.`;
+      }
+      if (items.length > 1) {
+        return `${items.length} people have accepted your Family Circle invites and are on Kinin.`;
+      }
+      return "Someone has accepted your invite request and is on Kinin.";
+    },
+    ctaFor(ctx) {
+      const items = Array.isArray(ctx.unseenInviteAccepts) ? ctx.unseenInviteAccepts : [];
+      if (items.length === 1) {
+        const memberId = String(items[0].listener_user_id || "").trim();
+        if (memberId) {
+          return {
+            label: "See them in Family Circle",
+            page: "family-circle",
+            search: `?member=${encodeURIComponent(memberId)}`,
+          };
+        }
+      }
+      return { label: "Open Family Circle", page: "family-circle" };
     },
   },
 ];
@@ -219,7 +293,9 @@ export function resolveActiveAlerts(ctx, alertsState) {
     // without mutating the catalog entry.
     resolved.push({
       ...alert,
+      title: typeof alert.titleFor === "function" ? alert.titleFor(ctx) : alert.title,
       body: typeof alert.bodyFor === "function" ? alert.bodyFor(ctx) : alert.body,
+      cta: typeof alert.ctaFor === "function" ? alert.ctaFor(ctx) : alert.cta,
       resurfaceValue,
     });
   }

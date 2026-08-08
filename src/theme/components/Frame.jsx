@@ -1,6 +1,6 @@
-export function Frame({ label, children, className = "" }) {
+export function Frame({ label, children, className = "", id }) {
   return (
-    <div className={`km-frame ${className}`}>
+    <div id={id} className={`km-frame ${className}`.trim()}>
       {label ? <div className="km-frame-label">{label}</div> : null}
       <span className="km-frame-corner tl" />
       <span className="km-frame-corner tr" />

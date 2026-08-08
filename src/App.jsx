@@ -507,12 +507,14 @@ export default function App() {
   // ISO trial end from entitlement — Plan & billing + trial-ending-soon alert.
   const [trialEndsAt, setTrialEndsAt] = useState(null);
   const [interviewSealed, setInterviewSealed] = useState(false);
-  // Count of live story-request pins waiting on this user — powers the
-  // "a family member would love a story" alert. Derived server-side from pins.
-  const [pendingStoryRequests, setPendingStoryRequests] = useState(0);
+  // Live story-request pins waiting on this user — powers the
+  // "a family member would love a story" alert (names + pin deep-links).
+  const [pendingStoryRequests, setPendingStoryRequests] = useState([]);
   // Count of memories the user asked for that a storyteller has now shared but
   // the user hasn't acknowledged — powers the "your memory was shared" alert.
   const [fulfilledStoryRequests, setFulfilledStoryRequests] = useState(0);
+  // Owner-side: Family Circle invites accepted since last acknowledgment.
+  const [unseenInviteAccepts, setUnseenInviteAccepts] = useState([]);
   // Pending stewardship claim on the signed-in owner's biography (claim_pending).
   const [pendingStewardshipClaim, setPendingStewardshipClaim] = useState(null);
   const [isSendingTurn, setIsSendingTurn] = useState(false);
@@ -1907,8 +1909,20 @@ export default function App() {
       );
     }
     if (parsed && typeof parsed === "object" && "pending_story_requests" in parsed) {
-      const n = Number(parsed.pending_story_requests);
-      setPendingStoryRequests(Number.isFinite(n) && n > 0 ? n : 0);
+      const raw = parsed.pending_story_requests;
+      // Prefer the list shape ({pin_id, requester_name}[]); accept a legacy count.
+      if (Array.isArray(raw)) {
+        setPendingStoryRequests(raw);
+      } else {
+        const n = Number(raw);
+        setPendingStoryRequests(Number.isFinite(n) && n > 0 ? Array(n).fill({}) : []);
+      }
+    }
+    if (parsed && typeof parsed === "object" && "unseen_invite_accepts" in parsed) {
+      const list = Array.isArray(parsed.unseen_invite_accepts)
+        ? parsed.unseen_invite_accepts
+        : [];
+      setUnseenInviteAccepts(list);
     }
     if (parsed && typeof parsed === "object" && "fulfilled_story_requests" in parsed) {
       const n = Number(parsed.fulfilled_story_requests);
@@ -3812,6 +3826,7 @@ export default function App() {
         hasExecutor: hasAccountExecutor,
         pendingStoryRequests,
         fulfilledStoryRequests,
+        unseenInviteAccepts,
         pendingStewardshipClaim,
         planState,
         trialEndsAt,
@@ -3826,6 +3841,7 @@ export default function App() {
     hasAccountExecutor,
     pendingStoryRequests,
     fulfilledStoryRequests,
+    unseenInviteAccepts,
     pendingStewardshipClaim,
     planState,
     trialEndsAt,
@@ -4742,6 +4758,7 @@ export default function App() {
           onManageSharing={() => navigateToPage("settings-biographies")}
           onSubscribe={navigateToBilling}
           onStoryRequestsSeen={() => setFulfilledStoryRequests(0)}
+          onInviteAcceptsSeen={() => setUnseenInviteAccepts([])}
           onOpenBiography={(ownerId) => {
             const id = String(ownerId || "").trim();
             if (!id) return;
