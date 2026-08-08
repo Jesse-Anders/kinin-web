@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Check, HeartHandshake, MapPin, MessageCircle, NotebookPen, RotateCcw, Trash2 } from "lucide-react";
 import { Banner, Button, Frame, Section, Spinner, TextArea } from "../theme";
 import { createPin, deletePin, listPins, updatePin } from "../services/pinsClient";
@@ -29,6 +30,15 @@ export default function PinsPage({
   startingPinId = "",
   startingJournalPinId = "",
 }) {
+  const location = useLocation();
+  const highlightPinId = useMemo(() => {
+    try {
+      return new URLSearchParams(location.search || "").get("pin") || "";
+    } catch {
+      return "";
+    }
+  }, [location.search]);
+
   const [filter, setFilter] = useState("active");
   const [pins, setPins] = useState([]);
   const [newPinText, setNewPinText] = useState("");
@@ -37,6 +47,13 @@ export default function PinsPage({
   const [updatingPinId, setUpdatingPinId] = useState("");
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
+
+  // Deep-link from story-request alert: always show Active (where request pins live).
+  useEffect(() => {
+    if (highlightPinId && filter !== "active") {
+      setFilter("active");
+    }
+  }, [highlightPinId, filter]);
 
   const loadPins = useCallback(async () => {
     if (!isAuthed) return;
@@ -56,6 +73,14 @@ export default function PinsPage({
   useEffect(() => {
     loadPins();
   }, [loadPins]);
+
+  // Deep-link from story-request alert: scroll the pin into view.
+  useEffect(() => {
+    if (!highlightPinId || loading) return;
+    const el = document.getElementById(`pin-${highlightPinId}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [highlightPinId, loading, pins]);
 
   async function handleCreate() {
     const text = newPinText.trim();
@@ -237,11 +262,19 @@ export default function PinsPage({
               const rowBusy = isLaunching || isLaunchingJournal || isUpdating || launching;
               const isRequest = pin.source === "story_request";
               const requesterName = (pin.requester_name || "").trim() || "A family member";
+              const isHighlighted = highlightPinId && pin.pin_id === highlightPinId;
+              const frameClass = [
+                isRequest ? "km-pin-request" : "",
+                isHighlighted ? "km-pin-highlight" : "",
+              ]
+                .filter(Boolean)
+                .join(" ");
               return (
                 <Frame
                   key={pin.pin_id}
+                  id={`pin-${pin.pin_id}`}
                   label={isRequest ? "Story request" : undefined}
-                  className={isRequest ? "km-pin-request" : ""}
+                  className={frameClass}
                 >
                   <div className="km-row" style={{ gap: 12, alignItems: "flex-start" }}>
                     {isRequest ? (

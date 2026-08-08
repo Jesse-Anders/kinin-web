@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { BookOpen, HeartHandshake, MessageCircleHeart, UsersRound, X } from "lucide-react";
 import {
   Banner,
@@ -172,9 +173,19 @@ export default function FamilyCirclePage({
   isReader = false,
   onManageSharing,
   onStoryRequestsSeen,
+  onInviteAcceptsSeen,
   onOpenBiography,
   onSubscribe,
 }) {
+  const location = useLocation();
+  const highlightMemberId = useMemo(() => {
+    try {
+      return new URLSearchParams(location.search || "").get("member") || "";
+    } catch {
+      return "";
+    }
+  }, [location.search]);
+
   const canLoad = !!apiBase && typeof getAccessToken === "function" && isAuthed;
   // Readers (biography_only) have no biography of their own to share, so they
   // can't invite people — they only appear in others' circles and can request
@@ -187,6 +198,7 @@ export default function FamilyCirclePage({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [shareName, setShareName] = useState("");
   const [shareEmail, setShareEmail] = useState("");
   const [shareRelationship, setShareRelationship] = useState("");
 
@@ -200,6 +212,20 @@ export default function FamilyCirclePage({
   // history doesn't dominate the page. Expandable on demand.
   const [sentExpanded, setSentExpanded] = useState(false);
   const SENT_COLLAPSED_COUNT = 2;
+
+  const markInviteAcceptsSeen = useCallback(async () => {
+    if (!canLoad) return;
+    try {
+      const token = await getAccessToken();
+      await fetch(`${apiBase}/biographies/invites/accepted/seen`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (typeof onInviteAcceptsSeen === "function") onInviteAcceptsSeen();
+    } catch {
+      // Non-critical: alert clears on the next profile refresh.
+    }
+  }, [apiBase, getAccessToken, canLoad, onInviteAcceptsSeen]);
 
   const loadCircle = useCallback(async () => {
     if (!canLoad) return;
@@ -218,13 +244,15 @@ export default function FamilyCirclePage({
       }
       setMembers(Array.isArray(parsed?.members) ? parsed.members : []);
       setPendingInvites(Array.isArray(parsed?.pending_invites) ? parsed.pending_invites : []);
+      // Opening Family Circle acknowledges "X joined" invite-accept alerts.
+      void markInviteAcceptsSeen();
     } catch (e) {
       if (isAuthExpiredError(e)) return;
       setError(describeApiErrorMessage(e));
     } finally {
       setLoading(false);
     }
-  }, [apiBase, getAccessToken, canLoad]);
+  }, [apiBase, getAccessToken, canLoad, markInviteAcceptsSeen]);
 
   const markStoryRequestsSeen = useCallback(async () => {
     if (!canLoad) return;
@@ -273,11 +301,24 @@ export default function FamilyCirclePage({
     loadStoryRequests();
   }, [loadCircle, loadStoryRequests]);
 
+  // Deep-link from invite-accepted alert: scroll the member card into view.
+  useEffect(() => {
+    if (!highlightMemberId || loading) return;
+    const el = document.getElementById(`fc-member-${highlightMemberId}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [highlightMemberId, loading, members]);
+
   async function addShare(e) {
     if (e?.preventDefault) e.preventDefault();
     if (!canInvite || busy) return;
+    const name = shareName.trim();
     const email = shareEmail.trim();
     const relationship = shareRelationship.trim();
+    if (!name) {
+      setError("Enter a name for this invite.");
+      return;
+    }
     if (!email) {
       setError("Enter an email address to invite.");
       return;
@@ -293,7 +334,7 @@ export default function FamilyCirclePage({
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ email, relationship }),
+        body: JSON.stringify({ name, email, relationship }),
       });
       await throwIfUnauthorized(res);
       const parsed = parseApiPayload(await res.text());
@@ -308,12 +349,13 @@ export default function FamilyCirclePage({
       }
       if (parsed?.pending) {
         setNotice(
-          `Invitation sent to ${email}. They'll join your circle as soon as they're on Kinin.`,
+          `Invitation sent to ${name}. They'll join your circle as soon as they're on Kinin.`,
         );
       } else {
-        const name = parsed?.share?.display_name || email;
-        setNotice(`${name} is now in your family circle.`);
+        const joinedName = parsed?.share?.display_name || name || email;
+        setNotice(`${joinedName} is now in your family circle.`);
       }
+      setShareName("");
       setShareEmail("");
       setShareRelationship("");
       await loadCircle();
@@ -495,8 +537,14 @@ export default function FamilyCirclePage({
               <div className="km-fc-grid">
                 {members.map((m) => {
                   const isReaderMember = m.account_type === "reader";
+                  const highlighted =
+                    !!highlightMemberId && highlightMemberId === m.member_id;
                   return (
-                    <div key={m.member_id} className="km-fc-card">
+                    <div
+                      key={m.member_id}
+                      id={`fc-member-${m.member_id}`}
+                      className={`km-fc-card${highlighted ? " km-fc-card-highlight" : ""}`}
+                    >
                       <div className="km-fc-card-top">
                         <MemberAvatar name={m.display_name} />
                         <div className="km-fc-card-id">
@@ -665,7 +713,16 @@ export default function FamilyCirclePage({
             </div>
 
             <form className="km-form-grid" onSubmit={addShare}>
-              <FormRow label="Their email">
+              <FormRow label="Name" required>
+                <TextInput
+                  value={shareName}
+                  onChange={(e) => setShareName(e.target.value)}
+                  disabled={busy}
+                  maxLength={100}
+                  placeholder="e.g. Mary"
+                />
+              </FormRow>
+              <FormRow label="Email" required>
                 <TextInput
                   value={shareEmail}
                   onChange={(e) => setShareEmail(e.target.value)}
@@ -685,7 +742,11 @@ export default function FamilyCirclePage({
               </FormRow>
             </form>
             <div className="km-row" style={{ marginTop: 14 }}>
-              <Button variant="primary" onClick={addShare} disabled={busy || !shareEmail.trim()}>
+              <Button
+                variant="primary"
+                onClick={addShare}
+                disabled={busy || !shareName.trim() || !shareEmail.trim()}
+              >
                 {busy ? (
                   <>
                     <Spinner /> Working...
@@ -705,7 +766,12 @@ export default function FamilyCirclePage({
                   {pendingInvites.map((p) => (
                     <li key={p.invitee_email} className="km-share-row">
                       <div>
-                        <strong>{p.invitee_email}</strong>
+                        <strong>
+                          {(p.invitee_name || "").trim() || p.invitee_email}
+                        </strong>
+                        {(p.invitee_name || "").trim() ? (
+                          <span className="km-muted"> · {p.invitee_email}</span>
+                        ) : null}
                         {p.relationship ? (
                           <span className="km-muted"> · {p.relationship}</span>
                         ) : null}
