@@ -719,7 +719,7 @@ export default function FamilyCirclePage({
                   onChange={(e) => setShareName(e.target.value)}
                   disabled={busy}
                   maxLength={100}
-                  placeholder="e.g. Aunt May"
+                  placeholder="e.g. Mary"
                 />
               </FormRow>
               <FormRow label="Email" required>
